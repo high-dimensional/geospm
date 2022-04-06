@@ -1,0 +1,1 @@
+A synthetic data set based on three Koch anti-snowflake fractals. Two spatially distributed factors dominate in one region each and are equally probable in a third.

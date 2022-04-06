@@ -1,0 +1,6 @@
+GEOMETRYCOLLECTION (
+   point ( 3 4 ),
+   point ( 10 10),
+   point( 9 3),
+   Point(100 100),
+POINT (83 727))
