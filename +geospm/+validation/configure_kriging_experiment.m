@@ -18,9 +18,21 @@ function [kriging] = configure_kriging_experiment(options)
     kriging_kernel_map = containers.Map('KeyType', 'char', 'ValueType', 'any');
     
     kriging_kernel_map('Exp') = hdng.experiments.Value.from('Exp', 'Exponential');
+    kriging_kernel_map('Sph') = hdng.experiments.Value.from('Sph', 'Spherical');
     kriging_kernel_map('Gau') = hdng.experiments.Value.from('Gau', 'Gaussian');
+    kriging_kernel_map('Exc') = hdng.experiments.Value.from('Exc', 'Exponential class/stable');
     kriging_kernel_map('Mat') = hdng.experiments.Value.from('Mat', 'Matérn');
-    
+    kriging_kernel_map('Ste') = hdng.experiments.Value.from('Ste', 'Matérn, M. Stein''s parameterization');
+    kriging_kernel_map('Cir') = hdng.experiments.Value.from('Cir', 'Circular');
+    kriging_kernel_map('Lin') = hdng.experiments.Value.from('Lin', 'Linear');
+    kriging_kernel_map('Bes') = hdng.experiments.Value.from('Bes', 'Bessel');
+    kriging_kernel_map('Pen') = hdng.experiments.Value.from('Pen', 'Pentaspherical');
+    kriging_kernel_map('Per') = hdng.experiments.Value.from('Per', 'Periodic');
+    kriging_kernel_map('Wav') = hdng.experiments.Value.from('Wav', 'Wave');
+    kriging_kernel_map('Hol') = hdng.experiments.Value.from('Hol', 'Hole');
+    kriging_kernel_map('Log') = hdng.experiments.Value.from('Log', 'Logarithmic');
+    kriging_kernel_map('Pow') = hdng.experiments.Value.from('Pow', 'Power');
+    kriging_kernel_map('Spl') = hdng.experiments.Value.from('Spl', 'Spline');
     
     kriging = struct();
     kriging.experiment_type = 'geospm.validation.experiments.Kriging';

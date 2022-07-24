@@ -115,25 +115,9 @@ run <- function(records_path, output_directory, random_seed, x, y, width, height
   } else {
     vg_model <- vgm(NA, variogram_model, NA)
   }
-  
-  
 
   #Make sure the sills and ranges of all variograms are the same
   v.first <- variogram(formula(paste(variable_names[[1]], "~1", sep="")), data=spatial_records)
-  
-  fit_kappa <- variogram_model %in% c("Mat")
-  
-  if( fit_kappa ) {
-    f = function(x) attr(tmp.fit <<- fit.variogram(v.first, vgm(NA, variogram_model, range=NA, nugget=NA, kappa=x, fit.method=7)), "SSErr")
-    opt_result <- optimize(f, c(0.1, 5))
-    
-    if( add_nugget ) {
-      vg_model <- vgm(NA, variogram_model, NA, NA, kappa=opt_result$minimum)
-    } else {
-      vg_model <- vgm(NA, variogram_model, NA, kappa=opt_result$minimum)
-    }
-  }
-  
   v.common <- fit.variogram(v.first, vg_model, fit.method=7)
   g <- gstat(g, id=variable_names[[1]], model=v.common, fill.all=T, maxdist=max_dist)
   v.fit <- fit.lmc(v.emp, g, fit.method=6, correct.diagonal=1.01)
@@ -181,6 +165,13 @@ run <- function(records_path, output_directory, random_seed, x, y, width, height
   
   
   do.call(writeMat, variogram_metadata) 
+  
+  #lcm_filename <- file.path(output_directory, "lmc.png")
+  #png(lcm_filename)
+  #plot(v.emp, v.fit)
+  #dev.off()
+  
+  #while (!is.null(dev.list())) Sys.sleep(1)
   
   if( variograms_only ) {
     return ("Done")
@@ -371,18 +362,18 @@ main <- function() {
   #print(records_path)
   #print(output_directory)
   
-  tryCatch(run(records_path, output_directory, argv$r, argv$s, argv$t, argv$m, argv$n, argv$d, argv$c, argv$g, FALSE), finally= print(paste(NAME, "finished.")))
+  tryCatch(run(records_path, output_directory, argv$r, argv$s, argv$t, argv$m, argv$n, argv$d, argv$c, argv$g, TRUE), finally= print(paste(NAME, "finished.")))
 }
 
-main()
-q(save="no")
+#main()
+#q(save="no")
 
-#records_path <- "/data/holger/LOCALMATLAB/validation_results_final/Kriging/krig_mat_snowflakes_3200/1/krig_mat_snowflakes_3200_1/experiment_data.csv"
-#output_directory <- "/data/holger/LOCALMATLAB/validation_revision"
+records_path <- "/data/holger/LOCALMATLAB/validation_results_final/Kriging/krig_mat_snowflakes_3200/1/krig_mat_snowflakes_3200_1/experiment_data.csv"
+output_directory <- "/data/holger/LOCALMATLAB/validation_revision"
 
-#records_path <- "/Users/work/MATLAB/krig_mat_snowflakes_3200_1/experiment_data.csv"
-#output_directory <- "Users/work/MATLAB"
+records_path <- "/Users/work/MATLAB/krig_mat_snowflakes_3200_1/experiment_data.csv"
+output_directory <- "Users/work/MATLAB"
 
-#run(records_path, output_directory, 418159781, 1, 1, 220, 210, NA, "Mat", TRUE, TRUE)
+run(records_path, output_directory, 418159781, 1, 1, 220, 210, NA, "Mat", TRUE, TRUE)
 
 

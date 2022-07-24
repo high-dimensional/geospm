@@ -164,6 +164,10 @@ function run(varargin)
     if ~isfield(options, 'sampling_strategy')
         options.sampling_strategy = 'standard_sampling';
     end
+
+    if ~isfield(options, 'add_nugget')
+        options.add_nugget = true;
+    end
     
     if ~isfield(options, 'add_position_jitter')
         options.add_position_jitter = true;

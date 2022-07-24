@@ -34,6 +34,10 @@ classdef Kriging < geospm.validation.SpatialExperiment
         adjust_variance
     end
     
+    properties (Dependent, Transient)
+        kriging_directory_path
+    end
+    
     methods
         
         function obj = Kriging(seed, ...
@@ -173,6 +177,10 @@ classdef Kriging < geospm.validation.SpatialExperiment
                 
                 obj.nifti_files = obj.gather_nifti_files_from_term_records(term_records);
             end
+        end
+        
+        function result = get.kriging_directory_path(obj)
+            result = fullfile(obj.directory, 'kriging_output');
         end
         
         function [kriging_directory, command_files] = run_kriging(obj, kriging_data_path, variogram_function)

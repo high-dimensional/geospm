@@ -151,6 +151,8 @@ classdef Stage < handle
                 
                 hdng.utilities.save_text(sprintf('%d:%d\n', configuration.number, N), progress_path);
             
+                hdng.experiments.Stage.update_current_configuration(configuration, N, directory);
+                
                 evaluation = hdng.experiments.Evaluation();
                 
                 evaluation.configuration = configuration;
@@ -228,6 +230,22 @@ classdef Stage < handle
     end
     
     methods (Static, Access=public)
+        
+        function previous_state = update_current_configuration(configuration, N, directory)
+            
+            global state
+            
+            if isempty(state)
+                previous_state = [];
+            else
+                previous_state = state;
+            end
+            
+            if exist('configuration', 'var')
+                state = hdng.one_struct('configuration', configuration, 'N', N, 'directory', directory);
+            end
+        end
+        
     end
     
 end

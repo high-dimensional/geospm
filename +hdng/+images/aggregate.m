@@ -46,6 +46,36 @@ function aggregate(scan_directory, varargin)
         options.flat_output = true;
     end
     
+    if ~isfield(options, 'horizontal_gap')
+        options.horizontal_gap = 2;
+    end
+    
+    if ~isfield(options, 'vertical_gap')
+        options.vertical_gap = 2;
+    end
+    
+    if ~isfield(options, 'image_names')
+        options.image_names = {};
+    end
+    
+    if ~isfield(options, 'sample_names')
+        options.sample_names = {};
+    end
+    
+    image_name_set = containers.Map('KeyType', 'char', 'ValueType', 'logical');
+    
+    for index=1:numel(options.image_names)
+        image_name = options.image_names{index};
+        image_name_set(image_name) = true;
+    end
+    
+    sample_name_set = containers.Map('KeyType', 'char', 'ValueType', 'logical');
+    
+    for index=1:numel(options.sample_names)
+        sample_name = options.sample_names{index};
+        sample_name_set(sample_name) = true;
+    end
+    
     image_order = hdng.utilities.OrderedMap('KeyType', 'char', 'ValueType', 'any');
     
     for index=1:numel(options.image_order)
@@ -98,17 +128,26 @@ function aggregate(scan_directory, varargin)
             image_directory = image_directories{image_index};
             [~, image_name, image_ext] = fileparts(image_directory);
             image_name = [image_name image_ext]; %#ok<AGROW>
+        
+            if ~isempty(image_name_set) && ~isKey(image_name_set, image_name)
+                continue
+            end
             
             image_data = [];
             target_data = [];
             used_target_file = [];
             
             sample_files = hdng.utilities.list_files(image_directory);
+            
             used_sample_files = {};
             
             for sample_index=1:numel(sample_files)
                 sample_file = sample_files{sample_index};
                 [~, sample_name, sample_ext] = fileparts(sample_file);
+                
+                if ~isempty(sample_name_set) && ~isKey(sample_name_set, sample_name)
+                    continue
+                end
                 
                 is_image = false;
                 is_volume = false;
@@ -237,7 +276,6 @@ function aggregate(scan_directory, varargin)
                 if dirstatus ~= 1; error(dirmsg); end
                 file_name = entry.name;
             end
-            
 
             image_path = fullfile(category_output_directory, [file_name '.nii']);
             geospm.utilities.write_nifti(entry.image_data, image_path);
@@ -267,7 +305,7 @@ function aggregate(scan_directory, varargin)
             entry = image_dict(image_keys{k});
             entries{k} = entry;
             
-            [group_image, group_alpha] = append_image_x(group_image, group_alpha, entry.final_data);
+            [group_image, group_alpha] = append_image_x(group_image, group_alpha, entry.final_data, options.horizontal_gap);
         end
         
         group_image_path = fullfile(output_directory, [entry.name '.png']);
@@ -287,10 +325,15 @@ function aggregate(scan_directory, varargin)
         group_key = group_keys{index};
         entry = group_dict(group_key);
         
-        [full_image, full_alpha] = append_image_y(full_image, full_alpha, entry.image_data);
+        [full_image, full_alpha] = append_image_y(full_image, full_alpha, entry.image_data, options.vertical_gap);
     end
     
     full_image_path = fullfile(options.output_directory, [scan_name '.png']);
+    
+    if isempty(full_image) || isempty(full_alpha)
+        return
+    end
+    
     imwrite(full_image, full_image_path, 'Alpha', full_alpha);
     
 end
@@ -318,10 +361,10 @@ function directories = order_directories(directories, name_order)
     directories = [tmp_directories(tmp_order), directories(indices == 0)];
 end
 
-function [group_image, group_alpha] = append_image_x(group_image, group_alpha, image)
+function [group_image, group_alpha] = append_image_x(group_image, group_alpha, image, divider_size)
 
     if ~isempty(group_image)
-        divider = cast(ones(size(image, 1), 2, size(image, 3)) * 255.0, 'uint8');
+        divider = cast(ones(size(image, 1), divider_size, size(image, 3)) * 255.0, 'uint8');
     else
         divider = [];
     end
@@ -333,10 +376,10 @@ function [group_image, group_alpha] = append_image_x(group_image, group_alpha, i
     group_alpha = cat(2, group_alpha, alpha_divider, alpha);
 end
 
-function [group_image, group_alpha] = append_image_y(group_image, group_alpha, image)
+function [group_image, group_alpha] = append_image_y(group_image, group_alpha, image, divider_size)
 
     if ~isempty(group_image)
-        divider = cast(ones(2, size(image, 2), size(image, 3)) * 255.0, 'uint8');
+        divider = cast(ones(divider_size, size(image, 2), size(image, 3)) * 255.0, 'uint8');
     else
         divider = [];
     end

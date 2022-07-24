@@ -10,7 +10,7 @@ library(R.matlab, quietly=TRUE)
 NAME <- "cokrige.r"
 DESCRIPTION <- "Cokriging of a csv dataset, where a header row specifies the first column as x and the second as y followed by one or more variables of interest."
 
-run <- function(records_path, output_directory, random_seed, x, y, width, height, max_distance, variogram_model, add_nugget, variograms_only) {
+run <- function(records_path, output_directory, random_seed, x, y, width, height, max_distance, variogram_model, add_nugget) {
   
   if( is.na(random_seed) ) {
      random_seed <- sample.int(2^31 - 1, size=1)
@@ -103,7 +103,6 @@ run <- function(records_path, output_directory, random_seed, x, y, width, height
   # cross variograms, but this can be turned off. 
   
   v.emp <- variogram(g)
-  v.emp2 <- variogram(g, cutoff=100,width=100,map=TRUE)
   
   # The function fit.lmc fits a linear model of co-regionalization, which is a 
   # particular model that needs to have identical model components and
@@ -115,76 +114,12 @@ run <- function(records_path, output_directory, random_seed, x, y, width, height
   } else {
     vg_model <- vgm(NA, variogram_model, NA)
   }
-  
-  
 
   #Make sure the sills and ranges of all variograms are the same
   v.first <- variogram(formula(paste(variable_names[[1]], "~1", sep="")), data=spatial_records)
-  
-  fit_kappa <- variogram_model %in% c("Mat")
-  
-  if( fit_kappa ) {
-    f = function(x) attr(tmp.fit <<- fit.variogram(v.first, vgm(NA, variogram_model, range=NA, nugget=NA, kappa=x, fit.method=7)), "SSErr")
-    opt_result <- optimize(f, c(0.1, 5))
-    
-    if( add_nugget ) {
-      vg_model <- vgm(NA, variogram_model, NA, NA, kappa=opt_result$minimum)
-    } else {
-      vg_model <- vgm(NA, variogram_model, NA, kappa=opt_result$minimum)
-    }
-  }
-  
   v.common <- fit.variogram(v.first, vg_model, fit.method=7)
   g <- gstat(g, id=variable_names[[1]], model=v.common, fill.all=T, maxdist=max_dist)
   v.fit <- fit.lmc(v.emp, g, fit.method=6, correct.diagonal=1.01)
-  
-  emp_matrix <- cbind(as.matrix(v.emp[,c(1:5)]), as.matrix(as.integer(v.emp$id)))
-  dimnames(emp_matrix)[[2]] <- names(v.emp)
-  
-  fitted_models <- list()
-  
-  
-  l <- 0
-  i <- 1
-  
-  for( name in levels(v.emp$id)) {
-    
-    model <- v.fit$model[name][[1]]
-    
-    model_matrix <- cbind(rep.int(i, dim(model)[[1]]),
-                          as.matrix(as.integer(model$model)), 
-                          as.matrix(model[,c(2:dim(model)[[2]])]))
-    
-    
-    dimnames(model_matrix)[[2]] = c("label", names(model))
-    
-    for( inner_name in dimnames(model_matrix)[[2]]) {
-      if( is.null(fitted_models[[inner_name]] ) ) {
-        fitted_models[[inner_name]] = rep.int(NA, l)
-      }
-      
-      fitted_models[[inner_name]] <- c(fitted_models[[inner_name]], model_matrix[,inner_name])
-    }
-    
-    i <- i + 1
-    l <- l + dim(model)[[1]]
-  }
-  
-  
-  variogram_filename <- file.path(output_directory, "variograms.mat")
-  variogram_metadata <- list()
-  variogram_metadata$con <- variogram_filename
-  variogram_metadata$labels <- levels(v.emp$id)
-  variogram_metadata$models <- levels(v.common$model)
-  variogram_metadata$empirical <- as.data.frame(emp_matrix)
-  variogram_metadata$fitted <- as.data.frame(fitted_models)
-  
-  
-  do.call(writeMat, variogram_metadata) 
-  
-  if( variograms_only ) {
-    return ("Done")
-  }
   
   # Integral grid cell centres cause sampling artefacts in the kriging, so we must align
   # them in the conventional way by adding 0.5
@@ -349,14 +284,6 @@ main <- function() {
     flag=TRUE
   )
   
-  parser <- add_argument(
-    parser,
-    "-v",
-    help="Only compute the variograms.",
-    flag=TRUE
-  )
-  
-  
   argv <- parse_args(parser)
   
   output_directory <- argv$o
@@ -371,18 +298,31 @@ main <- function() {
   #print(records_path)
   #print(output_directory)
   
-  tryCatch(run(records_path, output_directory, argv$r, argv$s, argv$t, argv$m, argv$n, argv$d, argv$c, argv$g, FALSE), finally= print(paste(NAME, "finished.")))
+  tryCatch(run(records_path, output_directory, argv$r, argv$s, argv$t, argv$m, argv$n, argv$d, argv$c, argv$g), finally= print(paste(NAME, "finished.")))
 }
 
 main()
+
+#records_path <- "/Users/work/UCL/SPMG/real_world_experiment/birm_all_univ_mat_gau_nn/25/experiment_data.csv"
+#output_directory <- "/Users/work/MATLAB/output"
+#run(records_path, output_directory, 1675132009, 1, 1, 70, 70, NA, "Mat", TRUE)
+
+#records_path <- "/Users/work/MATLAB/2021_11_26_16_26_12/1/experiment_data.csv"
+#output_directory <- "/Users/work/MATLAB/output"
+#run(records_path, output_directory, 703057484, 1, 1, 70, 70, NA, "Mat", TRUE)
+
+#records_path <- "/Users/work/MATLAB/2021_11_13_17_21_36/1/experiment_data.csv"
+#output_directory <- "/Users/work/MATLAB/output"
+#run(records_path, output_directory, 703057484, 1, 1, 220, 210, NA, "Mat", TRUE)
+
+
+#records_path <- "/Users/work/MATLAB/2020_02_28_16_02_03/2/experiment_data.csv"
+#output_directory <- "/Users/work/MATLAB/2020_02_28_16_02_03/2/kriging_output/global"
+#run(records_path, output_directory, 1, 1, 320, 120, NA)
+
+
+#records_path <- "/Users/work/MATLAB/2020_03_09_12_31_58/2/experiment_data.csv"
+#output_directory <- "/Users/work/MATLAB/2020_03_09_12_31_58/2/kriging_output/global"
+#run(records_path, output_directory, 1, 1, 240, 120, NA)
+
 q(save="no")
-
-#records_path <- "/data/holger/LOCALMATLAB/validation_results_final/Kriging/krig_mat_snowflakes_3200/1/krig_mat_snowflakes_3200_1/experiment_data.csv"
-#output_directory <- "/data/holger/LOCALMATLAB/validation_revision"
-
-#records_path <- "/Users/work/MATLAB/krig_mat_snowflakes_3200_1/experiment_data.csv"
-#output_directory <- "Users/work/MATLAB"
-
-#run(records_path, output_directory, 418159781, 1, 1, 220, 210, NA, "Mat", TRUE, TRUE)
-
-
