@@ -13,7 +13,7 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
- classdef SPMRenderImages < geospm.SpatialAnalysisStage
+ classdef SPMRenderImages < geospm.stages.SpatialAnalysisStage
     %SPMRenderImages Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -38,7 +38,7 @@
         
         function obj = SPMRenderImages(analysis)
             
-            obj = obj@geospm.SpatialAnalysisStage(analysis);
+            obj = obj@geospm.stages.SpatialAnalysisStage(analysis);
 
             obj.volume_renderer = geospm.volumes.ColourMapping();
             

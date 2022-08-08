@@ -13,7 +13,7 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-classdef SPMDistanceRegression < geospm.SpatialAnalysisStage
+classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
     
     properties
         apply_volume_mask
@@ -42,7 +42,7 @@ classdef SPMDistanceRegression < geospm.SpatialAnalysisStage
             %
             %
             
-            obj = obj@geospm.SpatialAnalysisStage(analysis);
+            obj = obj@geospm.stages.SpatialAnalysisStage(analysis);
             
             if ~exist('options', 'var') || isempty(options)
                 options = struct();

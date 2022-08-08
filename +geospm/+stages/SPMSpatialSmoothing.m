@@ -13,7 +13,7 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
- classdef SPMSpatialSmoothing < geospm.SpatialAnalysisStage
+ classdef SPMSpatialSmoothing < geospm.stages.SpatialAnalysisStage
     %SPMSpatialSmoothing Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -35,7 +35,7 @@
         
         function obj = SPMSpatialSmoothing(analysis, options, varargin)
             
-            obj = obj@geospm.SpatialAnalysisStage(analysis);
+            obj = obj@geospm.stages.SpatialAnalysisStage(analysis);
             
             if ~exist('options', 'var') || isempty(options)
                 options = struct();

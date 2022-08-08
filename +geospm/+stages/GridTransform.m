@@ -13,7 +13,7 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-classdef GridTransform < geospm.SpatialAnalysisStage
+classdef GridTransform < geospm.stages.SpatialAnalysisStage
     
     properties
         data_requirement
@@ -31,7 +31,7 @@ classdef GridTransform < geospm.SpatialAnalysisStage
     methods
         
         function obj = GridTransform(analysis, varargin)
-            obj = obj@geospm.SpatialAnalysisStage(analysis);
+            obj = obj@geospm.stages.SpatialAnalysisStage(analysis);
             
             options = hdng.utilities.parse_struct_from_varargin(varargin{:});
             

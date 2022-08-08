@@ -13,7 +13,7 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
- classdef SPMApplyThresholds < geospm.SpatialAnalysisStage
+ classdef SPMApplyThresholds < geospm.stages.SpatialAnalysisStage
     %SPMApplyThresholds Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -50,7 +50,7 @@
         
         function obj = SPMApplyThresholds(analysis, options, varargin)
             
-            obj = obj@geospm.SpatialAnalysisStage(analysis);
+            obj = obj@geospm.stages.SpatialAnalysisStage(analysis);
             
             if ~exist('options', 'var')
                 options = struct();
