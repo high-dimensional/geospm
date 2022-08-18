@@ -43,6 +43,7 @@ classdef Evaluator < hdng.experiments.Evaluator
         
         null_level
         null_level_map
+        standardise_predictions
         
         diagnostics
         last_experiment
@@ -83,6 +84,7 @@ classdef Evaluator < hdng.experiments.Evaluator
             
             obj.null_level = 0.5;
             obj.null_level_map = containers.Map('KeyType', 'char', 'ValueType', 'double');
+            obj.standardise_predictions = true;
             
             obj.diagnostics = {};
             obj.last_experiment = {};
@@ -247,7 +249,11 @@ classdef Evaluator < hdng.experiments.Evaluator
                         experiment.null_level_map(null_level_name) = obj.null_level_map(null_level_name);
                     end
                 end
-                 
+                
+                if isprop(experiment, 'standardise_predictions')
+                    experiment.standardise_predictions = obj.standardise_predictions;
+                end
+                
                  
                 evaluation.start_time = obj.now();
                  

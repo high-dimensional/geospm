@@ -61,6 +61,10 @@ function run(varargin)
         options.null_level_map = containers.Map('KeyType', 'char', 'ValueType', 'double');
     end
     
+    if ~isfield(options, 'standardise_predictions')
+        options.standardise_predictions = true;
+    end
+    
     if ~isfield(options, 'n_repetitions')
         
         if ~isfield(options, 'repetition')
@@ -233,6 +237,9 @@ function run(varargin)
     null_level = hdng.experiments.constant(schedule, geospm.validation.Constants.NULL_LEVEL, 'Null Level', options.null_level);
     null_level.interactive = struct('default_display_mode', 'select_all');
     
+    standardise_predictions = hdng.experiments.constant(schedule, geospm.validation.Constants.STANDARDISE_PREDICTIONS, 'Standardise Predictions', options.standardise_predictions);
+    standardise_predictions.interactive = struct('default_display_mode', 'select_all');
+    
     hdng.experiments.Variable(...
         schedule, ...
         geospm.validation.Constants.REPETITION, ...
@@ -389,6 +396,7 @@ function run(varargin)
     evaluator.volume_mask_factor = options.volume_mask_factor;
     evaluator.null_level = options.null_level;
     evaluator.null_level_map = options.null_level_map;
+    evaluator.standardise_predictions = options.standardise_predictions;
     
     evaluator.score_contexts = geospm.validation.configure_scores(options);
     

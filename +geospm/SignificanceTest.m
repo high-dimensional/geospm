@@ -27,6 +27,7 @@ classdef SignificanceTest < handle
         T_DISTRIBUTION = 'T'
         F_DISTRIBUTION = 'F'
         UNIFORM_DISTRIBUTION = 'uniform'
+        STEP_DISTRIBUTION = 'step'
         
         LEFT_TAILED = 1
         RIGHT_TAILED = 2
@@ -41,7 +42,8 @@ classdef SignificanceTest < handle
                  geospm.SignificanceTest.NORMAL_DISTRIBUTION, ...
                  geospm.SignificanceTest.T_DISTRIBUTION, ...
                  geospm.SignificanceTest.F_DISTRIBUTION, ...
-                 geospm.SignificanceTest.UNIFORM_DISTRIBUTION};
+                 geospm.SignificanceTest.UNIFORM_DISTRIBUTION, ...
+                 geospm.SignificanceTest.STEP_DISTRIBUTION};
     end
     
     properties (GetAccess=public, SetAccess=public)
@@ -272,8 +274,22 @@ classdef SignificanceTest < handle
                             result = [-alpha2, alpha2];
                     
                         otherwise
-                            error('geospm.SignificanceTest.compute_interval(): Specified tails are incompatible with normal distribution.');
+                            error('geospm.SignificanceTest.compute_interval(): Specified tails are incompatible with uniform distribution.');
                     end
+                
+                case 'step'
+                    
+                    switch obj.tails_code
+                        case obj.LEFT_TAILED
+                            result = [-alpha, Inf];
+                            
+                        case obj.RIGHT_TAILED
+                            result = [-Inf, alpha];
+                    
+                        otherwise
+                            error('geospm.SignificanceTest.compute_interval(): Specified tails are incompatible with step distribution.');
+                    end
+                    
                     
                 otherwise
                     error('geospm.SignificanceTest.compute_interval(): Unsupported distribution ''%s''.', obj.distribution);
