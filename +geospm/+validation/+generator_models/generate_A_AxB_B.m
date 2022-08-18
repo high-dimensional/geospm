@@ -39,6 +39,10 @@ classdef generate_A_AxB_B < geospm.models.GeneratorModel
                 options.model_cooccurrence = true;
             end
             
+            if ~isfield(options, 'inverted')
+                options.inverted = false;
+            end
+            
             if ~isfield(options, 'interaction_factor')
                 options.interaction_factor = 1.0 * options.model_cooccurrence;
             end
@@ -59,7 +63,17 @@ classdef generate_A_AxB_B < geospm.models.GeneratorModel
 
             p_not_A = geospm.models.Expression(g, 'Not A probability', p_A, @(~, p_A) 1 - p_A);
             p_not_B = geospm.models.Expression(g, 'Not B probability', p_B, @(~, p_B) 1 - p_B);
-
+            
+            if obj.options.inverted
+                tmp = p_A;
+                p_A = p_not_A;
+                p_not_A = tmp;
+                
+                tmp = p_B;
+                p_B = p_not_B;
+                p_not_B = tmp;
+            end
+            
             radius = geospm.models.Control(g, 'Radius', 0, 100, 40);
 
             probe_radius = geospm.models.Expression(g, 'probe Radius', radius, @(~, radius) radius * 0.15);
@@ -84,6 +98,9 @@ classdef generate_A_AxB_B < geospm.models.GeneratorModel
             end
             
             d7 = geospm.models.Expression(g, 'Radius x 0.5', radius, @(~, radius) radius * 0.5);
+            d8 = geospm.models.Expression(g, 'Radius x 5.5', radius, @(~, radius) radius * 5.5);
+            d9 = geospm.models.Expression(g, 'Radius x 3.25', radius, @(~, radius) radius * 3.25);
+            d10 = geospm.models.Expression(g, 'Radius x 5.25', radius, @(~, radius) radius * 5.25);
             
             density = geospm.models.Map(g, 'density', 1);
             
@@ -120,10 +137,21 @@ classdef generate_A_AxB_B < geospm.models.GeneratorModel
                         radius);
             end
             
+
+            if obj.options.inverted
+                
+                marginal_A.define( ...
+                        'polygon', ...
+                        {p_not_A, p_A}, ...
+                        {d4,  d4, d8,  d8}, ...
+                        {d10, d9, 0.0, d10} ...
+                        );
+            end
+                
             marginal_A.define( ...
                     'plane', ...
                     {p_A, p_not_A});
-
+            
             g.bind_parameter(marginal_A, 'marginal_distribution', struct('variable_index', 1));
 
             marginal_B = geospm.models.Map(g, 'marginal B', 2);
@@ -146,7 +174,18 @@ classdef generate_A_AxB_B < geospm.models.GeneratorModel
                         radius, ...
                         radius);
             end
+            
 
+            if obj.options.inverted
+                
+                marginal_B.define( ...
+                        'polygon', ...
+                        {p_not_B, p_B}, ...
+                        {d4,  0.0, 0.0, d4}, ...
+                        {d10, d10, 0.0, d9} ...
+                        );
+            end
+            
             marginal_B.define( ...
                     'plane', ...
                     {p_B, p_not_B});
