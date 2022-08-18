@@ -41,12 +41,16 @@ function parameters = load_parameters(file_path)
         parameters.fitted.ang3 = [];
         parameters.fitted.anis1 = [];
         parameters.fitted.anis2 = [];
+        
+        
+        parameters.fitted.sserr = [];
+        parameters.fitted.converged = [];
 
         parameters.labels = {};
         parameters.models = {};
 
         obj.log_diagnostic(...
-            sprintf('Missing results file ''%s'' for level ''%s''.', file_name, level), ...
+            sprintf('Missing results file ''%s'' for level ''%s''.', file_path, level), ...
             'An empty results structure was created.');
     end
 end

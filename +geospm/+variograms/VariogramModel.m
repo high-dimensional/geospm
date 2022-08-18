@@ -21,6 +21,8 @@ classdef VariogramModel < handle
         name
         partial_sills
         correlations
+        sum_of_squared_error
+        converged
     end
     
     properties (Dependent, Transient)
@@ -35,6 +37,8 @@ classdef VariogramModel < handle
             obj.name = '';
             obj.partial_sills = [];
             obj.correlations = {};
+            obj.sum_of_squared_error = [];
+            obj.converged = [];
         end
         
         function result = get.N_components(obj)
@@ -61,6 +65,14 @@ classdef VariogramModel < handle
             result = struct();
             result.name = obj.name;
             result.correlations = cell(1, obj.N_components);
+            
+            if ~isempty(obj.sum_of_squared_error)
+                result.sum_of_squared_error = obj.sum_of_squared_error;
+            end
+            
+            if ~isempty(obj.converged)
+                result.converged = obj.converged;
+            end
             
             for index=1:obj.N_components
                 correlation = obj.correlations{index};
@@ -166,6 +178,14 @@ classdef VariogramModel < handle
         function result = from_json(json_struct)
             result = geospm.variograms.VariogramModel();
             result.name = json_struct.name;
+            
+            if isfield(json_struct, 'sum_of_squared_error')
+                result.sum_of_squared_error = json_struct.sum_of_squared_error;
+            end
+            
+            if isfield(json_struct, 'converged')
+                result.converged = json_struct.converged;
+            end
             
             for index=1:numel(json_struct.correlations)
                 

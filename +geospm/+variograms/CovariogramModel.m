@@ -143,6 +143,14 @@ classdef CovariogramModel < handle
                 variogram_model.initialise_from_parameters(params, correlation_labels);
                 variogram_model.name = label;
                 
+                if isfield(parameters, 'sserr')
+                    variogram_model.sum_of_squared_error = parameters.sserr(indices(1));
+                end
+                
+                if isfield(parameters, 'converged')
+                    variogram_model.converged = parameters.converged(indices(1));
+                end
+                
                 tmp_variogram_cells{variogram_index} = variogram_model; %#ok<AGROW>
             end
             

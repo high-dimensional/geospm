@@ -62,6 +62,12 @@ classdef IncludeVariogram < geospm.validation.SpatialExperimentScore
             attribute = covariogram_model.define_attribute('smoothness', true, true);
             attribute.description = 'Smoothness';
             
+            attribute = covariogram_model.define_attribute('sum_of_squared_error', true, true);
+            attribute.description = 'Sum of Squared Error';
+            
+            attribute = covariogram_model.define_attribute('converged', true, true);
+            attribute.description = 'Converged';
+            
             covariogram_model.define_partitioning_attachment({
                 struct('identifier', 'label', 'category', 'partitioning', 'view_mode', 'select'), ...
                 ...
@@ -69,6 +75,8 @@ classdef IncludeVariogram < geospm.validation.SpatialExperimentScore
                 struct('identifier', 'partial_sill', 'category', 'content'), ...
                 struct('identifier', 'range', 'category', 'content'), ...
                 struct('identifier', 'smoothness', 'category', 'content'), ...
+                struct('identifier', 'sum_of_squared_error', 'category', 'content'), ...
+                struct('identifier', 'converged', 'category', 'content'), ...
                 ...
             });
             
@@ -155,6 +163,11 @@ classdef IncludeVariogram < geospm.validation.SpatialExperimentScore
                     end
                     
                     record('smoothness') = hdng.experiments.Value.from(smoothness);
+                    
+                    record('sum_of_squared_error') = hdng.experiments.Value.from(variogram.sum_of_squared_error);
+                    record('converged') = hdng.experiments.Value.from(variogram.converged);
+                    
+                    
                     obj.results.covariogram_model.include_record(record);
                 end
             end
