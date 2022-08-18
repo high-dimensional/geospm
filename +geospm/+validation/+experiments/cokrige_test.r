@@ -40,6 +40,7 @@ run <- function(records_path, output_directory, random_seed, x, y, width, height
   
   #Duplicate points cause singular covariance matrices
   spatial_records <- remove.duplicates(spatial_records)
+  #spatial_records <- remove.duplicates(spatial_records, zero = 0.1, memcmp=FALSE)
   N_unique_records <- nrow(spatial_records)
   
   x_min <- min(coords$x)
@@ -97,44 +98,49 @@ run <- function(records_path, output_directory, random_seed, x, y, width, height
   print(g)
   
   start_time <- Sys.time()
+
   
   # By default, variogram when passing a gstat object computes all direct and 
   # cross variograms, but this can be turned off. 
   
   v.emp <- variogram(g)
+  # v.emp2 <- variogram(g, cutoff=100,width=100,map=TRUE)
   
   # The function fit.lmc fits a linear model of co-regionalization, which is a 
   # particular model that needs to have identical model components and
   # positive definite partial sill matrices, to ensure non-negative prediction 
   # variances when used for spatial prediction (cokriging).
   
-  fit_sills <- TRUE
-  add_small_nugget <- variogram_model %in% c("Gau", "Wav")
-  
-  if( add_nugget || add_small_nugget ) {
-    
-    nugget <- NA
-    
-    if( add_small_nugget ) {
-      nugget <- var(spatial_records[[variable_names[[1]]]]) / 100.0
-      fit_sills <- c(FALSE, TRUE) # do not fit the nugget
-    }
-    
-    vg_model <- vgm(NA, variogram_model, NA, nugget, kappa=NA)
+  if( add_nugget ) {
+    vg_model <- vgm(NA, variogram_model, NA, NA, kappa=NA)
   } else {
     vg_model <- vgm(NA, variogram_model, NA, kappa=NA)
   }
   
+  
+
   #Make sure the sills and ranges of all variograms are the same
   v.first <- variogram(formula(paste(variable_names[[1]], "~1", sep="")), data=spatial_records)
   
-  fit_kappa <- variogram_model %in% c("Mat", "Ste")
+  fit_kappa <- variogram_model %in% c("Ste", "Mat")
+  
+  
+  #if( fit_kappa ) {
+  #  f = function(x) attr(tmp.fit <<- fit.variogram(v.first, vgm(NA, variogram_model, range=NA, nugget=NA, kappa=x, fit.method=7)), "SSErr")
+  #  opt_result <- optimize(f, c(0.1, 5))
+  #  
+  #  if( add_nugget ) {
+  #    vg_model <- vgm(NA, variogram_model, NA, NA, kappa=opt_result$minimum)
+  #  } else {
+  #    vg_model <- vgm(NA, variogram_model, NA, kappa=opt_result$minimum)
+  #  }
+  #}
   
   if( fit_kappa ) {
-    # fit_kappa <- seq(0.3, 5.0, by = 0.05) use default sequence instead
+    fit_kappa <- c(0.1, 5)
   }
   
-  v.common <- fit.variogram(v.first, vg_model, fit.sills=fit_sills, fit.method=7, fit.kappa=fit_kappa)
+  v.common <- fit.variogram(v.first, vg_model, fit.method=7, fit.kappa=fit_kappa)
   g <- gstat(g, id=variable_names[[1]], model=v.common, fill.all=T, maxdist=max_dist)
   v.fit <- fit.lmc(v.emp, g, fit.method=6, correct.diagonal=1.01)
   
@@ -142,6 +148,7 @@ run <- function(records_path, output_directory, random_seed, x, y, width, height
   dimnames(emp_matrix)[[2]] <- names(v.emp)
   
   fitted_models <- list()
+  
   
   l <- 0
   i <- 1
@@ -152,11 +159,10 @@ run <- function(records_path, output_directory, random_seed, x, y, width, height
     
     model_matrix <- cbind(rep.int(i, dim(model)[[1]]),
                           as.matrix(as.integer(model$model)), 
-                          as.matrix(model[,c(2:dim(model)[[2]])]),
-                          rep(attr(model, "SSErr"), dim(model)[[1]]),
-                          rep(!attr(model, "singular"), dim(model)[[1]]))
+                          as.matrix(model[,c(2:dim(model)[[2]])]))
     
-    dimnames(model_matrix)[[2]] = c("label", names(model), "sserr", "converged")
+    
+    dimnames(model_matrix)[[2]] = c("label", names(model))
     
     for( inner_name in dimnames(model_matrix)[[2]]) {
       if( is.null(fitted_models[[inner_name]] ) ) {
@@ -363,23 +369,28 @@ main <- function() {
   
   records_path <- argv$records
   if (!R.utils::isAbsolutePath(records_path))
-    records_path <- normalizePath(records_path, mustWork=FALSE)
+    records_path <- normalizePath(records_path, mustWork=FALSE) #file.path(getwd(), records_path),
   
   if (nchar(output_directory) == 0)
     output_directory <- dirname(records_path)
   
-  tryCatch(run(records_path, output_directory, argv$r, argv$s, argv$t, argv$m, argv$n, argv$d, argv$c, argv$g, FALSE), finally= print(paste(NAME, "finished.")))
+  #print(records_path)
+  #print(output_directory)
+  
+  tryCatch(run(records_path, output_directory, argv$r, argv$s, argv$t, argv$m, argv$n, argv$d, argv$c, argv$g, TRUE), finally= print(paste(NAME, "finished.")))
 }
 
-main()
-q(save="no")
+#main()
+#q(save="no")
 
 #records_path <- "/data/holger/LOCALMATLAB/validation_results_final/Kriging/krig_mat_snowflakes_3200/1/krig_mat_snowflakes_3200_1/experiment_data.csv"
 #output_directory <- "/data/holger/LOCALMATLAB/validation_revision"
 
-#records_path <- "/Users/work/MATLAB/validation_revision/Revision/issues/krig_mat_snowflakes_3200_6/experiment_data.csv"
-#output_directory <- "/Users/work/MATLAB"
+records_path <- "/Users/work/MATLAB/validation_revision/Revision/issues/krig_mat_snowflakes_3200_6/experiment_data.csv"
+#records_path <- "/Users/work/MATLAB/validation_revision/Revision/issues/krig_gau_no_nugg_snowflakes_3200_1/experiment_data.csv"
+#records_path <- "/Users/work/MATLAB/validation_revision/Revision/issues/krig_bes_antisnowflakes_1600_34/experiment_data.csv"
+output_directory <- "Users/work/MATLAB"
 
-#run(records_path, output_directory, 418159781, 1, 1, 220, 210, NA, "Gau", FALSE, TRUE)
+run(records_path, output_directory, 418159781, 1, 1, 220, 210, NA, "Mat", TRUE, TRUE)
 
 
