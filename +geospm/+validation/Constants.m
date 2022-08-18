@@ -22,6 +22,7 @@ classdef Constants < handle
         SOURCE_VERSION = 'source_version'
         
         NULL_LEVEL = 'null_level'
+        ADDITIVE_OBSERVATION_NOISE = 'additive_observation_noise'
         
         REPETITION = 'repetition'
         EXPERIMENT = 'experiment'

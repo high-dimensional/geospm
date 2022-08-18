@@ -48,10 +48,14 @@ classdef StandardSampling2 < geospm.models.SamplingStrategy
                 options.add_observation_noise = false;
             end
             
+            if ~isfield(options, 'observation_noise')
+                options.observation_noise = 0.005;
+            end
+            
             obj = obj@geospm.models.SamplingStrategy();
             
             obj.add_observation_noise = options.add_observation_noise;
-            obj.observation_noise = 0.005;
+            obj.observation_noise = options.observation_noise;
             
             obj.coincident_observations_mode = options.coincident_observations_mode;
         end

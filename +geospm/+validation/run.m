@@ -185,6 +185,10 @@ function run(varargin)
         options.add_observation_noise = true;
     end
     
+    if ~isfield(options, 'observation_noise')
+        options.observation_noise = 0.005;
+    end
+    
     if ~isfield(options, 'coincident_observations_mode')
         options.coincident_observations_mode = geospm.models.sampling.StandardSampling2.JITTER_MODE;
     end
@@ -285,9 +289,13 @@ function run(varargin)
     
     hdng.experiments.constant(schedule, geospm.validation.Constants.EXPERIMENT, 'Experiment Type', experiment_values{:});
     
+    observation_noise = hdng.experiments.constant(schedule, geospm.validation.Constants.ADDITIVE_OBSERVATION_NOISE, 'Additive Observation Noise', options.observation_noise * cast(options.add_observation_noise, 'double'));
+    observation_noise.interactive = struct('default_display_mode', 'select_all');
+    
     sampling_strategy = geospm.validation.value_generators.CreateSamplingStrategy(options.sampling_strategy, ...
         'add_position_jitter', options.add_position_jitter, ...
         'add_observation_noise', options.add_observation_noise, ...
+        'observation_noise', options.observation_noise, ...
         'coincident_observations_mode', options.coincident_observations_mode );
     
     hdng.experiments.Variable(schedule, geospm.validation.Constants.SAMPLING_STRATEGY, sampling_strategy, {}, 'description', 'Sampling Strategy');
