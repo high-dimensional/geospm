@@ -53,6 +53,14 @@ function run(varargin)
         options.volume_mask_factor = [];
     end
     
+    if ~isfield(options, 'null_level')
+        options.null_level = 0.5;
+    end
+    
+    if ~isfield(options, 'null_level_map')
+        options.null_level_map = containers.Map('KeyType', 'char', 'ValueType', 'double');
+    end
+    
     if ~isfield(options, 'n_repetitions')
         
         if ~isfield(options, 'repetition')
@@ -218,6 +226,9 @@ function run(varargin)
     source_version = hdng.experiments.constant(schedule, geospm.validation.Constants.SOURCE_VERSION, 'Source Version', source_version.string);
     source_version.interactive = struct('default_display_mode', 'select_all');
     
+    null_level = hdng.experiments.constant(schedule, geospm.validation.Constants.NULL_LEVEL, 'Null Level', options.null_level);
+    null_level.interactive = struct('default_display_mode', 'select_all');
+    
     hdng.experiments.Variable(...
         schedule, ...
         geospm.validation.Constants.REPETITION, ...
@@ -368,6 +379,8 @@ function run(varargin)
     evaluator.trace_thresholds = options.trace_thresholds;
     evaluator.apply_volume_mask = options.apply_volume_mask;
     evaluator.volume_mask_factor = options.volume_mask_factor;
+    evaluator.null_level = options.null_level;
+    evaluator.null_level_map = options.null_level_map;
     
     evaluator.score_contexts = geospm.validation.configure_scores(options);
     

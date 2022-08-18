@@ -20,6 +20,9 @@ classdef Constants < handle
     properties (Constant)
         
         SOURCE_VERSION = 'source_version'
+        
+        NULL_LEVEL = 'null_level'
+        
         REPETITION = 'repetition'
         EXPERIMENT = 'experiment'
         RANDOM_SEED = 'random_seed'
