@@ -650,7 +650,10 @@ classdef SpatialData < geospm.NumericData
                 [153, 153, 153], ...
                 [255, 102, 51], ...
                 [0, 204, 153], ...
-                [0, 204, 255]
+                [0, 204, 255], ...
+                [255, 217,  100], ...
+                [148, 96, 208], ...
+                [69, 208, 59]
                 };
             
             ratio = frame_size(2) / frame_size(1);
@@ -678,7 +681,7 @@ classdef SpatialData < geospm.NumericData
             
             mark_size_squared = mark_size * mark_size;
             
-            N_categories = 4;
+            N_categories = 7;
             
             marker_colours = zeros(N, 3);
             
