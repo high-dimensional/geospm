@@ -352,11 +352,37 @@
             context.render_settings = settings;
             
             
-            obj.render_beta_images(beta_records, output_directory, session, settings);
+            unmasked_betas_value = obj.render_beta_images(beta_records, output_directory, session, settings);
+            
+            unmasked_beta_volumes = unmasked_betas_value.content('volumes').content;
+            unmasked_beta_images = unmasked_betas_value.content('images').content;
             
             unmasked_contrasts_value = obj.render_contrast_images(output_directory, session, settings);
             unmasked_maps_value = obj.render_map_images(output_directory, session, settings);
             
+            unmasked_contrasts_volumes = unmasked_contrasts_value.content('volumes').content;
+            unmaksed_contrasts_images = unmasked_contrasts_value.content('images').content;
+            
+            N_real_contrasts = numel(unmasked_contrasts_volumes);
+            
+            unmasked_contrasts_volumes = [unmasked_contrasts_volumes; unmasked_beta_volumes];
+            unmasked_contrasts_images = [unmaksed_contrasts_images; unmasked_beta_images];
+            
+            unmasked_contrasts_value = hdng.utilities.Dictionary();
+            unmasked_contrasts_value('volumes') = hdng.experiments.Value.from(unmasked_contrasts_volumes);
+            unmasked_contrasts_value('images') = hdng.experiments.Value.from(unmasked_contrasts_images);
+            unmasked_contrasts_value = hdng.experiments.Value.from(unmasked_contrasts_value);
+            
+            unmasked_map_volumes = unmasked_maps_value.content('volumes').content;
+            unmasked_map_images = unmasked_maps_value.content('images').content;
+            
+            unmasked_map_volumes = [unmasked_map_volumes; unmasked_beta_volumes];
+            unmasked_map_images = [unmasked_map_images; unmasked_beta_images];
+            
+            unmasked_maps_value = hdng.utilities.Dictionary();
+            unmasked_maps_value('volumes') = hdng.experiments.Value.from(unmasked_map_volumes);
+            unmasked_maps_value('images') = hdng.experiments.Value.from(unmasked_map_images);
+            unmasked_maps_value = hdng.experiments.Value.from(unmasked_maps_value);
             
             % Image record array:
             %
@@ -421,13 +447,19 @@
                 
                 [match_result, matched_statistics] = session.match_statistic_threshold_files('', threshold_directory);
                 
+                if isempty(match_result.matched_files)
+                    [match_result, matched_statistics] = session.match_beta_coeff_threshold_files(threshold_directory, N_real_contrasts);
+                end
+                
                 if isempty(matched_files) || obj.render_component_contrasts
                 
                     if ~match_result.did_match_all_files
                         error(['SPMRenderImages.run(): Couldn''t locate all threshold files in ''' threshold_directory '''.']);
                     end
 
-                    if numel(matched_statistics) ~= 1
+                    if numel(matched_statistics) == 0
+                        continue;
+                    elseif numel(matched_statistics) ~= 1
                         error('SPMRenderImages.run(): Cannot handle a threshold with more than one statistic.');
                     end
                     

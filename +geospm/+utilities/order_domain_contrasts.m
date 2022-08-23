@@ -13,9 +13,8 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function [ordered_contrasts, groups] = order_domain_contrasts(term_names, unordered_contrasts, statistic_order)
+function [ordered_contrasts, groups] = order_domain_contrasts(term_names, unordered_contrasts, statistic_order) %#ok<INUSL>
 
-    N_terms = numel(term_names);
     contrast_map = containers.Map('KeyType', 'char', 'ValueType', 'any');
 
     for index=1:numel(unordered_contrasts)
