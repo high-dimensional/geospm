@@ -102,6 +102,7 @@
             thresholds = arguments.thresholds;
             
             spm_output_files = hdng.utilities.list_files(spm_output_directory);
+            spm_contrast_offset = 0;
             
             threshold_directories = cell(numel(thresholds), 1);
             
@@ -125,14 +126,21 @@
                 hdng.utilities.save_text(...
                     [testing_threshold.description newline], ...
                     threshold_file);
+                
+                contrasts = arguments.threshold_contrasts{i};
 
-                if any(strcmp(testing_threshold.distribution, {'beta_coeff'}))
+                if strcmp(testing_threshold.distribution, 'beta_coeff')
+                    spm_contrast_offset = spm_contrast_offset + numel(contrasts);
                     obj.threshold_betas(session, testing_threshold, results_directory);
+                    continue;
+                end
+
+                if strcmp(testing_threshold.distribution, 't_map')
+                    obj.threshold_t_map(session, testing_threshold, cell2mat(contrasts) - spm_contrast_offset, results_directory);
                     continue;
                 end
                 
                 threshold_value = testing_threshold.tail_level;
-                contrasts = arguments.threshold_contrasts{i};
                 
                 spm_job_list = {};
                 
@@ -180,7 +188,7 @@
                     error('SPMApplyThresholds.run(): Couldn''t match all expected output maps.');
                 end
                 
-                obj.save_contrasts(session, contrasts, results_directory);
+                obj.save_contrasts(session, match_result, contrasts, results_directory);
                 
             end
             
@@ -210,7 +218,39 @@
             end
         end
         
-        function save_contrasts(obj, session, contrasts, results_directory)
+        function threshold_t_map(~, session, testing_threshold, contrasts, results_directory)
+            
+            statistic_files = session.contrast_map_files(contrasts);
+            
+            for i=1:numel(statistic_files)
+
+                statistic_file = statistic_files{i};
+                
+                statistic_volume = geospm.utilities.read_nifti(statistic_file);
+
+                test_result = testing_threshold.test(statistic_volume, 'statistics', statistic_volume(:));
+
+                [~, file_name, file_ext] = fileparts(statistic_file);
+                file_name = [file_name, file_ext]; %#ok<AGROW>
+                
+                [start, tokens] = regexp(file_name, '^spmT_([0-9]+)\.nii$', 'start', 'tokens');
+
+                if isempty(start)
+                    continue
+                end
+                
+                %file_index = str2double(tokens{1});
+                
+                statistic_name = ['t_map_' tokens{1}{1} '_mask.nii'];
+                
+                test_result = cast(test_result, 'uint8');
+                test_path = fullfile(results_directory, statistic_name);
+
+                geospm.utilities.write_nifti(test_result, test_path, spm_type('uint8'));
+            end
+        end
+        
+        function save_contrasts(obj, session, match_result, contrasts, results_directory)
             
             contrast_table = '';
 

@@ -468,36 +468,37 @@ classdef SPMSession < handle
         end
         
         
-        function [result, matched_statistics] = match_beta_coeff_threshold_files(~, directory, N_real_contrasts)
+        function [match_result, matched_statistics] = match_pseudo_statistics_threshold_files(obj, directory, pseudo_statistics)
             
-            result = struct();
             
-            name_pattern = '^beta_([0-9]+)_mask\.nii$';
-            [file_paths, file_tokens] = hdng.utilities.scan_files(directory, name_pattern);
+            match_result = obj.create_file_match_struct();
+            matched_statistics = {};
+
             
-            result.did_match_all_files = true;
-            result.matched_files = file_paths;
-            result.matched_contrasts = zeros(numel(file_paths), 1);
-            result.unmatched_files = {};
-            result.unmatched_contrasts = [];
-            
-            for i=1:numel(file_paths)
-                file_token = file_tokens{i};
-                result.matched_contrasts(i) = N_real_contrasts + str2double(file_token{1});
+            for i=1:numel(pseudo_statistics)
+                pseudo_stat = pseudo_statistics{i};
+                
+                name_pattern = ['^' pseudo_stat '_([0-9]+)_mask\.nii$'];
+                [file_paths, file_tokens] = hdng.utilities.scan_files(directory, name_pattern);
+                
+                if ~isempty(file_paths)
+                    matched_statistics{end + 1} = pseudo_stat; %#ok<AGROW>
+                end
+                
+                
+                pseudo_stat_result = obj.create_file_match_struct();
+                
+                pseudo_stat_result.did_match_all_files = true;
+                pseudo_stat_result.matched_files = file_paths;
+                pseudo_stat_result.matched_contrasts = zeros(numel(file_paths), 1);
+                
+                for j=1:numel(file_paths)
+                    file_token = file_tokens{j};
+                    pseudo_stat_result.matched_contrasts(j) = str2double(file_token{1});
+                end
+                
+                match_result = obj.disjoint_union_of_file_matches(match_result, pseudo_stat_result);
             end
-            
-            matched_statistics = {'beta_coeff'};
-        end
-        
-        function [match_result, matched_statistics] = match_pseudo_statistic_threshold_files(obj, statistics, directory)
-            
-            if ~exist('directory', 'var')
-                directory = obj.directory;
-            end
-            
-            name_pattern_for = @(stat) ['^' stat '_([0-9]+)_mask\.nii$'];
-            
-            [match_result, matched_statistics] = obj.files_associated_with_statistics_for(statistics, name_pattern_for, directory);
         end
         
         function [match_result, matched_statistics] = match_statistic_threshold_files(obj, statistic, directory, prefix)

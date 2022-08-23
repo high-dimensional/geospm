@@ -269,6 +269,38 @@
             image_record('contrasts') = contrasts_value;
         end
         
+        function [pseudo_contrasts, pseudo_maps] = define_pseudo_contrasts_and_maps(~, session, beta_volumes)
+            
+            pseudo_contrasts = containers.Map('KeyType', 'char', 'ValueType', 'any');
+            pseudo_maps = containers.Map('KeyType', 'char', 'ValueType', 'any');
+            
+            beta_files = session.regression_beta_files;
+            
+            entry = struct();
+            entry.volumes = cell(numel(beta_files), 1);
+            
+            for i=1:numel(beta_files)
+                
+                file_path = beta_files{i};
+                [~, file_name, file_ext] = fileparts(file_path);
+                
+                file_name = [file_name, file_ext]; %#ok<AGROW>
+                
+                [start, tokens] = regexp(file_name, '^beta_([0-9]+)\.nii$', 'start', 'tokens');
+
+                if isempty(start)
+                    continue
+                end
+                
+                beta_index = str2double(tokens{1});
+                
+                entry.volumes{beta_index} = beta_volumes{i};
+            end
+            
+            pseudo_contrasts('beta') = entry;
+            pseudo_maps('beta') = entry;
+        end
+        
         function result = run(obj, arguments)
             
             result = struct();
@@ -354,35 +386,26 @@
             
             unmasked_betas_value = obj.render_beta_images(beta_records, output_directory, session, settings);
             
-            unmasked_beta_volumes = unmasked_betas_value.content('volumes').content;
-            unmasked_beta_images = unmasked_betas_value.content('images').content;
-            
             unmasked_contrasts_value = obj.render_contrast_images(output_directory, session, settings);
             unmasked_maps_value = obj.render_map_images(output_directory, session, settings);
             
-            unmasked_contrasts_volumes = unmasked_contrasts_value.content('volumes').content;
-            unmaksed_contrasts_images = unmasked_contrasts_value.content('images').content;
+            unmasked_beta_volumes = unmasked_betas_value.content('volumes').content;
             
-            N_real_contrasts = numel(unmasked_contrasts_volumes);
+            [pseudo_contrasts, pseudo_maps] = obj.define_pseudo_contrasts_and_maps(session, unmasked_beta_volumes);
             
-            unmasked_contrasts_volumes = [unmasked_contrasts_volumes; unmasked_beta_volumes];
-            unmasked_contrasts_images = [unmaksed_contrasts_images; unmasked_beta_images];
+            entry = struct();
+            entry.volumes = unmasked_contrasts_value.content('volumes').content;
             
-            unmasked_contrasts_value = hdng.utilities.Dictionary();
-            unmasked_contrasts_value('volumes') = hdng.experiments.Value.from(unmasked_contrasts_volumes);
-            unmasked_contrasts_value('images') = hdng.experiments.Value.from(unmasked_contrasts_images);
-            unmasked_contrasts_value = hdng.experiments.Value.from(unmasked_contrasts_value);
+            pseudo_contrasts('T') = entry;
+            pseudo_contrasts('F') = entry;
+            pseudo_contrasts('t_map') = entry;
             
-            unmasked_map_volumes = unmasked_maps_value.content('volumes').content;
-            unmasked_map_images = unmasked_maps_value.content('images').content;
+            entry = struct();
+            entry.volumes = unmasked_maps_value.content('volumes').content;
             
-            unmasked_map_volumes = [unmasked_map_volumes; unmasked_beta_volumes];
-            unmasked_map_images = [unmasked_map_images; unmasked_beta_images];
-            
-            unmasked_maps_value = hdng.utilities.Dictionary();
-            unmasked_maps_value('volumes') = hdng.experiments.Value.from(unmasked_map_volumes);
-            unmasked_maps_value('images') = hdng.experiments.Value.from(unmasked_map_images);
-            unmasked_maps_value = hdng.experiments.Value.from(unmasked_maps_value);
+            pseudo_maps('T') = entry;
+            pseudo_maps('F') = entry;
+            pseudo_maps('t_map') = entry;
             
             % Image record array:
             %
@@ -419,6 +442,7 @@
                         error('SPMRenderImages.run(): Cannot handle a threshold with more than one statistic.');
                     end
                     
+                    matched_statistic = matched_statistics{1};
                     map_output_names = cell(numel(matched_files), 1);
                     
                     for index=1:numel(matched_files)
@@ -431,14 +455,14 @@
                         map_output_names{index} = file_name;
                     end
                     
-                    map_file_paths = unmasked_maps_value.content('volumes').content;
-                    map_file_paths = map_file_paths(matched_pairs(:, 1));
+                    map_file_paths = pseudo_maps(matched_statistic);
+                    map_file_paths = map_file_paths.volumes(matched_pairs(:, 1));
                     
-                    contrast_file_paths = unmasked_contrasts_value.content('volumes').content;
-                    contrast_file_paths = contrast_file_paths(matched_pairs(:, 1));
+                    contrast_file_paths = pseudo_contrasts(matched_statistic);
+                    contrast_file_paths = contrast_file_paths.volumes(matched_pairs(:, 1));
                     
                     image_record = obj.build_image_record(...
-                        threshold_index, matched_statistics{1}, ...
+                        threshold_index, matched_statistic, ...
                         matched_files, map_file_paths, map_output_names, ...
                         contrast_file_paths, settings, threshold_output_directory);
                     
@@ -448,7 +472,7 @@
                 [match_result, matched_statistics] = session.match_statistic_threshold_files('', threshold_directory);
                 
                 if isempty(match_result.matched_files)
-                    [match_result, matched_statistics] = session.match_beta_coeff_threshold_files(threshold_directory, N_real_contrasts);
+                    [match_result, matched_statistics] = session.match_pseudo_statistics_threshold_files(threshold_directory, {'beta', 't_map'});
                 end
                 
                 if isempty(matched_files) || obj.render_component_contrasts
@@ -464,17 +488,18 @@
                     end
                     
                     matched_files = match_result.matched_files;
+                    matched_statistic = matched_statistics{1};
                     
                     map_output_names = {};
                     
-                    map_file_paths = unmasked_maps_value.content('volumes').content;
-                    map_file_paths = map_file_paths(match_result.matched_contrasts);
+                    map_file_paths = pseudo_maps(matched_statistic);
+                    map_file_paths = map_file_paths.volumes(match_result.matched_contrasts);
                     
-                    contrast_file_paths = unmasked_contrasts_value.content('volumes').content;
-                    contrast_file_paths = contrast_file_paths(match_result.matched_contrasts);
+                    contrast_file_paths = pseudo_contrasts(matched_statistic);
+                    contrast_file_paths = contrast_file_paths.volumes(match_result.matched_contrasts);
                     
                     image_record = obj.build_image_record(...
-                        threshold_index, matched_statistics{1}, ...
+                        threshold_index, matched_statistic, ...
                         matched_files, map_file_paths, map_output_names, ...
                         contrast_file_paths, settings, threshold_output_directory);
                     
