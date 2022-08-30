@@ -30,13 +30,30 @@ function result = compute_model_targets(model, domain_expression, target_thresho
         end
     end
 
-    joint_distribution = model.joint_distribution.flatten();
-    
-    probe_distributions = zeros([size(model.probes, 1), model.joint_distribution.dimensions]);
-    
-    for i=1:size(model.probes, 1)
-        probe_distributions(i, :) = joint_distribution(model.probes(i, 1), model.probes(i, 2), :);
+    if numel(model.targets) == model.domain.N_variables
+        
+        map_size = model.spatial_resolution;
+        
+        targets = zeros(prod(map_size), model.domain.N_variables);
+        
+        for i=1:model.domain.N_variables
+            target = model.targets{i}.flatten();
+            targets(:, i) = target(:);
+        end
+        
+        term_targets = domain_expression.compute_matrix(model.domain, targets);
+        term_targets = reshape(term_targets, map_size(1), map_size(2), domain_expression.N_terms);
+        
+        result = cell(1, domain_expression.N_terms);
+        
+        for i=1:domain_expression.N_terms
+            result{i} = term_targets(:, :, i);
+        end
+        
+        return
     end
+    
+    joint_distribution = model.joint_distribution.flatten();
     
     result = domain_expression.compute_term_probabilities(model.domain, joint_distribution);
 

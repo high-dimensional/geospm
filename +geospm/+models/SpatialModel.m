@@ -22,6 +22,7 @@ classdef SpatialModel < handle
     %
     
     properties
+        targets
         probes
         attachments
     end
@@ -55,6 +56,7 @@ classdef SpatialModel < handle
             
             obj.quantities_by_name = containers.Map('KeyType', 'char','ValueType', 'any');
             
+            obj.targets = {};
             obj.probes = [];
             obj.attachments = struct();
         end
