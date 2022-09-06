@@ -30,6 +30,10 @@ classdef ImageEntry < hdng.aggregate.FileAggregatorEntry
         
         function obj = ImageEntry(name, category, options)
             
+            if ~isfield(options, 'write_nii')
+                options.write_nii = false;
+            end
+            
             obj = obj@hdng.aggregate.FileAggregatorEntry(name, category, options);
             
             obj.final_data = [];
@@ -53,6 +57,8 @@ classdef ImageEntry < hdng.aggregate.FileAggregatorEntry
         end
         
         function gather_sample(obj, sample_file)
+            
+            [~, sample_name, sample_ext] = fileparts(sample_file);
             
             is_image = false;
             is_volume = false;

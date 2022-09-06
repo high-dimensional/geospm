@@ -70,7 +70,7 @@ classdef ImageGroup < hdng.aggregate.FileAggregatorGroup
                     obj.append_image_x(group.image)
                     
                 case 'vertical'
-                    obj.append.image_y(group.image)
+                    obj.append_image_y(group.image)
             end
         end
         
