@@ -17,48 +17,83 @@ function [result, record] = compute(directory, spatial_data, ...
                                             save_record, varargin)
     
     %{
-        directory – a directory path where all output is stored;
+        directory – a directory path where all output is stored or empty;
         If empty, a timestamped directory is created in the current working
         directory.
-
+        
+        spatial_data - a geospm.SpatialData object that holds the data to
+        be analysed
+        
+        save_record - If true, the returned metadata record variable will
+        be saved to a JSON file.
+        
+        varargin - Either a geospm.Parameters object or a list of
+        name-value arguments.
+                                            
         The following name-value arguments are supported:
         
         -------------------------------------------------------------------
-        Either,
-                                            
+        
         grid – a geospm.Grid that defines a transformation from point
                locations to raster locations
-                                            
-        Or:
-                                            
-        min_location - min geographic coordinates of rectangle 
-        max_location - max geographic coordinates of rectangle
-        spatial_resolution_x - number of raster cells in the x direction
-        spatial_resolution_y - number of raster cells in the y direction
-        spatial_resolution
-                                            
-        spatial_resolution_min
-        spatial_resolution_max
+
+        If 'grid' is not specified, a new grid is computed based on
+        the extent of the data and the desired spatial resolution
+        as indicated by the following parameters:
+
+            min_location - min geographic coordinates of rectangle
+            default: floor(spatial_data.min_xyz)
+
+            max_location - max geographic coordinates of rectangle
+            default: ceil(spatial_data.max_xyz)
+
+        spatial_resolution - number of raster cells in the x and y 
+        directions for spatial data points inside the rectangle (or
+        cube) defined by min_location and max_location.
+
+        If 'spatial_resolution' is not specified it is computed
+        by the following parameters:
+
+        Either:
+        spatial_resolution_x or spatial_resolution_y (or both)
+        If the resolution of one direction is specified the other 
+        resolution is derived proportional to the rectangle 
+        spanned by min_location and max_location
+
+
+        Or one of:
+        spatial_resolution_min - number of raster cells along the 
+        shorter side of the rectangle spanned by min_location and 
+        max_location
+
+        spatial_resolution_max - number of raster cells along the
+        longer side of the rectangle spanned by min_location and 
+        max_location
+
+        If no resolution value is specified, a default value of 200
+        for spatial_resolution_max is assumed.
+
         -------------------------------------------------------------------
-        
-        Miscellaneous options:
-                                            
-        trace_thresholds - create shape files delineating significant areas
-        Default value is 'true'.
-        
+
         apply_density_mask - limit analysis to raster cells above a certain
                              sample density
         Default value is 'true'.
-        
-        density_mask_factor - threshold to use for the density mask
-        Default value is '[]' (empty), will be set by the smoothing
-        mechanism.
+       
+        density_mask_factor - The threshold for the sample density mask is
+        derived from this value. It is roughly equivalent to the minimum 
+        number of samples centred at a location (for a Gaussian smoothing 
+        kernel). More accurately, the maximum value of the kernel for
+        each smoothing level is multiplied by this number.
+        Default value is 10.0.
                                             
         thresholds - A cell array of threshold strings.
         Default value is { 'T[1, 2]: p<0.05 (FWE)' }, which specifies a 
         single two-sided per-voxel family-wise error of 5%. Cf.
         SignificanceTest for more information.
                                             
+        trace_thresholds - create shape files delineating significant areas
+        Default value is 'true'.
+                     
         smoothing_levels - a vector of smoothing diameters in the scale of
         the geographic coordinate system, otherwise in the scale raster
         cells (pixels).
@@ -91,8 +126,31 @@ function [result, record] = compute(directory, spatial_data, ...
     
     REGULAR_RUN_MODE = 'regular';
     RESUME_RUN_MODE = 'resume';
-
-    options = hdng.utilities.parse_struct_from_varargin(varargin{:});
+    
+    if numel(varargin) == 1 && isa(varargin{1}, 'geospm.Parameters')
+        
+        parameters = varargin{1};
+        options = struct();
+        
+        options.grid = parameters.grid;
+        options.apply_density_mask = parameters.apply_density_mask;
+        options.density_mask_factor = parameters.density_mask_factor;
+        
+        options.thresholds = parameters.thresholds;
+        options.trace_thresholds = parameters.trace_thresholds;
+        
+        options.smoothing_levels = parameters.smoothing_levels;
+        options.smoothing_levels_p_value = parameters.smoothing_levels_p_value;
+        options.smoothing_method = parameters.smoothing_method;
+        
+        options.regression_add_intercept = parameters.regression_add_intercept;
+        options.add_georeference_to_images = parameters.add_georeference_to_images;
+        
+        options.report_generator = parameters.report_generator;
+        
+    else
+        options = hdng.utilities.parse_struct_from_varargin(varargin{:});
+    end
     
     smoothing_levels_as_z_dimension = all(spatial_data.z == spatial_data.z(1));
     
@@ -100,7 +158,7 @@ function [result, record] = compute(directory, spatial_data, ...
         options.run_mode = 'regular';
     end
     
-    if ~isfield(options, 'grid')
+    if ~isfield(options, 'grid') || isempty(options.grid)
         options = geospm.auxiliary.parse_spatial_resolution(spatial_data, options);
         
         options.grid = geospm.Grid();
@@ -120,7 +178,7 @@ function [result, record] = compute(directory, spatial_data, ...
     end
     
     if ~isfield(options, 'density_mask_factor')
-        options.density_mask_factor = [];
+        options.density_mask_factor = 10.0;
     end
     
     if numel(directory) == 0
@@ -260,14 +318,6 @@ function [result, record] = compute(directory, spatial_data, ...
     arguments.smoothing_method = options.smoothing_method;
 
     arguments.regression_probes = [];
-
-    %{
-    if obj.add_probes
-        [grid_probe_data, ~] = grid_stage.grid.grid_data(obj.probe_data);
-        arguments.regression_probes = grid_probe_data;
-    end
-    %}
-    
     arguments.regression_add_intercept = false;
     
     arguments.contrasts = geospm.utilities.spm_jobs_from_domain_contrast_groups(contrast_groups);

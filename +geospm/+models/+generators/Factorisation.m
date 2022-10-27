@@ -26,6 +26,7 @@ classdef Factorisation < geospm.models.Generator
     properties (SetAccess=private)
         density_role
         marginal_distribution_role
+        target_role
         bias_role
         binary_bias_role
     end
@@ -56,6 +57,15 @@ classdef Factorisation < geospm.models.Generator
                 'Marginal probability distribution of domain variable.', ...
                 @(generator, bindings) obj.check_marginal_distribution_bindings(bindings), ...
                 @(generator, bindings, added, removed) obj.marginal_distribution_bindings_changed(bindings, added, removed));
+            
+            obj.target_role = geospm.models.ParameterRole(obj, ...
+                'target', ...
+                'map', ...
+                {'variable_index'}, ...
+                0, ...
+                domain.N_variables, ...
+                'Targets for domain variables.', ...
+                @(generator, bindings) obj.check_target_bindings(bindings));
             
             max_biases = geospm.models.Distribution.compute_df_constant_marginals(domain.joint_dimensions);
             
@@ -100,6 +110,26 @@ classdef Factorisation < geospm.models.Generator
         end
         
         function marginal_distribution_bindings_changed(obj, bindings, added, removed) %#ok<INUSD>
+        end
+        
+        function result = check_target_bindings(obj, bindings)
+            result = struct();
+            result.passed = true;
+            result.diagnostic = '';
+            
+            assignments = zeros(obj.domain.N_variables, 1, 'logical');
+            
+            for i=1:numel(bindings)
+                binding = bindings{i};
+                
+                variable_index = binding.arguments.variable_index;
+                assignments(variable_index) = 1;
+            end
+            
+            if sum(assignments) ~= obj.domain.N_variables && sum(assignments) ~= 0
+                result.passed = false;
+                result.diagnostic = 'Inconsistent or missing targets for domain variables.';
+            end
         end
         
         function result = check_bias_bindings(obj, bindings)
@@ -174,6 +204,7 @@ classdef Factorisation < geospm.models.Generator
             binary_biases = obj.resolve_binary_biases(model, metadata);
             
             model.probes = obj.resolve_probes(model, metadata);
+            model.targets = obj.resolve_targets(model, metadata);
             
             geospm.models.quantities.SyntheticDistribution(model, 'joint_distribution', ...
                 marginals, case_selectors, case_biases, binary_biases);
@@ -229,11 +260,18 @@ classdef Factorisation < geospm.models.Generator
             end
         end
         
-        function result = resolve_targets(obj, ~, metadata)
+        function result = resolve_targets(obj, model, metadata) %#ok<INUSL>
             
-            bindings = obj.bindings_per_role{obj.targets_role.nth_role};
-            binding_result = metadata.get_parameter_metadata(bindings{1}.parameter_index);
-            result = binding_result.quantity;
+            bindings = obj.bindings_per_role{obj.target_role.nth_role};
+            N = numel(bindings);
+            
+            result = cell(obj.domain.N_variables, 1);
+            
+            for i=1:N
+                binding = bindings{i};
+                binding_result = metadata.get_parameter_metadata(binding.parameter_index);
+                result{binding.arguments.variable_index} = binding_result.quantity;
+            end
         end
         
         function result = resolve_probes(obj, ~, metadata)

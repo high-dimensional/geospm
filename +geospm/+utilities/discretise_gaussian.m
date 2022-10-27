@@ -21,9 +21,10 @@ function result = discretise_gaussian(dimensions, mean, covariance, ...
     % dimensions ? A {2, 3}-vector specifying the dimensions of the grid.
     % mean ? A {2, 3}-vector specifying the location of the mean in grid
     %       coordinates
-    % sigma ? A {2x2, 3x3}-matrix specifying the covariance matrix.
+    % covariance ? A {2x2, 3x3}-matrix specifying the covariance matrix.
     % method ? An identifier specifying the implementation for computing
     % the Gaussian
+    % parameters ? Optional parameters used by the method as a struct value
     % show_result ? boolean, indicates whether the result should be
     % plotted.
     
@@ -143,7 +144,7 @@ function result = run_matic(dimensions, mean, covariance, method, ...
     
     D = diag(covariance);
 
-    if ~isdiag(covariance) || ~all(D(1) == D(:))
+    if ~isdiag(covariance)
         error('geospm.utilities.discretise_gaussian(): ''%s'' method can only be used with a diagonal covariance matrix.', method);
     end
     

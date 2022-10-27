@@ -113,7 +113,7 @@ classdef KernelVolumeGenerator < SyntheticVolumeGenerator
             if obj.smoothing_levels_as_z_dimension
                 obj.peak_values = reshape(max(obj.smooth_map, [], [1, 2]), size(obj.smooth_map, 3), 1);
             else
-                obj.peak_values = repmat(max(obj.smooth_map(:)), size(obj.smooth_map, 3), 1);
+                obj.peak_values = max(obj.smooth_map(:)); %repmat(max(obj.smooth_map(:)), size(obj.smooth_map, 3), 1);
             end
             
             obj.debug = obj.smoothing_method.diagnostics.active;
@@ -252,6 +252,8 @@ classdef KernelVolumeGenerator < SyntheticVolumeGenerator
             global_mask_path = obj.format_global_mask_path();
             
             for i=1:N_volumes
+                
+                %fprintf('Rendering volume %d\n', i);
 
                 spatial_data_index = indices(i);
                 synthetic_path = obj.format_synthetic_volume_path(spatial_data_index, x(i), y(i), z(i));
@@ -356,7 +358,7 @@ classdef KernelVolumeGenerator < SyntheticVolumeGenerator
                 
             else
                 
-                V_data = geospm.utilities.discretise_gaussian(map_size, sample_location(1:2), eye(3) .* smoothing_variances, gaussian_method, parameters);
+                V_data = geospm.utilities.discretise_gaussian(map_size, sample_location, eye(3) .* smoothing_variances, gaussian_method, parameters);
             end
         end
     end

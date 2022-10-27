@@ -13,7 +13,7 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
- classdef SPMTraceThresholdRegions < geospm.SpatialAnalysisStage
+ classdef SPMTraceThresholdRegions < geospm.stages.SpatialAnalysisStage
     %SPMTraceThresholdRegions Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -27,7 +27,7 @@
         
         function obj = SPMTraceThresholdRegions(analysis)
             
-            obj = obj@geospm.SpatialAnalysisStage(analysis);
+            obj = obj@geospm.stages.SpatialAnalysisStage(analysis);
 
             obj.volume_renderer = geospm.volumes.Tracing();
             obj.shape_formats = {'shp'};

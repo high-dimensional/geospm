@@ -405,7 +405,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 geospm.utilities.order_domain_contrasts(...
                 obj.spatial_data_expression.term_names, ...
                 obj.contrasts, ...
-                {'T', 'F'});
+                {'T', 'F', 'beta_coeff', 't_map'});
             
             %Setup analysis
             [obj.analysis, arguments] = obj.setup_analysis();
@@ -620,7 +620,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 
                 if is_unmasked
                     
-                    for c_index=1:numel(obj.contrasts)
+                    for c_index=1:min(numel(obj.contrasts), numel(spm_contrasts.images))
                         
                         contrast = obj.contrasts{c_index};
                         
@@ -743,17 +743,29 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                     new_record('result') = new_record('mask');
                     new_record('target') = target;
                     
-                    set_level_path = hdng.experiments.FileReference();
-                    set_level_path.path = obj.canonical_path(set_match_result.matched_files{c_index});
-                    new_record('set-level') = hdng.experiments.Value.from(set_level_path);
+                    if ~isempty(set_match_result.matched_files)
+                        set_level_path = hdng.experiments.FileReference();
+                        set_level_path.path = obj.canonical_path(set_match_result.matched_files{c_index});
+                        new_record('set-level') = hdng.experiments.Value.from(set_level_path);
+                    else
+                        new_record('set-level') = hdng.experiments.Value.empty_with_label('Not Applicable');
+                    end
                     
-                    cluster_level_path = hdng.experiments.FileReference();
-                    cluster_level_path.path = obj.canonical_path(cluster_match_result.matched_files{c_index});
-                    new_record('cluster-level') = hdng.experiments.Value.from(cluster_level_path);
+                    if ~isempty(cluster_match_result.matched_files)
+                        cluster_level_path = hdng.experiments.FileReference();
+                        cluster_level_path.path = obj.canonical_path(cluster_match_result.matched_files{c_index});
+                        new_record('cluster-level') = hdng.experiments.Value.from(cluster_level_path);
+                    else
+                        new_record('cluster-level') = hdng.experiments.Value.empty_with_label('Not Applicable');
+                    end
                     
-                    peak_level_path = hdng.experiments.FileReference();
-                    peak_level_path.path = obj.canonical_path(peak_match_result.matched_files{c_index});
-                    new_record('peak-level') = hdng.experiments.Value.from(peak_level_path);
+                    if ~isempty(peak_match_result.matched_files)
+                        peak_level_path = hdng.experiments.FileReference();
+                        peak_level_path.path = obj.canonical_path(peak_match_result.matched_files{c_index});
+                        new_record('peak-level') = hdng.experiments.Value.from(peak_level_path);
+                    else
+                        new_record('peak-level') = hdng.experiments.Value.empty_with_label('Not Applicable');
+                    end
                     
                     result.include_record(new_record);
                 end

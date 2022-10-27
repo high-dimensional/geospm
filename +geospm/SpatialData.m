@@ -40,6 +40,9 @@ classdef SpatialData < geospm.NumericData
         z_min % minimum z value
         z_max % maximum z value
         
+        min_xy % [min_x, min_y]
+        max_xy % [max_x, max_y, ]
+        
         min_xyz % [min_x, min_y, min_z]
         max_xyz % [max_x, max_y, max_z]
         
@@ -188,6 +191,14 @@ classdef SpatialData < geospm.NumericData
             end
             
             result = obj.z_max_;
+        end
+        
+        function result = get.min_xy(obj)
+            result = [obj.x_min, obj.y_min];
+        end
+        
+        function result = get.max_xy(obj)
+            result = [obj.x_max, obj.y_max];
         end
         
         function result = get.min_xyz(obj)
@@ -650,7 +661,10 @@ classdef SpatialData < geospm.NumericData
                 [153, 153, 153], ...
                 [255, 102, 51], ...
                 [0, 204, 153], ...
-                [0, 204, 255]
+                [0, 204, 255], ...
+                [255, 217,  100], ...
+                [148, 96, 208], ...
+                [69, 208, 59]
                 };
             
             ratio = frame_size(2) / frame_size(1);
@@ -678,7 +692,7 @@ classdef SpatialData < geospm.NumericData
             
             mark_size_squared = mark_size * mark_size;
             
-            N_categories = 4;
+            N_categories = 7;
             
             marker_colours = zeros(N, 3);
             

@@ -37,10 +37,14 @@ classdef StandardSampling < geospm.models.SamplingStrategy
                 options.add_observation_noise = false;
             end
             
+            if ~isfield(options, 'observation_noise')
+                options.observation_noise = 0.005;
+            end
+            
             obj = obj@geospm.models.SamplingStrategy();
             obj.add_position_jitter = options.add_position_jitter;
             obj.add_observation_noise = options.add_observation_noise;
-            obj.observation_noise = 0.005;
+            obj.observation_noise = options.observation_noise;
         end
         
         function [X, Y] = sample_density(obj, density, N_samples, rng)

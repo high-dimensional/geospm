@@ -13,7 +13,7 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-classdef ObservationTransform < geospm.SpatialAnalysisStage
+classdef ObservationTransform < geospm.stages.SpatialAnalysisStage
     
     properties (Constant)
         
@@ -32,7 +32,7 @@ classdef ObservationTransform < geospm.SpatialAnalysisStage
     methods
         
         function obj = ObservationTransform(analysis, varargin)
-            obj = obj@geospm.SpatialAnalysisStage(analysis);
+            obj = obj@geospm.stages.SpatialAnalysisStage(analysis);
             
             options = hdng.utilities.parse_struct_from_varargin(varargin{:});
             

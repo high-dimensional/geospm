@@ -13,7 +13,7 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-classdef SPMDistanceRegression < geospm.SpatialAnalysisStage
+classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
     
     properties
         apply_volume_mask
@@ -42,7 +42,7 @@ classdef SPMDistanceRegression < geospm.SpatialAnalysisStage
             %
             %
             
-            obj = obj@geospm.SpatialAnalysisStage(analysis);
+            obj = obj@geospm.stages.SpatialAnalysisStage(analysis);
             
             if ~exist('options', 'var') || isempty(options)
                 options = struct();
@@ -141,7 +141,17 @@ classdef SPMDistanceRegression < geospm.SpatialAnalysisStage
             
             for index=1:numel(arguments.contrasts)
                 contrasts_job = arguments.contrasts{index};
+                
+                if any(strcmp(contrasts_job.statistic, {'beta_coeff'}))
+                    continue;
+                end
+                
                 identifier = [lower(contrasts_job.statistic) '_contrasts'];
+                
+                if strcmp(contrasts_job.statistic, 't_map')
+                    identifier = 't_contrasts';
+                end
+                
                 contrasts_job = obj.create_spm_job_entry(identifier, contrasts_job);
                 contrasts_job.do_add_intercept = factorial_design_job.do_add_intercept;
                 
@@ -271,10 +281,16 @@ classdef SPMDistanceRegression < geospm.SpatialAnalysisStage
             peak_values = volume_generator.peak_values;
             global_mask = zeros(size(sample_density), 'logical');
             
-            for index=1:numel(peak_values)
-                p = peak_values(index);
-                selector = sample_density(:, :, index) >= obj.volume_mask_factor * p;
-                global_mask(:, :, index) = selector;
+            if volume_generator.smoothing_levels_as_z_dimension
+                
+                for index=1:numel(peak_values)
+                    p = peak_values(index);
+                    selector = sample_density(:, :, index) >= obj.volume_mask_factor * p;
+                    global_mask(:, :, index) = selector;
+                end
+                
+            else
+                global_mask = sample_density >= obj.volume_mask_factor * peak_values;
             end
         end
         

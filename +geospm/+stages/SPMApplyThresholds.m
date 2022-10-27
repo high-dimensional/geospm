@@ -13,7 +13,7 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
- classdef SPMApplyThresholds < geospm.SpatialAnalysisStage
+ classdef SPMApplyThresholds < geospm.stages.SpatialAnalysisStage
     %SPMApplyThresholds Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -50,7 +50,7 @@
         
         function obj = SPMApplyThresholds(analysis, options, varargin)
             
-            obj = obj@geospm.SpatialAnalysisStage(analysis);
+            obj = obj@geospm.stages.SpatialAnalysisStage(analysis);
             
             if ~exist('options', 'var')
                 options = struct();
@@ -102,6 +102,7 @@
             thresholds = arguments.thresholds;
             
             spm_output_files = hdng.utilities.list_files(spm_output_directory);
+            spm_contrast_offset = 0;
             
             threshold_directories = cell(numel(thresholds), 1);
             
@@ -109,8 +110,37 @@
                 
                 testing_threshold = thresholds{i};
                 
-                threshold_value = testing_threshold.tail_level;
+                directory_name = obj.directory_name_for_threshold(i, testing_threshold);
+                results_directory = fullfile(arguments.directory, directory_name);
+                
+                hdng.utilities.rmdir(results_directory, true, false);
+                
+                [dirstatus, dirmsg] = mkdir(results_directory);
+                if dirstatus ~= 1; error(dirmsg); end
+                
+                threshold_directories{i} = results_directory;
+                
+                threshold_file = ...
+                    fullfile(results_directory, 'threshold.txt');
+
+                hdng.utilities.save_text(...
+                    [testing_threshold.description newline], ...
+                    threshold_file);
+                
                 contrasts = arguments.threshold_contrasts{i};
+
+                if strcmp(testing_threshold.distribution, 'beta_coeff')
+                    spm_contrast_offset = spm_contrast_offset + numel(contrasts);
+                    obj.threshold_betas(session, testing_threshold, results_directory);
+                    continue;
+                end
+
+                if strcmp(testing_threshold.distribution, 't_map')
+                    obj.threshold_t_map(session, testing_threshold, cell2mat(contrasts) - spm_contrast_offset, results_directory);
+                    continue;
+                end
+                
+                threshold_value = testing_threshold.tail_level;
                 
                 spm_job_list = {};
                 
@@ -140,27 +170,10 @@
                 
                 threshold_output_files = hdng.utilities.list_files(spm_output_directory, 'exclude', spm_output_files);
                 
-                directory_name = obj.directory_name_for_threshold(i, testing_threshold);
-                results_directory = fullfile(arguments.directory, directory_name);
-                
-                hdng.utilities.rmdir(results_directory, true, false);
-                
-                [dirstatus, dirmsg] = mkdir(results_directory);
-                if dirstatus ~= 1; error(dirmsg); end
-                
-                threshold_directories{i} = results_directory;
-                
                 for j=1:numel(threshold_output_files)
                     file_path = threshold_output_files{j};
                     movefile(file_path, results_directory);
                 end
-                
-                threshold_file = ...
-                    fullfile(results_directory, 'threshold.txt');
-                
-                hdng.utilities.save_text(...
-                    [testing_threshold.description newline], ...
-                    threshold_file);
                 
                 for c=1:numel(contrasts)
                     p_values_table = computation.batch_results{c}.TabDatvar;
@@ -175,52 +188,112 @@
                     error('SPMApplyThresholds.run(): Couldn''t match all expected output maps.');
                 end
                 
-                contrast_table = '';
+                obj.save_contrasts(session, match_result, contrasts, results_directory);
                 
-                for c=1:numel(contrasts)
-                    contrast = contrasts{c};
-                    file_name = session.variables.xCon(contrast).Vspm.fname;
-                    contrast_table = [contrast_table, file_name, ' ', ...
-                        session.variables.xCon(contrast).name, newline]; %#ok<AGROW>
-                end
-                
-                contrasts = cell2mat(contrasts);
-                contrast_pairs = obj.match_contrast_pairs(session, contrasts);
-                contrast_map = zeros(session.N_contrasts, 1);
-                contrast_map(contrasts) = 1:numel(contrasts);
-                
-                if size(contrast_pairs, 1) == 0
-                    contrast_table = ['Contrasts', newline, ...
-                                       contrast_table]; %#ok<AGROW>
-                else
-                    contrast_table = ['Component Contrasts', newline, ...
-                          contrast_table, 'Paired Contrasts', newline]; %#ok<AGROW>
-                end
-                
-                for p=1:size(contrast_pairs, 1)
-                    contrast1 = contrast_pairs(p, 1);
-                    contrast2 = contrast_pairs(p, 2);
-                    pair_name = sprintf('spmT_%04d_%04d_mask.nii', contrast1, contrast2);
-                    
-                    path1 = match_result.matched_files{contrast_map(contrast1)};
-                    path2 = match_result.matched_files{contrast_map(contrast2)};
-                    path3 = fullfile(results_directory, pair_name);
-                    
-                    obj.merge_mask_files(path1, path2, path3);
-                    
-                    pair_name = sprintf('spmT_%04d_%04d.nii', contrast1, contrast2);
-                    
-                    contrast_table = [contrast_table pair_name, ' ', ...
-                        session.variables.xCon(contrast1).name, newline]; %#ok<AGROW>
-                end
-                
-                hdng.utilities.save_text(...
-                    contrast_table, ...
-                    fullfile(results_directory, 'contrasts.txt'));
             end
             
             result = struct();
             result.threshold_directories = threshold_directories;
+        end
+        
+        function threshold_betas(~, session, testing_threshold, results_directory)
+            
+            beta_files = session.regression_beta_files;
+
+            for i=1:numel(beta_files)
+
+                beta_file = beta_files{i};
+                
+                beta_volume = geospm.utilities.read_nifti(beta_file);
+
+                test_result = testing_threshold.test(beta_volume, 'statistics', beta_volume(:));
+
+                [~, beta_name, ~] = fileparts(beta_file);
+                beta_name = [beta_name '_mask.nii']; %#ok<AGROW>
+
+                test_result = cast(test_result, 'uint8');
+                test_path = fullfile(results_directory, beta_name);
+
+                geospm.utilities.write_nifti(test_result, test_path, spm_type('uint8'));
+            end
+        end
+        
+        function threshold_t_map(~, session, testing_threshold, contrasts, results_directory)
+            
+            statistic_files = session.contrast_map_files(contrasts);
+            
+            for i=1:numel(statistic_files)
+
+                statistic_file = statistic_files{i};
+                
+                statistic_volume = geospm.utilities.read_nifti(statistic_file);
+
+                test_result = testing_threshold.test(statistic_volume, 'statistics', statistic_volume(:));
+
+                [~, file_name, file_ext] = fileparts(statistic_file);
+                file_name = [file_name, file_ext]; %#ok<AGROW>
+                
+                [start, tokens] = regexp(file_name, '^spmT_([0-9]+)\.nii$', 'start', 'tokens');
+
+                if isempty(start)
+                    continue
+                end
+                
+                %file_index = str2double(tokens{1});
+                
+                statistic_name = ['t_map_' tokens{1}{1} '_mask.nii'];
+                
+                test_result = cast(test_result, 'uint8');
+                test_path = fullfile(results_directory, statistic_name);
+
+                geospm.utilities.write_nifti(test_result, test_path, spm_type('uint8'));
+            end
+        end
+        
+        function save_contrasts(obj, session, match_result, contrasts, results_directory)
+            
+            contrast_table = '';
+
+            for c=1:numel(contrasts)
+                contrast = contrasts{c};
+                file_name = session.variables.xCon(contrast).Vspm.fname;
+                contrast_table = [contrast_table, file_name, ' ', ...
+                    session.variables.xCon(contrast).name, newline]; %#ok<AGROW>
+            end
+
+            contrasts = cell2mat(contrasts);
+            contrast_pairs = obj.match_contrast_pairs(session, contrasts);
+            contrast_map = zeros(session.N_contrasts, 1);
+            contrast_map(contrasts) = 1:numel(contrasts);
+
+            if size(contrast_pairs, 1) == 0
+                contrast_table = ['Contrasts', newline, ...
+                                   contrast_table];
+            else
+                contrast_table = ['Component Contrasts', newline, ...
+                      contrast_table, 'Paired Contrasts', newline];
+            end
+
+            for p=1:size(contrast_pairs, 1)
+                contrast1 = contrast_pairs(p, 1);
+                contrast2 = contrast_pairs(p, 2);
+                pair_name = sprintf('spmT_%04d_%04d_mask.nii', contrast1, contrast2);
+
+                path1 = match_result.matched_files{contrast_map(contrast1)};
+                path2 = match_result.matched_files{contrast_map(contrast2)};
+                path3 = fullfile(results_directory, pair_name);
+
+                obj.merge_mask_files(path1, path2, path3);
+
+                pair_name = sprintf('spmT_%04d_%04d.nii', contrast1, contrast2);
+
+                contrast_table = [contrast_table pair_name, ' ', ...
+                    session.variables.xCon(contrast1).name, newline]; %#ok<AGROW>
+            end
+
+            hdng.utilities.save_text(...
+                contrast_table, ...
+                fullfile(results_directory, 'contrasts.txt'));
         end
         
         function merge_mask_files(~, path1, path2, path3)

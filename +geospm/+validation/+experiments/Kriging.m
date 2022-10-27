@@ -22,6 +22,7 @@ classdef Kriging < geospm.validation.SpatialExperiment
         thresholds
         null_level
         null_level_map
+        standardise_predictions
         
         run_global_smoothing_level
         run_local_smoothing_levels
@@ -32,6 +33,10 @@ classdef Kriging < geospm.validation.SpatialExperiment
         add_nugget
         
         adjust_variance
+    end
+    
+    properties (Dependent, Transient)
+        kriging_directory_path
     end
     
     methods
@@ -56,7 +61,7 @@ classdef Kriging < geospm.validation.SpatialExperiment
             obj.thresholds = thresholds;
             obj.null_level = 0.5;
             obj.null_level_map = containers.Map('KeyType', 'char', 'ValueType', 'double');
-            
+            obj.standardise_predictions = true;
             
             obj.variogram_function = variogram_function;
             obj.add_nugget = add_nugget;
@@ -173,6 +178,10 @@ classdef Kriging < geospm.validation.SpatialExperiment
                 
                 obj.nifti_files = obj.gather_nifti_files_from_term_records(term_records);
             end
+        end
+        
+        function result = get.kriging_directory_path(obj)
+            result = fullfile(obj.directory, 'kriging_output');
         end
         
         function [kriging_directory, command_files] = run_kriging(obj, kriging_data_path, variogram_function)
@@ -473,16 +482,23 @@ classdef Kriging < geospm.validation.SpatialExperiment
                 term_stddev = sqrt((term.variance + v));
             end
             
-            statistic_map = (term.prediction - term_null_level) ./ term_stddev;
-
+            if obj.standardise_predictions
+                statistic_map = (term.prediction - term_null_level) ./ term_stddev;
+            else
+                statistic_map = term.prediction;
+            end
+            
             statistic_path = fullfile(kriging_directory, [term_name '_normal.nii']);
             geospm.utilities.write_nifti(statistic_map, statistic_path);
 
             map_volume = hdng.experiments.VolumeReference();
             map_volume.scalars = hdng.experiments.ImageReference(obj.canonical_path(statistic_path));
             obj.render_image(map_volume, context, renderer);
-
-            maps('normal') = {statistic_path, statistic_map};
+            
+            for i=1:numel(obj.thresholds)
+                threshold = obj.thresholds{i};
+                maps(threshold.distribution) = {statistic_path, statistic_map};
+            end
         end
         
         function [term_records, cov_records] = write_niftis_and_render_images(obj, target_records, term_results, covariance_results, kriging_directory)

@@ -126,7 +126,7 @@ function values = evaluate_standard_cdf_at(spans, mean, variance)
             Z = evaluate_1d_standard_cdf_at(zz);
             values = {X, Y, Z};
         otherwise
-            error('approx_spherical_gaussian.evaluate_standard_cdf_at(): locations must specify 1, 2 or 3 dimensions.')
+            error('compute_gaussian_cdf_matic_2018.evaluate_standard_cdf_at(): locations must specify 1, 2 or 3 dimensions.')
     end
 
 end
@@ -135,14 +135,13 @@ function spans = compute_grid_spans(dimensions)
 
     switch numel(dimensions)
         case 1
-            
             spans = {(1:dimensions(1))'};
         case 2
             spans = {(1:dimensions(1))', (1:dimensions(2))'};
         case 3
             spans = {(1:dimensions(1))', (1:dimensions(2))', (1:dimensions(3))'};
         otherwise
-            error('approx_spherical_gaussian.compute_grid_spans(): dimensions must specify 2 or 3 elements.')
+            error('compute_gaussian_cdf_matic_2018.compute_grid_spans(): dimensions must specify 1, 2 or 3 elements.')
     end
 end
 
@@ -193,8 +192,10 @@ function values = compute_normal_cdf(dimensions, mean, variance, fill_value)
             Y = Y(2:end) - Y(1:end - 1); Y = fill_zeros(Y, fill_value);
             Z = Z(2:end) - Z(1:end - 1); Z = fill_zeros(Z, fill_value);
             
-            values = X .* Y' .* Z';
+            f = X .* Y';
+            
+            values = reshape(kron(Z', f),[size(f), numel(Z)]);
         otherwise
-            error('approx_spherical_gaussian.compute_normal_cdf(): locations must specify 1, 2 or 3 dimensions.')
+            error('compute_gaussian_cdf_matic_2018.compute_normal_cdf(): locations must specify 1, 2 or 3 dimensions.');
     end
 end

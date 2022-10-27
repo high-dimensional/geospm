@@ -468,10 +468,47 @@ classdef SPMSession < handle
         end
         
         
-        function [match_result, matched_statistics] = match_statistic_threshold_files(obj, statistic, directory)
+        function [match_result, matched_statistics] = match_pseudo_statistics_threshold_files(obj, directory, pseudo_statistics)
+            
+            
+            match_result = obj.create_file_match_struct();
+            matched_statistics = {};
+
+            
+            for i=1:numel(pseudo_statistics)
+                pseudo_stat = pseudo_statistics{i};
+                
+                name_pattern = ['^' pseudo_stat '_([0-9]+)_mask\.nii$'];
+                [file_paths, file_tokens] = hdng.utilities.scan_files(directory, name_pattern);
+                
+                if ~isempty(file_paths)
+                    matched_statistics{end + 1} = pseudo_stat; %#ok<AGROW>
+                end
+                
+                
+                pseudo_stat_result = obj.create_file_match_struct();
+                
+                pseudo_stat_result.did_match_all_files = true;
+                pseudo_stat_result.matched_files = file_paths;
+                pseudo_stat_result.matched_contrasts = zeros(numel(file_paths), 1);
+                
+                for j=1:numel(file_paths)
+                    file_token = file_tokens{j};
+                    pseudo_stat_result.matched_contrasts(j) = str2double(file_token{1});
+                end
+                
+                match_result = obj.disjoint_union_of_file_matches(match_result, pseudo_stat_result);
+            end
+        end
+        
+        function [match_result, matched_statistics] = match_statistic_threshold_files(obj, statistic, directory, prefix)
             
             if ~exist('directory', 'var')
                 directory = obj.directory;
+            end
+            
+            if ~exist('prefix', 'var')
+                prefix = 'spm';
             end
             
             if isempty(statistic)
@@ -480,7 +517,7 @@ classdef SPMSession < handle
                 statistics = { statistic };
             end
             
-            name_pattern_for = @(stat) ['^spm' stat '_([0-9]+)_mask\.nii$'];
+            name_pattern_for = @(stat) ['^' prefix stat '_([0-9]+)_mask\.nii$'];
             
             [match_result, matched_statistics] = obj.files_associated_with_statistics_for(statistics, name_pattern_for, directory);
         end
@@ -514,17 +551,19 @@ classdef SPMSession < handle
                 
                 if ~isempty(file_paths)
                     matched_statistics = [matched_statistics; {stat}]; %#ok<AGROW>
+                    file_table = [file_table; [file_paths, left_numbers, right_numbers]]; %#ok<AGROW>
                 end
                 
-                file_table = [file_table; [file_paths, left_numbers, right_numbers]]; %#ok<AGROW>
             end
             
+            matched_files = [];
+            matched_pairs = [];
+
             if size(file_table, 1) > 0
                 file_table = sortrows(file_table, [2, 3]);
+                matched_files = file_table(:, 1);
+                matched_pairs = cell2mat(file_table(:, 2:3));
             end
-            
-            matched_files = file_table(:, 1);
-            matched_pairs = cell2mat(file_table(:, 2:3));
         end
         
         

@@ -27,6 +27,7 @@ classdef SignificanceTest < handle
         T_DISTRIBUTION = 'T'
         F_DISTRIBUTION = 'F'
         UNIFORM_DISTRIBUTION = 'uniform'
+        STEP_DISTRIBUTION = 'step'
         
         LEFT_TAILED = 1
         RIGHT_TAILED = 2
@@ -41,7 +42,8 @@ classdef SignificanceTest < handle
                  geospm.SignificanceTest.NORMAL_DISTRIBUTION, ...
                  geospm.SignificanceTest.T_DISTRIBUTION, ...
                  geospm.SignificanceTest.F_DISTRIBUTION, ...
-                 geospm.SignificanceTest.UNIFORM_DISTRIBUTION};
+                 geospm.SignificanceTest.UNIFORM_DISTRIBUTION, ...
+                 geospm.SignificanceTest.STEP_DISTRIBUTION};
     end
     
     properties (GetAccess=public, SetAccess=public)
@@ -109,9 +111,9 @@ classdef SignificanceTest < handle
             
             value = sort(value);
             
-            if strcmp(obj.distribution, geospm.SignificanceTest.F_DISTRIBUTION)
+            if any(strcmp(obj.distribution, {geospm.SignificanceTest.F_DISTRIBUTION, 'beta_coeff', 't_map'}))
                 if ~isempty(value)
-                    error('geospm.SignificanceTest.tails: Cannot assign non-empty tails to F distribution test.');
+                    error(['geospm.SignificanceTest.tails: Cannot assign non-empty tails to ' obj.distribution ' distribution test.']);
                 end
                 
             else
@@ -272,8 +274,42 @@ classdef SignificanceTest < handle
                             result = [-alpha2, alpha2];
                     
                         otherwise
-                            error('geospm.SignificanceTest.compute_interval(): Specified tails are incompatible with normal distribution.');
+                            error('geospm.SignificanceTest.compute_interval(): Specified tails are incompatible with uniform distribution.');
                     end
+                
+                case 'step'
+                    
+                    switch obj.tails_code
+                        case obj.LEFT_TAILED
+                            result = [-alpha, Inf];
+                            
+                        case obj.RIGHT_TAILED
+                            result = [-Inf, alpha];
+                    
+                        otherwise
+                            error('geospm.SignificanceTest.compute_interval(): Specified tails are incompatible with step distribution.');
+                    end
+                    
+                case 'beta_coeff'
+                    
+                    if ~isfield(options, 'statistics')
+                        error('geospm.SignificanceTest.compute_interval(): Missing statistics parameter for beta_coeff distribution.');
+                    end
+                    
+                    q = quantile(options.statistics(:), alpha);
+                    
+                    result = [-Inf, q];
+                    
+                case 't_map'
+                    
+                    if ~isfield(options, 'statistics')
+                        error('geospm.SignificanceTest.compute_interval(): Missing statistics parameter for t_map distribution.');
+                    end
+                    
+                    q = quantile(options.statistics(:), alpha);
+                    
+                    result = [-Inf, q];
+                    
                     
                 otherwise
                     error('geospm.SignificanceTest.compute_interval(): Unsupported distribution ''%s''.', obj.distribution);
@@ -336,7 +372,7 @@ classdef SignificanceTest < handle
                 if ~isempty(parts.tails)
                     parts.tails = parts.tails(2:end - 1);
                     parts.tails = eval(['[' parts.tails ']']);
-                elseif strcmp(parts.distribution, geospm.SignificanceTest.F_DISTRIBUTION)
+                elseif any(strcmp(parts.distribution, {geospm.SignificanceTest.F_DISTRIBUTION, 'beta_coeff', 't_map'}))
                     parts.tails = [];
                 else
                     parts.tails = [1, 2];

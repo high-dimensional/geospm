@@ -106,7 +106,7 @@ classdef SpatialCRS < handle
             parts = split(identifier, ':');
             
             if numel(parts) < 2
-                error('SpatialcRS.from_identifier(): Invalid identifier. Expected authority name, followed by colon, followed by authority issued identifier.');
+                error('SpatialCRS.from_identifier(): Invalid identifier. Expected authority name, followed by colon, followed by authority issued identifier.');
             end
             
             authority_name = strtrim(parts{1});

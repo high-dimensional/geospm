@@ -13,8 +13,20 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function discretise_gaussian_2d_example()
+function discretise_gaussian_2d_example(method, parameters, variances)
     
+    if ~exist('method', 'var')
+        method = 'cdf';
+    end
+    
+    if ~exist('parameters', 'var')
+        parameters = struct();
+    end
+    
+    if ~exist('variances', 'var')
+        variances = 80;
+    end
+
     self_path = mfilename('fullpath');
     [directory, ~, ~] = fileparts(self_path);
     [~, parent_name, ~] = fileparts(directory);
@@ -26,39 +38,32 @@ function discretise_gaussian_2d_example()
     end
     
     image_centre = [100, 100];
-    variance = 80;
-    zero_constant = 10e-10;
     zero_constant = eps;
     show_result = false;
     
-    %{
-    pdf_data = method_name(image_centre * 2 - 1, image_centre, eye(2) * variance, zero_constant, 'pdf');
-    imwrite(pdf_data * 255.0, 'gaussian_pdf.png');
+    g_data = method_name(image_centre * 2 - 1, image_centre, eye(2) .* variances, method, parameters, show_result);
     
-    pdf_data_mask = pdf_data == zero_constant;
-    imwrite(pdf_data_mask, 'gaussian_pdf_mask.png');
+    name = sprintf('gaussian_%s', method);
     
-    save('gaussian_pdf.mat', 'pdf_data');
-    %}
+    geospm.utilities.write_nifti(g_data, [name '.nii']);
     
-    cdf_data = method_name(image_centre * 2 - 1, image_centre, eye(2) * variance, zero_constant, 'cdf', show_result);
-    
-    geospm.utilities.write_nifti(cdf_data, 'gaussian_cdf.nii');
-    
-    mass = sum(cdf_data, 'all');
+    mass = sum(g_data, 'all');
     
     fprintf('CDF mass: %f\n', mass);
     
-    cdf_data_mask = cdf_data > zero_constant;
-    imwrite(cdf_data_mask, 'gaussian_cdf_mask.png');
+    cdf_data_mask = g_data > zero_constant;
+    imwrite(cdf_data_mask, [name '_mask.png']);
     
-    save('gaussian_cdf.mat', 'cdf_data');
+    values = g_data;
+    eval([method,' = g_data;']);
     
-    min_cdf = min(cdf_data, [], 'all');
-    max_cdf = max(cdf_data, [], 'all');
+    save([name '.mat'], 'values', method);
     
-    cdf_data = (cdf_data - min_cdf) ./ (max_cdf - min_cdf);
+    min_cdf = min(g_data, [], 'all');
+    max_cdf = max(g_data, [], 'all');
     
-    imwrite(cdf_data, 'gaussian_cdf.png');
+    g_data = (g_data - min_cdf) ./ (max_cdf - min_cdf);
+    
+    imwrite(g_data, [name '.png']);
     
 end
