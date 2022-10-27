@@ -13,7 +13,7 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function discretise_gaussian_2d_example(method, parameters, variances)
+function discretise_gaussian_3d_example(method, parameters, variances)
     
     if ~exist('method', 'var')
         method = 'cdf';
@@ -37,11 +37,11 @@ function discretise_gaussian_2d_example(method, parameters, variances)
         method_name = @discretise_gaussian;
     end
     
-    image_centre = [100, 100];
+    image_centre = [100, 100, 100];
     zero_constant = eps;
     show_result = false;
     
-    g_data = method_name(image_centre * 2 - 1, image_centre, eye(2) .* variances, method, parameters, show_result);
+    g_data = method_name(image_centre * 2 - 1, image_centre, eye(3) .* variances, method, parameters, show_result);
     
     name = sprintf('gaussian_%s', method);
     
@@ -51,19 +51,12 @@ function discretise_gaussian_2d_example(method, parameters, variances)
     
     fprintf('CDF mass: %f\n', mass);
     
-    cdf_data_mask = g_data > zero_constant;
-    imwrite(cdf_data_mask, [name '_mask.png']);
-    
     values = g_data;
     eval([method,' = g_data;']);
     
     save([name '.mat'], 'values', method);
     
-    min_cdf = min(g_data, [], 'all');
-    max_cdf = max(g_data, [], 'all');
     
-    g_data = (g_data - min_cdf) ./ (max_cdf - min_cdf);
-    
-    imwrite(g_data, [name '.png']);
-    
+    cdf_data_mask = g_data > zero_constant;
+    geospm.utilities.write_nifti(cdf_data_mask, [name '_mask.nii']);
 end

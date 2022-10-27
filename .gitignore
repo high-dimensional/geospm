@@ -1,6 +1,7 @@
-/+hdng/+fractals/+tests/*.eps
-/+hdng/+rasters/+tests/output/*.png
-/+hdng/commit/*
-/+geospm/commit/*
++hdng/+fractals/+tests/*.eps
++hdng/+rasters/+tests/output/*.png
++hdng/commit/*
++geospm/commit/*
++geospm/+geotiffpatch/+patched/*
 **/.DS_Store
 

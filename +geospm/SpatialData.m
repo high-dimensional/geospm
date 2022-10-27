@@ -40,6 +40,9 @@ classdef SpatialData < geospm.NumericData
         z_min % minimum z value
         z_max % maximum z value
         
+        min_xy % [min_x, min_y]
+        max_xy % [max_x, max_y, ]
+        
         min_xyz % [min_x, min_y, min_z]
         max_xyz % [max_x, max_y, max_z]
         
@@ -188,6 +191,14 @@ classdef SpatialData < geospm.NumericData
             end
             
             result = obj.z_max_;
+        end
+        
+        function result = get.min_xy(obj)
+            result = [obj.x_min, obj.y_min];
+        end
+        
+        function result = get.max_xy(obj)
+            result = [obj.x_max, obj.y_max];
         end
         
         function result = get.min_xyz(obj)

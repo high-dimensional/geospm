@@ -281,10 +281,16 @@ classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
             peak_values = volume_generator.peak_values;
             global_mask = zeros(size(sample_density), 'logical');
             
-            for index=1:numel(peak_values)
-                p = peak_values(index);
-                selector = sample_density(:, :, index) >= obj.volume_mask_factor * p;
-                global_mask(:, :, index) = selector;
+            if volume_generator.smoothing_levels_as_z_dimension
+                
+                for index=1:numel(peak_values)
+                    p = peak_values(index);
+                    selector = sample_density(:, :, index) >= obj.volume_mask_factor * p;
+                    global_mask(:, :, index) = selector;
+                end
+                
+            else
+                global_mask = sample_density >= obj.volume_mask_factor * peak_values;
             end
         end
         

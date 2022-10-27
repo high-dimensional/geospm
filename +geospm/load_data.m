@@ -14,19 +14,53 @@
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
 function result = load_data(file_path, varargin)
-    
     %{
-        include
-        exclude
-        crs_identifier
-        eastings_label
-        northings_label
-        csv_delimiter
-        row_identifier_index
-        row_identifier_label
-        add_constant
-        mask_rows_with_missing_values
-        mask_columns_with_missing_values
+        Creates a geospm.SpatialData object from a CSV file.
+
+        Rows in the CSV file without coordinates are ignored.
+
+        The following name-value arguments are supported:
+        
+        -------------------------------------------------------------------
+        
+        include – A cell array of column names to include
+        exclude – A cell array of column names to exclude
+        
+        Only one of 'include' and 'exclude' can be specified at the same
+        time.
+
+        crs_identifier – An identifier for acoordinate reference system,
+        for example: 'EPSG:27700' If this parameter is not specified and
+        no '.prj' sidecar file can be found, a warning will be generated.
+        
+        eastings_label – The name of the column that holds the eastings
+        or x values of the point data. Defaults to 'x'.
+
+        northings_label – The name of the column that holds the northings
+        or y values of the point data. Defaults to 'y'.
+        
+        csv_delimiter – The field delimiter character of the CSV file.
+        Defaults to ',' (comma).
+        
+        row_identifier_label – The name of the column whose values uniquely
+        identify rows. If defined, takes precedence over row_identifier_index.
+        
+        row_identifier_index – The index of the column whose values
+        uniquely identify rows. Defaults to 1.
+        
+        If neither 'row_identifier_label' nor 'row_identifier_index' are
+        specified, the first column retrieved from the file will be used
+        to identify rows.
+
+        add_constant – Adds a column of all ones. Defaults to false.
+        
+        mask_rows_with_missing_values – Ignore rows with missing values.
+        Defaults to true.
+
+        mask_columns_with_missing_values – Ignore columns with missing
+        values. Defaults to true.
+
+        Also see geospm.auxiliary.parse_load_options().
     %}
 
     [options, unused_options] = geospm.auxiliary.parse_load_options(varargin{:});
@@ -56,6 +90,7 @@ function result = load_data(file_path, varargin)
     end
     
     loader = hdng.utilities.DataLoader();
+    
     loader.csv_delimiter = options.csv_delimiter;
     
     [N_rows, ~, additional_columns] = loader.load_from_file(file_path);
