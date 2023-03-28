@@ -104,18 +104,17 @@ function result = load_data(file_path, varargin)
         crs_or_crs_identifier = hdng.SpatialCRS.from_file(projection_path);
     else
         crs_or_crs_identifier = hdng.SpatialCRS.empty;
-        warning(['geospm.load_data(): No CRS identifier was explicitly'...
+        warning(['geospm.load_data(): No CRS identifier was explicitly' ...
                  ' specified ' newline 'and there appears to be no' ...
                  ' auxiliary ''' basename '.prj'' file.']); 
     end
     
-        
     if isfield(options, 'row_identifier_label' )
 
         for i=1:numel(additional_columns)
             column = additional_columns{i};
 
-            if strcmp(column.identifier, options.row_identifier_label)
+            if strcmp(column.label, options.row_identifier_label)
                 options.row_identifier_index = i;
                 break;
             end
@@ -129,7 +128,7 @@ function result = load_data(file_path, varargin)
            options.row_identifier_index <= numel(additional_columns)
 
             eid = additional_columns{options.row_identifier_index};
-            variable_columns = [additional_columns(1:options.row_identifier_index - 1) ...
+            variable_columns = [additional_columns(1:options.row_identifier_index - 1);
                                 additional_columns(options.row_identifier_index + 1:end)];
         else
             options = rmfield(options, 'row_identifier_index');
@@ -137,6 +136,10 @@ function result = load_data(file_path, varargin)
     end
     
     if ~isfield(options, 'row_identifier_index') && ~isfield(options, 'row_identifier_label')
+        warning(['geospm.load_data(): No row_identifier_index or ' ...
+                 ' row_identifier_label was explicitly specified. ' ...
+                 newline 'Using row number as identifier.']); 
+             
         eid = struct();
         eid.data = (1:N_rows)';
         variable_columns = additional_columns;
@@ -158,6 +161,10 @@ function result = load_data(file_path, varargin)
     for i=1:numel(variable_columns)
         column = variable_columns{i};
         
+        if ismissing(column.label)
+            continue;
+        end
+        
         if ~isempty(include) && ~isKey(include, lower(column.label))
             continue;
         end
@@ -176,6 +183,14 @@ function result = load_data(file_path, varargin)
             y = cast(column.data, 'double');
             rows_without_location = bitor(rows_without_location, column.is_missing);
             continue;
+        end
+        
+        if ~column.is_real && ~column.is_integer && ~column.is_boolean
+            error(['geospm.load_data(): Variable column ''' ...
+                     column.label ''' appears to be non-numeric. ' ...
+                     newline 'Please convert categorical values ' ...
+                     'to a numeric type. Boolean values can also be ' ...
+                     'represented as ''true''/''false'' or ''t''/''f''.']); 
         end
         
         not_missing(index) = ~column.has_missing_values;
