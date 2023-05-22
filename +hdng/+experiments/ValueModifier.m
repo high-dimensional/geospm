@@ -13,33 +13,49 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function file_path = save_records(records, file_path)
+classdef ValueModifier < handle
     
-    options = options_from_file_path(file_path);
+    %ValueDirective Encapsulates a value or a processing directive.
+    %
     
-    format = hdng.experiments.JSONFormat();
-    bytes = format.encode(records.records, records.attribute_map, ...
-                          records.attachments, ...
-                          @(name) value_index_for_name(name, records), ...
-                          options);
-    
-    hdng.utilities.save_bytes(bytes, file_path);
-end
-
-function options = options_from_file_path(file_path)
-    [~, file_name, ext1] = fileparts(file_path);
-    [~, ~, ext2] = fileparts(file_name);
-    
-    options = struct();
-    options.compression = false;
-    options.base64 = false;
-    
-    if strcmpi(ext1, '.gz') || strcmpi(ext2, '.gz')
-        options.compression = true;
-        options.base64 = true;
+    properties
     end
-end
+    
+    properties (Dependent, Transient)
+    end
+    
+    properties (GetAccess=public, SetAccess=public)
+    end
+    
+    properties (GetAccess=public, SetAccess=private)
+        handlers
+    end
+    
+    methods
+        
+        function obj = ValueModifier()
+            obj.handlers = containers.Map('KeyType', 'char', 'ValueType', 'any');
+        end
 
-function result = value_index_for_name(name, records)
-    result = records.value_index_for_name(name);
+        function set_handler(obj, type_identifier, handler)
+            obj.handlers(type_identifier) = handler;
+        end
+        
+        function result = apply(obj, value)
+
+            if ~isKey(obj.handlers, value.type_identifier)
+                result = value;
+                return;
+            end
+
+            handler = obj.handlers(value.type_identifier);
+            result = handler(obj, value);
+        end
+    end
+    
+    methods (Access=protected)
+    end
+    
+    methods (Static, Access=public)
+    end
 end

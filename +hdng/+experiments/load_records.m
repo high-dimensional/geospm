@@ -13,15 +13,37 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function records = load_records(file_path)
-    
-    bytes = hdng.utilities.load_bytes(file_path);
-    
-    options = options_from_file_path(file_path);
+function records = load_records(varargin)
+
     records = hdng.experiments.RecordArray();
-    
     format = hdng.experiments.JSONFormat();
-    format.decode(bytes, options, records);
+    
+    for i=1:numel(varargin)
+        
+        argument = varargin{i};
+        
+        if isstruct(argument)
+            path = argument.path;
+        else
+            path = argument;
+        end
+        
+        bytes = hdng.utilities.load_bytes(path);
+        options = options_from_file_path(path);
+        
+        if isstruct(argument)
+            
+            if isfield(argument, 'rebase_paths')
+                
+                options.value_modifier = hdng.experiments.PathRebaser();
+                options.value_modifier.dir_regexp = argument.rebase_paths.dir_regexp;
+                options.value_modifier.dir_replacement = argument.rebase_paths.dir_replacement;
+                options.value_modifier.dir_mode = argument.rebase_paths.dir_mode;
+            end
+        end
+        
+        format.decode(bytes, options, records);
+    end
 end
 
 function options = options_from_file_path(file_path)
@@ -29,11 +51,11 @@ function options = options_from_file_path(file_path)
     [~, ~, ext2] = fileparts(file_name);
     
     options = struct();
-    options.compressed = false;
+    options.compression = false;
     options.base64 = false;
     
     if strcmpi(ext1, '.gz') || strcmpi(ext2, '.gz')
-        options.compressed = true;
+        options.compression = true;
         options.base64 = true;
     end
 end

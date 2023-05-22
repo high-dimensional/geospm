@@ -147,6 +147,7 @@ classdef EvaluationReport < hdng.documents.Generator
 
                     contrast = term_record(contrast_field).content;
                     result = term_record('result').content;
+                    map = term_record('map').content;
 
                     column_label = term.label;
 
@@ -155,6 +156,9 @@ classdef EvaluationReport < hdng.documents.Generator
 
                     row_label = [row_value ' [Mask]'];
                     obj.record_image(experiment, result.image.path, row_label, column_label, parameters);
+
+                    row_label = [row_value ' [Map]'];
+                    obj.record_image(experiment, map.image.path, row_label, column_label, parameters);
                 end
             end
         end
@@ -185,6 +189,8 @@ classdef EvaluationReport < hdng.documents.Generator
             cell_counts = table.size;
             k_horizontal = idivide(cast(cell_counts(2), 'int64'), cast(page_columns, 'int64'), 'ceil');
             
+            page_rows = cell_counts(1);
+
             for i=1:k_horizontal
                 page = obj.create_page(document);
                 page_number = numel(document.pages);

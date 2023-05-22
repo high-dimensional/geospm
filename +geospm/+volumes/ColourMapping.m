@@ -114,8 +114,6 @@ classdef ColourMapping < geospm.volumes.Renderer
                     metadata_per_file{index} = cell(1, numel(render_settings.formats));
                 end
             end
-            
         end
-        
     end
 end

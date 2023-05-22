@@ -61,7 +61,7 @@ classdef Copy < hdng.patch.actions.PatchAction
                 return
             end
             
-            copyfile(source, destination);
+            copyfile(source, destination, 'f');
         end
         
         function result = encode_json_proxy(obj)

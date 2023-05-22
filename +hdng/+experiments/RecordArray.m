@@ -430,7 +430,9 @@ classdef RecordArray < hdng.experiments.ValueContent
             result = hdng.experiments.RecordArray();
             
             format = hdng.experiments.JSONFormat();
-            format.build_records_from_proxy(serialised_value, result);
+            value_modifier = hdng.experiments.ValueModifier();
+
+            format.build_records_from_proxy(serialised_value, result, value_modifier);
             
         end
         

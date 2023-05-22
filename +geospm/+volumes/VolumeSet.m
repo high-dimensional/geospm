@@ -37,8 +37,8 @@ classdef VolumeSet < dynamicprops
     methods
         
         function obj = VolumeSet()
-            obj.file_paths = @(~) {};
-            obj.descriptions = @(~) {};
+            obj.file_paths = {};
+            obj.descriptions = {};
             obj.optional_output_names = {};
         end
         

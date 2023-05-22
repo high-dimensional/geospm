@@ -51,6 +51,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
     
     properties (Transient, Dependent)
         volume_slice_names
+        N_composite_contrasts
     end
     
     methods
@@ -129,6 +130,17 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 results{end + 1} = sprintf('Smoothing %g@%g', obj.smoothing_levels(i), obj.smoothing_levels_p_value);  %#ok<AGROW>
             end
         end
+        
+        function N = get.N_composite_contrasts(obj)
+            
+            N = 0;
+            
+            for i=1:numel(obj.composite_contrasts_per_threshold)
+                tmp_contrasts = obj.composite_contrasts_per_threshold(i);
+                N = N + size(tmp_contrasts, 1);
+            end
+        end
+        
         
         function results = format_smoothing_levels(obj)
             
@@ -295,21 +307,9 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
             arguments.regression_add_intercept = false;
             arguments.contrasts = geospm.utilities.spm_jobs_from_domain_contrast_groups(obj.contrast_groups);
             
-            contrasts_per_threshold_arg = obj.contrasts_per_threshold;
-            
-            for index=1:numel(contrasts_per_threshold_arg)
-                threshold_contrasts = contrasts_per_threshold_arg{index};
-                
-                for c=1:numel(threshold_contrasts)
-                    contrast = threshold_contrasts{c};
-                    threshold_contrasts{c} = contrast.order;
-                end
-                
-                contrasts_per_threshold_arg{index} = threshold_contrasts;
-            end
-            
+            % For SPMApplyThresholds
             arguments.thresholds = obj.thresholds;
-            arguments.threshold_contrasts = contrasts_per_threshold_arg;
+            arguments.threshold_contrasts = obj.contrasts_per_threshold;
             
             arguments.regression_run_computation = ...
                 ~strcmp(obj.run_mode, geospm.validation.SpatialExperiment.DEFERRED_MODE);
@@ -403,10 +403,28 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 
             [obj.contrasts, obj.contrast_groups] = ...
                 geospm.utilities.order_domain_contrasts(...
-                obj.spatial_data_expression.term_names, ...
-                obj.contrasts, ...
-                {'T', 'F', 'beta_coeff', 't_map'});
+                obj.contrasts, {'T', 'F', 'beta_coeff', 't_map'});
             
+            contrasts_per_threshold_tmp = obj.contrasts_per_threshold;
+            
+            for index=1:numel(contrasts_per_threshold_tmp)
+                threshold_contrasts = contrasts_per_threshold_tmp{index};
+                threshold_contrast_indices = zeros(size(threshold_contrasts));
+                
+                for c=1:numel(threshold_contrasts)
+                    contrast = threshold_contrasts{c};
+                    threshold_contrast_indices(c) = contrast.order;
+                end
+                
+
+                threshold_contrast_indices = sortrows(threshold_contrast_indices, 1);
+
+                contrasts_per_threshold_tmp{index} = threshold_contrast_indices;
+            end
+
+            obj.contrasts_per_threshold = contrasts_per_threshold_tmp;
+            
+
             %Setup analysis
             [obj.analysis, arguments] = obj.setup_analysis();
 
@@ -620,15 +638,14 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 
                 if is_unmasked
                     
-                    for c_index=1:min(numel(obj.contrasts), numel(spm_contrasts.images))
+                    for c_index=1:numel(spm_contrasts)
                         
-                        contrast = obj.contrasts{c_index};
+                        contrast = obj.get_contrast_for_image_file(spm_contrasts.images{c_index});
                         
-                        if contrast.attachments.term_index == 0 || ...
-                              contrast.attachments.is_auxiliary
+                        if strcmp(contrast.name, 'intercept')
                             continue
                         end
-                        
+
                         term_name = contrast.name;
                         target = target_map(term_name);
                         new_record = hdng.utilities.Dictionary();
@@ -693,19 +710,9 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 end
                 
                 threshold_contrasts = obj.contrasts_per_threshold{threshold_index};
-                sorted_threshold_contrasts = cell(numel(threshold_contrasts), 2);
-                
-                for c_index=1:numel(threshold_contrasts)
-                    contrast = threshold_contrasts{c_index};
-                    sorted_threshold_contrasts{c_index, 1} = contrast;
-                    sorted_threshold_contrasts{c_index, 2} = contrast.order;
-                end
-                
-                sorted_threshold_contrasts = sortrows(sorted_threshold_contrasts, 2);
-                sorted_threshold_contrasts = sorted_threshold_contrasts(:, 1);
-                
+
                 is_consistent = (numel(threshold.tails) == 2) == ...
-                                (numel(sorted_threshold_contrasts) == 2 * numel(spm_contrasts.scalars));
+                                (numel(threshold_contrasts) == 2 * numel(spm_contrasts.scalars));
                 
                 if ~is_consistent
                     error('SPMRegression.build_term_records(): Expected half the number of images for 2-tailed threshold.');
@@ -713,7 +720,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 
                 for c_index=1:numel(spm_contrasts.scalars)
                     
-                    threshold_contrast = sorted_threshold_contrasts{c_index};
+                    threshold_contrast = obj.contrasts{threshold_contrasts(c_index, 1)};
                     term_name = threshold_contrast.name;
                     target = target_map(term_name);
                     
@@ -807,6 +814,18 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
             result = result.values();
         end
         
+        function contrast = get_contrast_for_image_file(obj, image_file)
+
+            contrast = {};
+            [~, file_name, ~] = fileparts(image_file);
+            tokens = regexp(file_name, '^con_([0-9]+).+', 'tokens');
+
+            if isempty(tokens)
+                return
+            end
+
+            contrast = obj.contrasts{str2double(tokens{1})};
+        end
     end
     
     methods (Static, Access=public)

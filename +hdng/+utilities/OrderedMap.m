@@ -112,7 +112,7 @@ classdef OrderedMap < containers.Map
             end
         end
         
-        function result = jsonencode(obj)
+        function result = jsonencode(obj, varargin)
             
             result = '';
             keys = obj.keys();
@@ -126,7 +126,7 @@ classdef OrderedMap < containers.Map
                     delim = '';
                 end
                 
-                result = [result sprintf('%s:%s%s', jsonencode(key), jsonencode(value), delim)]; %#ok<AGROW>
+                result = [result sprintf('%s:%s%s', jsonencode(key, varargin{:}), jsonencode(value, varargin{:}), delim)]; %#ok<AGROW>
             end
             
             result = ['{' result '}'];

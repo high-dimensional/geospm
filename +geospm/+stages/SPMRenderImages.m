@@ -61,6 +61,7 @@
             obj.define_requirement('spm_output_directory');
             
             obj.define_requirement('thresholds');
+            obj.define_requirement('threshold_contrasts');
             obj.define_requirement('threshold_directories');
             
             obj.define_requirement('sample_density', ...
@@ -85,25 +86,41 @@
             end
             
             file_paths = image_set.file_paths;
+            descriptions = image_set.descriptions;
             
             intercept_image_set = [];
             intercept_alpha_set = [];
-            intercept_index = [];
+            intercept_indices = [];
             non_intercept_indices = [];
             
             if obj.render_intercept_separately
-                intercept_index = find(strcmp(image_set.descriptions, 'intercept'));
-                
-                if ~isempty(intercept_index)
-                    non_intercept_indices = ...
-                        [1:intercept_index - 1, ...
-                         intercept_index + 1:numel(image_set.file_paths)];
 
-                    intercept_image_set = image_set.select(intercept_index);
+                intercept_matches = regexp(image_set.descriptions, 'intercept(\s+\[[^]]+])?', 'match');
+
+                for index=1:numel(image_set.descriptions)
+                    match = intercept_matches{index};
+                    
+                    if isempty(match)
+                        intercept_matches{index} = '';
+                    else
+                        intercept_matches{index} = match{1};
+                    end
+                end
+
+                intercept_indices = strcmp(intercept_matches, 'intercept');
+
+                non_intercept_indices = (1:numel(image_set.file_paths))';
+                non_intercept_indices = non_intercept_indices(~intercept_indices);
+
+                intercept_indices = find(intercept_indices);
+
+                if ~isempty(intercept_indices)
+                    
+                    intercept_image_set = image_set.select(intercept_indices);
                     image_set = image_set.select(non_intercept_indices);
 
                     if ~isempty(alpha_set)
-                        intercept_alpha_set = alpha_set.select(intercept_index);
+                        intercept_alpha_set = alpha_set.select(intercept_indices);
                         alpha_set = alpha_set.select(non_intercept_indices);
                     end
                 end
@@ -130,7 +147,7 @@
                     
                     image_paths_tmp = cell(numel(file_paths), 1);
                     image_paths_tmp(non_intercept_indices) = image_paths;
-                    image_paths_tmp(intercept_index) = intercept_image_paths;
+                    image_paths_tmp(intercept_indices) = intercept_image_paths;
                     
                     image_paths = image_paths_tmp;
                 end
@@ -145,6 +162,7 @@
             
             result('volumes') = hdng.experiments.Value.from(file_paths);
             result('images') = hdng.experiments.Value.from(image_paths);
+            result('descriptions') = hdng.experiments.Value.from(descriptions);
                 
             result = hdng.experiments.Value.from(result);
         end
@@ -180,18 +198,63 @@
             end
         end
         
-        function result = render_contrast_images(obj, output_directory, session, render_settings)
-
-
-            volume_set = geospm.volumes.VolumeSet();
-            volume_set.file_paths = session.contrast_files;
-            volume_set.descriptions = session.contrast_names;
+        function result = render_contrast_images(obj, threshold_contrasts, output_directory, session, render_settings)
             
-            for k=1:numel(volume_set.descriptions)
-                volume_set.descriptions{k} = [volume_set.descriptions{k} ' [contrast]'];
+            
+            result = hdng.utilities.Dictionary();
+
+            volumes = {};
+            images = {};
+            descriptions = {};
+
+            for index=1:numel(threshold_contrasts)
+    
+                contrasts = threshold_contrasts{index};
+                
+                % When there are multiple components in a composite 
+                % contrast we only select the first one.
+
+                volume_set = geospm.volumes.VolumeSet();
+                volume_set.file_paths = session.contrast_files(contrasts(:, 1));
+                volume_set.descriptions = session.contrast_names(contrasts(:, 1));
+                
+                for k=1:numel(volume_set.descriptions)
+                    volume_set.descriptions{k} = [volume_set.descriptions{k} ' [contrast]'];
+                end
+                
+                if size(contrasts, 2) > 1
+
+                    volume_set.optional_output_names = cell(size(contrasts, 1), 1);
+
+                    for k=1:size(contrasts, 1)
+
+                        contrast_name = 'con';
+
+                        for c=1:size(contrasts, 2)
+                            contrast_name = [contrast_name, '_', sprintf('%04d', contrasts(k, c))]; %#ok<AGROW> 
+                        end
+
+                        volume_set.optional_output_names{k} = contrast_name;
+                    end
+                end
+
+                result = obj.render_images(volume_set, [], render_settings, output_directory);
+                result = result.content;
+
+                tmp_volumes = result('volumes').content;
+                tmp_images = result('images').content;
+                tmp_descriptions = result('descriptions').content;
+
+                volumes = [volumes; tmp_volumes]; %#ok<AGROW> 
+                images = [images; tmp_images]; %#ok<AGROW> 
+                descriptions = [descriptions; tmp_descriptions]; %#ok<AGROW> 
             end
             
-            result = obj.render_images(volume_set, [], render_settings, output_directory);
+            result('volumes') = hdng.experiments.Value.from(volumes);
+            result('images') = hdng.experiments.Value.from(images);
+            result('descriptions') = hdng.experiments.Value.from(descriptions);
+
+            result = hdng.experiments.Value.from(result);
         end
         
         function result = render_map_images(obj, output_directory, session, render_settings)
@@ -220,8 +283,9 @@
         end
         
         function image_record = build_image_record(obj, threshold_index, statistic, ...
-                    matched_files, map_file_paths, map_output_names, ...
-                    contrast_file_paths, ...
+                    mask_file_paths, map_file_paths, map_descriptions, ...
+                    map_output_names, ...
+                    contrast_file_paths, contrast_descriptions, ...
                     settings, output_directory)
 
             image_record = hdng.utilities.Dictionary();
@@ -229,12 +293,13 @@
             image_record('statistic') = hdng.experiments.Value.from(statistic);
 
             mask_set = geospm.volumes.VolumeSet();
-            mask_set.file_paths = matched_files;
+            mask_set.file_paths = mask_file_paths;
 
             masks_value = obj.render_images(mask_set, [], settings, output_directory, obj.mask_renderer);
 
             map_set = geospm.volumes.VolumeSet();
             map_set.file_paths = map_file_paths;
+            map_set.descriptions = map_descriptions;
             map_set.optional_output_names = map_output_names;
 
             maps_value = obj.render_images(map_set, mask_set, settings, output_directory);
@@ -242,6 +307,7 @@
             if obj.render_maskless_maps
                 map_without_mask_set = geospm.volumes.VolumeSet();
                 map_without_mask_set.file_paths = map_file_paths;
+                map_without_mask_set.descriptions = map_descriptions;
                 map_without_mask_set.optional_output_names = map_output_names;
 
                 for i=1:numel(map_without_mask_set.file_paths)
@@ -256,11 +322,12 @@
                     map_without_mask_set.optional_output_names{i} = output_name;
                 end
 
-                obj.render_images(map_without_mask_set, [], settings, output_directory);
+                maps_value = obj.render_images(map_without_mask_set, [], settings, output_directory);
             end
             
             contrast_set = geospm.volumes.VolumeSet();
             contrast_set.file_paths = contrast_file_paths;
+            contrast_set.descriptions = contrast_descriptions;
 
             contrasts_value = obj.render_images(contrast_set, mask_set, settings, output_directory);
 
@@ -383,10 +450,10 @@
             context = geospm.volumes.RenderContext();
             context.render_settings = settings;
             
-            
+            threshold_contrasts = arguments.threshold_contrasts;
+
             unmasked_betas_value = obj.render_beta_images(beta_records, output_directory, session, settings);
-            
-            unmasked_contrasts_value = obj.render_contrast_images(output_directory, session, settings);
+            unmasked_contrasts_value = obj.render_contrast_images(threshold_contrasts, output_directory, session, settings);
             unmasked_maps_value = obj.render_map_images(output_directory, session, settings);
             
             unmasked_beta_volumes = unmasked_betas_value.content('volumes').content;
@@ -395,6 +462,7 @@
             
             entry = struct();
             entry.volumes = unmasked_contrasts_value.content('volumes').content;
+            entry.descriptions = unmasked_contrasts_value.content('descriptions').content;
             
             pseudo_contrasts('T') = entry;
             pseudo_contrasts('F') = entry;
@@ -402,6 +470,7 @@
             
             entry = struct();
             entry.volumes = unmasked_maps_value.content('volumes').content;
+            entry.descriptions = unmasked_maps_value.content('descriptions').content;
             
             pseudo_maps('T') = entry;
             pseudo_maps('F') = entry;
@@ -456,15 +525,17 @@
                     end
                     
                     map_file_paths = pseudo_maps(matched_statistic);
+                    map_descriptions = map_file_paths.descriptions(matched_pairs(:, 1));
                     map_file_paths = map_file_paths.volumes(matched_pairs(:, 1));
                     
                     contrast_file_paths = pseudo_contrasts(matched_statistic);
+                    contrast_descriptions = contrast_file_paths.descriptions(matched_pairs(:, 1));
                     contrast_file_paths = contrast_file_paths.volumes(matched_pairs(:, 1));
                     
                     image_record = obj.build_image_record(...
                         threshold_index, matched_statistic, ...
-                        matched_files, map_file_paths, map_output_names, ...
-                        contrast_file_paths, settings, threshold_output_directory);
+                        matched_files, map_file_paths, map_descriptions, map_output_names, ...
+                        contrast_file_paths, contrast_descriptions, settings, threshold_output_directory);
                     
                     image_records.include_record(image_record);
                 end
@@ -493,15 +564,17 @@
                     map_output_names = {};
                     
                     map_file_paths = pseudo_maps(matched_statistic);
+                    map_descriptions = map_file_paths.descriptions(match_result.matched_contrasts);
                     map_file_paths = map_file_paths.volumes(match_result.matched_contrasts);
                     
                     contrast_file_paths = pseudo_contrasts(matched_statistic);
+                    contrast_descriptions = contrast_file_paths.descriptions(match_result.matched_contrasts);
                     contrast_file_paths = contrast_file_paths.volumes(match_result.matched_contrasts);
                     
                     image_record = obj.build_image_record(...
                         threshold_index, matched_statistic, ...
-                        matched_files, map_file_paths, map_output_names, ...
-                        contrast_file_paths, settings, threshold_output_directory);
+                        matched_files, map_file_paths, map_descriptions, map_output_names, ...
+                        contrast_file_paths, contrast_descriptions, settings, threshold_output_directory);
                     
                     image_records.include_record(image_record);
                 end

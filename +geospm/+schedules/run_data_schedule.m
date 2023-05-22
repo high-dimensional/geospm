@@ -76,6 +76,10 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
         options.add_georeference_to_images = true;
     end
     
+    if ~isfield(options, 'background_image')
+        options.background_image = {};
+    end
+
     if ~isfield(options, 'render_intercept_separately')
         options.render_intercept_separately = false;
     end
@@ -92,6 +96,22 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
         options.do_write_spatial_data = true;
     end
     
+    if ~isfield(options.geospm_arguments, 'write_volume_mask')
+        options.geospm_arguments.write_volume_mask = true;
+    end
+
+    if ~isfield(options.geospm_arguments, 'spm_add_intercept')
+        options.geospm_arguments.spm_add_intercept = true;
+    end
+    
+    if ~isfield(options.geospm_arguments, 'spm_thresholds')
+        options.geospm_arguments.spm_thresholds = { 'T[2]: p<0.05 (FWE)', 'T[1,2]: p<0.05 (FWE)' };
+    end
+
+    if ~isfield(options.kriging_arguments, 'kriging_thresholds')
+        options.kriging_arguments.kriging_thresholds = { 'normal [2]: p < 0.05', 'normal [1,2]: p < 0.05' };
+    end
+
     options.spatial_data_specifier = {};
     
     for i=1:numel(model_specifiers)
@@ -166,12 +186,6 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
     
     options.evaluator.trace_thresholds = options.trace_thresholds;
     options = rmfield(options, 'trace_thresholds');
-    
-    options.evaluator.geospm_arguments.write_volume_mask = true;
-    options.evaluator.geospm_arguments.spm_add_intercept = true;
-    options.evaluator.geospm_arguments.spm_thresholds = { 'T[2]: p<0.05 (FWE)', 'T[1,2]: p<0.05 (FWE)' };
-    
-    options.evaluator.kriging_arguments.kriging_thresholds = { 'normal [2]: p < 0.05', 'normal [1,2]: p < 0.05' };
     
     if ~isempty(options.grid_options)
         options.evaluator.grid_options = options.grid_options;

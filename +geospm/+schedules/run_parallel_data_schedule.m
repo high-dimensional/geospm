@@ -28,8 +28,10 @@ function run_parallel_data_schedule(study_random_seed, study_directory, ...
         interactions
     %}
     
-    MATLAB_EXEC = join({matlabroot, 'bin', 'matlab'}, filesep);
-    MATLAB_EXEC = MATLAB_EXEC{1};
+
+    MATLAB_EXEC = fullfile(matlabroot, 'bin', 'matlab');
+    PARENT_DIRECTORY = fileparts(mfilename('fullpath'));
+    BARRIER_SCRIPT = fullfile(PARENT_DIRECTORY, 'barrier.sh');
     
     options = hdng.utilities.parse_struct_from_varargin(varargin{:});
     
@@ -37,10 +39,23 @@ function run_parallel_data_schedule(study_random_seed, study_directory, ...
         options.do_debug = false;
     end
     
+    PROCESS_ID_FILE = fullfile(study_directory, 'running_pids.txt');
+    PROCESS_LOG_FILE = fullfile(study_directory, 'completed.txt');
+
+    INTERVAL = 0;
+    WAIT_INTERVAL = 10;
+    
+    if ~options.do_debug
+        hdng.utilities.save_text('', PROCESS_ID_FILE);
+    end
+
+    model_directories = cell(numel(model_specifiers), 1);
+
     for i=1:numel(model_specifiers)
         model_specifier = model_specifiers{i};
         
         model_directory = fullfile(study_directory, model_specifier.label);
+        model_directories{i} = model_directory;
         
         [dirstatus, dirmsg] = mkdir(model_directory);
         if dirstatus ~= 1; error(dirmsg); end
@@ -54,12 +69,52 @@ function run_parallel_data_schedule(study_random_seed, study_directory, ...
         else
             matlab_options = ' -nodesktop -nodisplay -nosplash';
 
-            execute = ['(echo "' command '" | ' MATLAB_EXEC matlab_options ' > "' log_path '" 2>&1 ) &'];
+            execute = ['(echo "' command '" | ' MATLAB_EXEC matlab_options ' > "' log_path '" 2>&1) & echo $!'];
             [~, cmdout] = system(execute);
-            fprintf(cmdout);
+            %fprintf(cmdout);
+
+            hdng.utilities.save_text([cmdout(1:end-numel(newline)) ':' model_directory newline], PROCESS_ID_FILE, 'append');
+            
+            INTERVAL = INTERVAL + 1;
+
+            if mod(INTERVAL, WAIT_INTERVAL) == 0
+                timestamp = datetime('now', 'TimeZone', 'local', 'Format', 'yyyy/MM/dd HH:mm:ss');
+
+                fprintf([char(timestamp) ': Waiting for processing slots...' newline]);
+                execute = [BARRIER_SCRIPT ' -p ' '"' PROCESS_ID_FILE '" -l "' PROCESS_LOG_FILE '" -w 20'];
+                [~, cmdout] = system(execute);
+                fprintf(cmdout);
+            end
         end
     end
+
+    timestamp = datetime('now', 'TimeZone', 'local', 'Format', 'yyyy/MM/dd HH:mm:ss');
+
+    fprintf([char(timestamp) ': Waiting for completion...' newline]);
+    execute = [BARRIER_SCRIPT ' -p ' '"' PROCESS_ID_FILE '" -l "' PROCESS_LOG_FILE '" -w 20'];
+    [~, cmdout] = system(execute);
+    fprintf(cmdout);
     
+    record_arguments = cell(numel(model_specifiers), 1);
+
+    for i=1:numel(record_arguments)
+        argument = struct();
+        argument.path = fullfile(model_directories{i}, 'records.json.gz');
+        argument.rebase_paths = struct();
+        argument.rebase_paths.dir_regexp = ['^([^' filesep ']).+$'];
+        argument.rebase_paths.dir_replacement = [model_specifiers{i}.label filesep];
+        argument.rebase_paths.dir_mode = 'before';
+        
+        record_arguments{i} = argument;
+    end
+    
+    records = hdng.experiments.load_records(record_arguments{:});
+    
+    records_path = fullfile(study_directory, 'records.json.gz');
+    hdng.experiments.save_records(records, records_path);
+    
+    records_path = fullfile(study_directory, 'debug_records.json');
+    hdng.experiments.save_records(records, records_path);
 end
 
 function result = create_model_command(study_random_seed, study_directory, file_specifier, model_specifier, run_mode, options)

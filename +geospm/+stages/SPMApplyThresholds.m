@@ -73,6 +73,7 @@
             
             obj.define_requirement('thresholds');
             obj.define_requirement('threshold_contrasts');
+
             obj.define_requirement('volume_precision');
             
             obj.define_requirement('grid_data', ...
@@ -136,7 +137,7 @@
                 end
 
                 if strcmp(testing_threshold.distribution, 't_map')
-                    obj.threshold_t_map(session, testing_threshold, cell2mat(contrasts) - spm_contrast_offset, results_directory);
+                    obj.threshold_t_map(session, testing_threshold, contrasts - spm_contrast_offset, results_directory);
                     continue;
                 end
                 
@@ -146,14 +147,14 @@
                 
                 for c=1:numel(contrasts)
                     
-                    if ~strcmp(testing_threshold.distribution, contrast_map_statistics{contrasts{c}})
+                    if ~strcmp(testing_threshold.distribution, contrast_map_statistics{contrasts(c)})
                         error('SPMApplyThresholds.run(): Testing threshold distribution doesn''t match contrast statistic.');
                     end
                     
                     results_job = struct();
                     results_job.job_identifier = 'results';
                     results_job.spmmat = spmmat;
-                    results_job.contrasts = contrasts{c};
+                    results_job.contrasts = contrasts(c);
                     results_job.threshold = threshold_value;
                     results_job.threshold_type = testing_threshold.correction;
                     results_job.binary_basename = 'mask';
@@ -178,7 +179,7 @@
                 for c=1:numel(contrasts)
                     p_values_table = computation.batch_results{c}.TabDatvar;
                     obj.write_p_values_table(p_values_table, ...
-                        contrasts{c}, grid, crs, results_directory);
+                        contrasts(c), grid, crs, results_directory);
                 end
                 
                 match_result = session.match_statistic_threshold_files(...
@@ -255,14 +256,19 @@
             contrast_table = '';
 
             for c=1:numel(contrasts)
-                contrast = contrasts{c};
+                contrast = contrasts(c);
                 file_name = session.variables.xCon(contrast).Vspm.fname;
                 contrast_table = [contrast_table, file_name, ' ', ...
                     session.variables.xCon(contrast).name, newline]; %#ok<AGROW>
             end
+            
+            %contrast_pairs = obj.match_contrast_pairs(session, contrasts);
+            contrast_pairs = [];
 
-            contrasts = cell2mat(contrasts);
-            contrast_pairs = obj.match_contrast_pairs(session, contrasts);
+            if size(contrasts, 2) ~= 1
+                contrast_pairs = contrasts;
+            end
+
             contrast_map = zeros(session.N_contrasts, 1);
             contrast_map(contrasts) = 1:numel(contrasts);
 

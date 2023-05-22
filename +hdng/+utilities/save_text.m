@@ -13,7 +13,23 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function save_text(text, file_path)
+function save_text(text, file_path, mode)
+    
+    if ~exist('mode', 'var')
+        mode = 'create';
+    end
+    
+    switch mode
+        case 'create'
+            mode_impl = 'w';
+        
+        case 'append'
+            mode_impl = 'a';
+
+        otherwise
+            error('hdng.utilities.save_text(): Unknown mode ''%s''', mode);
+    end
+
 
     [directory, ~, ~] = fileparts(file_path);
 
@@ -23,7 +39,7 @@ function save_text(text, file_path)
         error('save_text(): %s', msg);
     end
     
-    h = fopen(file_path, "w", "n", "UTF-8");
+    h = fopen(file_path, mode_impl, "n", "UTF-8");
     fwrite(h, text, 'char');
 	fclose(h);
 end

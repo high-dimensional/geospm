@@ -13,7 +13,7 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function [ordered_contrasts, groups] = order_domain_contrasts(term_names, unordered_contrasts, statistic_order) %#ok<INUSL>
+function [ordered_contrasts, groups] = order_domain_contrasts(unordered_contrasts, statistic_order)
 
     contrast_map = containers.Map('KeyType', 'char', 'ValueType', 'any');
 
@@ -58,10 +58,11 @@ function [ordered_contrasts, groups] = order_domain_contrasts(term_names, unorde
             contrast = contrast_batch{c};
             sorted_contrast_batch{c, 1} = contrast;
             sorted_contrast_batch{c, 2} = contrast.attachments.term_index;
-            sorted_contrast_batch{c, 3} = 1 * contrast.attachments.is_auxiliary;
+            sorted_contrast_batch{c, 3} = min(contrast.attachments.threshold_indices);
+            sorted_contrast_batch{c, 4} = 1 * contrast.attachments.is_auxiliary;
         end
 
-        sorted_contrast_batch = sortrows(sorted_contrast_batch, [3, 2]);
+        sorted_contrast_batch = sortrows(sorted_contrast_batch, [4, 3, 2]);
         
         groups{index, 1} = statistic;
         groups{index, 2} = sorted_contrast_batch(:, 1);

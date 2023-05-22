@@ -59,13 +59,21 @@ classdef Subsampling < geospm.models.SamplingStrategy
             rng = RandStream.create('mt19937ar', 'Seed', seed);
             
             spatial_data = model.attachments.spatial_data;
-            
+
+            [row_indices, u, v, w] = obj.grid.select_data(spatial_data);
+
+            spatial_data = spatial_data.select(row_indices, []);
+
+            if ischar(N_samples)
+                if strcmp(N_samples, 'data')
+                    N_samples = spatial_data.N;
+                else
+                    error('Unknown directive for N_samples: %s.', N_samples);
+                end
+            end
+
             jitter_x = mod(rng.rand([N_samples 1]), 1);
             jitter_y = mod(rng.rand([N_samples 1]), 1);
-            
-            [row_indices, u, v, w] = obj.grid.select_data(spatial_data);
-            
-            spatial_data = spatial_data.select(row_indices, []);
             
             %u = u - 1;
             %v = v - 1;

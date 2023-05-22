@@ -41,10 +41,15 @@ classdef JSONFormat < handle
             if ~isfield(options, 'compression')
                 options.compression = false;
             end
+
             if ~isfield(options, 'base64')
                 options.base64 = false;
             end
             
+            if ~isfield(options, 'value_modifier')
+                options.value_modifier = hdng.experiments.ValueModifier();
+            end
+
             if options.compression
                 
                 if options.base64
@@ -58,7 +63,7 @@ classdef JSONFormat < handle
             end
             
             proxy = hdng.utilities.decode_json(text);
-            obj.build_records_from_proxy(proxy, records);
+            obj.build_records_from_proxy(proxy, records, options.value_modifier);
         end
         
         function bytes = encode(obj, records, record_attributes, attachments, value_index_for_name, options)
@@ -99,15 +104,18 @@ classdef JSONFormat < handle
                 attachments = struct();
             end
             
+            attachments_proxy = containers.Map('KeyType', 'char', 'ValueType', 'any');
+
             attachment_names = fieldnames(attachments);
             
             for index=1:numel(attachment_names)
                 name = attachment_names{index};
                 attachment = attachments.(name);
                 attachment = hdng.experiments.Value.from(attachment);
-                attachments.(name) = attachment.as_map();
+                attachments_proxy(name) = attachment.as_map();
             end
             
+
             records = hdng.experiments.RecordArray();
             
             for index=1:numel(record_list)
@@ -122,7 +130,7 @@ classdef JSONFormat < handle
             descriptor = containers.Map('KeyType', 'char', 'ValueType', 'any');
             descriptor('version')= 1;
             descriptor('record_count') = records.length;
-            descriptor('attachments') = attachments;
+            descriptor('attachments') = attachments_proxy;
             
             record_attributes = records.attributes;
             
@@ -242,7 +250,7 @@ classdef JSONFormat < handle
         end
 
 
-        function build_records_from_proxy(obj, proxy, records)
+        function build_records_from_proxy(obj, proxy, records, value_modifier)
             
             if ~isa(proxy, 'containers.Map')
                 error('JSONFormat.build_records_from_proxy(): Proxy must be a containers.Map instance.');
@@ -311,7 +319,7 @@ classdef JSONFormat < handle
                 values = attribute_values{index};
                 value_index = records.value_index_for_name(identifiers{index}, true);
                 
-                values = obj.proxy_decode_attribute_values(values, value_index);
+                values = obj.proxy_decode_attribute_values(values, value_index, value_modifier);
                 attribute_values{index} = values;
             end
             
@@ -379,7 +387,7 @@ classdef JSONFormat < handle
         end
 
         
-        function result = proxy_decode_attribute_values(~, proxy, value_index)
+        function result = proxy_decode_attribute_values(~, proxy, value_index, value_modifier)
             
             if isa(proxy, 'containers.Map')
 
@@ -397,6 +405,7 @@ classdef JSONFormat < handle
                     
                     if ~isa(values{index}, 'missing')
                         value = hdng.experiments.Value.load_from_proxy(values{index});
+                        value = value_modifier.apply(value);
                     else
                         continue;
                     end
@@ -408,7 +417,7 @@ classdef JSONFormat < handle
                     
                     indexed_value = value_index.values{end};
                     
-                    if value ~= indexed_value
+                    if ~(value == indexed_value)
                         error('JSONFormat.proxy_decode_attribute_values(): Unexpected indexing order.');
                     end
                 end
