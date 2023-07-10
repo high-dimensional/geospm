@@ -24,6 +24,7 @@ classdef Evaluation < handle
         directory
         
         canonical_base_path
+        source_ref
         
         results
         
@@ -51,6 +52,7 @@ classdef Evaluation < handle
             obj.configuration = hdng.experiments.Configuration.empty;
             obj.directory = '';
             obj.canonical_base_path = obj.directory;
+            obj.source_ref = '';
             obj.results = hdng.utilities.Dictionary();
             obj.start_time = datetime.empty;
             obj.stop_time = datetime.empty;

@@ -20,6 +20,7 @@ classdef Study < handle
     properties
         strategy
         prefix
+        name
     end
     
     properties (SetAccess=private)
@@ -39,12 +40,20 @@ classdef Study < handle
     methods
         
         function obj = Study()
+            obj.name = '';
             obj.prefix = '';
             obj.strategy = [];
             obj.completed_stages = {};
             obj.records = {};
             obj.record_attributes = hdng.experiments.RecordAttributeMap();
             obj.command_paths = {};
+
+
+            attribute = obj.record_attributes.define('stage');
+            attribute.description = 'Stage';
+
+            attribute = obj.record_attributes.define('stage_index');
+            attribute.description = 'Stage Index';
         end
         
         function result = canonical_path(~, base_path, local_path)
@@ -95,6 +104,10 @@ classdef Study < handle
                 options.canonical_base_path = directory_path;
             end
             
+            if ~isfield(options, 'source_ref')
+                options.source_ref = '';
+            end
+            
             options.canonical_base_path = hdng.utilities.make_absolute_path(options.canonical_base_path);
             
             if ~isfield(options, 'no_stage_path')
@@ -120,6 +133,7 @@ classdef Study < handle
                 stage_options.random_seed = cast(random_state.randi(2^31, 1), 'uint32');
                 stage_options.study_random_seed = options.random_seed;
                 stage_options.canonical_base_path = options.canonical_base_path;
+                stage_options.source_ref = options.source_ref;
                 
                 if options.no_stage_path
                     subdirectory_path = directory_path;
@@ -131,7 +145,7 @@ classdef Study < handle
                 
                 for record_index=1:numel(stage.records)
                     record = stage.records{record_index}.copy();
-                    record('stage_index') = hdng.experiments.Value.from(cast(index, 'int64'));
+                    record('stage_index') = hdng.experiments.Value.from(cast(index, 'int64'), sprintf('%d', cast(index, 'int64')));
                     record('stage') = hdng.experiments.Value.from(stage.identifier);
                     obj.records = [obj.records; {record}];
                 end

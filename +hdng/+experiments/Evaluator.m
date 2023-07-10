@@ -19,6 +19,7 @@ classdef Evaluator < handle
     %
     
     properties
+        configuration_attributes
         result_attributes
     end
     
@@ -31,6 +32,7 @@ classdef Evaluator < handle
     methods
         
         function obj = Evaluator()
+            obj.configuration_attributes = hdng.experiments.RecordAttributeMap();
             obj.result_attributes = hdng.experiments.RecordAttributeMap();
         end
         

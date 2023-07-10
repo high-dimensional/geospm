@@ -115,6 +115,10 @@ classdef Stage < handle
                 options.canonical_base_path = directory;
             end
             
+            if ~isfield(options, 'source_ref')
+                options.source_ref = '';
+            end
+            
             constants = struct();
             constants.stage_random_seed = hdng.experiments.Value.from(options.random_seed);
             
@@ -158,6 +162,7 @@ classdef Stage < handle
                 evaluation.configuration = configuration;
                 evaluation.directory = sprintf('%s%s%s%d', directory, filesep, obj.prefix, configuration.number);
                 evaluation.canonical_base_path = options.canonical_base_path;
+                evaluation.source_ref = options.source_ref;
                 
                 obj.evaluations = [obj.evaluations {evaluation}];
                 
@@ -212,11 +217,20 @@ classdef Stage < handle
                 end
             end
             
-            evaluator_attributes = obj.evaluator.result_attributes.attributes;
+            result_attributes = obj.evaluator.result_attributes.attributes;
 
-            for index=1:numel(evaluator_attributes)
-                evaluator_attribute = evaluator_attributes{index};
+            for index=1:numel(result_attributes)
+                evaluator_attribute = result_attributes{index};
                 stage_attribute = obj.record_attributes.define(['result.' evaluator_attribute.identifier]);
+                stage_attribute.attachments = evaluator_attribute.attachments;
+                stage_attribute.description = evaluator_attribute.description;
+            end
+            
+            configuration_attributes = obj.evaluator.configuration_attributes.attributes;
+            
+            for index=1:numel(configuration_attributes)
+                evaluator_attribute = configuration_attributes{index};
+                stage_attribute = obj.record_attributes.define(['configuration.' evaluator_attribute.identifier]);
                 stage_attribute.attachments = evaluator_attribute.attachments;
                 stage_attribute.description = evaluator_attribute.description;
             end
