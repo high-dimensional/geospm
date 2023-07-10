@@ -59,6 +59,7 @@ classdef Subsampling < geospm.models.SamplingStrategy
             rng = RandStream.create('mt19937ar', 'Seed', seed);
             
             spatial_data = model.attachments.spatial_data;
+            attachments = spatial_data.attachments;
 
             [row_indices, u, v, w] = obj.grid.select_data(spatial_data);
 
@@ -97,6 +98,7 @@ classdef Subsampling < geospm.models.SamplingStrategy
                 error('geospm.models.sampling.Subsampling.observe(): Unknown observation mode: %s', obj.coincident_observations_mode);
             end
             
+            result.attachments = attachments;
             result.attachments.spatial_resolution = model.spatial_resolution;
         end
         
