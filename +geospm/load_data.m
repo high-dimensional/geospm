@@ -249,6 +249,16 @@ function result = load_data(file_path, varargin)
         variable_types = ['int64'; variable_types];
     end
     
+    for i=1:numel(variable_names)
+        variable_name = variable_names{i};
+        if ~options.map_variables.isKey(variable_name)
+            continue
+        end
+
+        handler = options.map_variables(variable_name);
+        variable_matrix(:, i) = handler(variable_name, variable_matrix(:, i));
+    end
+
     result = geospm.SpatialData(x, y, [], variable_matrix, crs_or_crs_identifier, ...
                options.mask_columns_with_missing_values || ...
                options.mask_rows_with_missing_values);

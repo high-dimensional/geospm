@@ -90,4 +90,11 @@ function [load_options, other_options] = parse_load_options(varargin)
         load_options.exclude = other_options.exclude;
         other_options = rmfield(other_options, 'exclude');
     end
+    
+    if ~isfield(other_options, 'map_variables')
+        load_options.map_variables = containers.Map('KeyType', 'char', 'ValueType', 'any');
+    else
+        load_options.map_variables = other_options.map_variables;
+        other_options = rmfield(other_options, 'map_variables');
+    end
 end

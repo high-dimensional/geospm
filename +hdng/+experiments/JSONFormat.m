@@ -379,6 +379,7 @@ classdef JSONFormat < handle
                     key = keys{index};
                     value = attachments(key);
                     value = hdng.experiments.Value.load_from_proxy(value);
+                    value = value_modifier.apply(value);
                     records.attachments.(key) = value.content;
                 end
             else
@@ -448,6 +449,7 @@ classdef JSONFormat < handle
                 
                 for index=1:numel(proxy)
                     result{index} = hdng.experiments.Value.load_from_proxy(proxy{index});
+                    result{index} = value_modifier.apply(result{index});
                     value_index.include_entry_for_value(result{index});
                 end
                 
