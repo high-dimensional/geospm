@@ -20,9 +20,17 @@ function study_path = run_study(varargin)
     if ~isfield(options, 'study_directory')
         options.study_directory = hdng.utilities.make_timestamped_directory();
     end
+
+    if ~isfield(options, 'study_name')
+        options.study_name = '';
+    end
     
     if ~isfield(options, 'canonical_base_path')
         options.canonical_base_path = options.study_directory;
+    end
+    
+    if ~isfield(options, 'source_ref')
+        options.source_ref = '';
     end
     
     if ~isfield(options, 'study_random_seed')
@@ -165,11 +173,13 @@ function study_path = run_study(varargin)
     study = hdng.experiments.Study();
     study.strategy = strategy;
     study.prefix = options.evaluation_prefix;
+    study.name = options.study_name;
     
     study_options = struct();
     study_options.is_rehearsal = options.is_rehearsal;
     study_options.random_seed = options.study_random_seed;
     study_options.canonical_base_path = options.canonical_base_path;
+    study_options.source_ref = options.source_ref;
     study_options.no_stage_path = options.no_stage_path;
     
     study_path = study.execute(options.study_directory, study_options);
