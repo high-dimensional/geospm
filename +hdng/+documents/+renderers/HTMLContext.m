@@ -123,12 +123,23 @@ classdef HTMLContext < hdng.documents.RenderContext
         
         function result = format_attributes(~, attributes)
             result = '';
+
+            is_dictionary = isa(attributes, 'hdng.utilities.Dictionary');
             
-            names = fieldnames(attributes);
-            
+            if ~is_dictionary
+                names = fieldnames(attributes);
+            else
+                names = attributes.keys();
+            end
+
             for i=1:numel(names)
                 name = names{i};
-                value = attributes.(name);
+                if ~is_dictionary
+                    value = attributes.(name);
+                else
+                    value = attributes(name);
+                end
+                
                 result = [result name '="' char(value) '" ']; %#ok<AGROW>
             end
             
