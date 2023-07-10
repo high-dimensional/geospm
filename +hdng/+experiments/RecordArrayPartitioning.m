@@ -101,7 +101,7 @@ classdef RecordArrayPartitioning < hdng.experiments.ValueContent
         function attribute = update_attribute(obj, identifier, varargin)
             
             if ~isKey(obj.attributes_, identifier)
-                error('RecordArrayPartitioning.update_attribute(): No attribute with identifier ''%s'' is defined.', attribute.identifier);
+                error('RecordArrayPartitioning.update_attribute(): No attribute with identifier ''%s'' is defined.', identifier);
             end
             
             attribute = obj.attributes_(identifier);
