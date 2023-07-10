@@ -28,6 +28,7 @@ classdef PathRebaser < hdng.experiments.ValueModifier
         dir_regexp
         dir_replacement
         dir_mode
+        source_ref
     end
     
     properties (GetAccess=public, SetAccess=private)
@@ -43,14 +44,18 @@ classdef PathRebaser < hdng.experiments.ValueModifier
             obj.dir_replacement = '';
             obj.dir_mode = 'replace';
 
+            obj.set_handler('builtin.slice_shapes', @handle_slice_shapes);
             obj.set_handler('builtin.volume', @handle_volume_reference);
             obj.set_handler('builtin.image_file', @handle_image_reference);
             obj.set_handler('builtin.file', @handle_file_reference);
+            obj.set_handler('builtin.list', @handle_list);
             obj.set_handler('builtin.dict', @handle_dict);
             obj.set_handler('builtin.model_samples', @handle_model_samples);
+            obj.set_handler('builtin.image_layer', @handle_image_layer);
             obj.set_handler('builtin.records', @handle_records);
 
             obj.json_format = hdng.experiments.JSONFormat();
+            obj.source_ref = '';
         end
 
         function result = modify_path(obj, path)
@@ -73,16 +78,50 @@ classdef PathRebaser < hdng.experiments.ValueModifier
             end
         end
         
+        function result = modify_source_ref(obj, source_ref)
+
+            if isempty(obj.source_ref)
+                result = source_ref;
+                return;
+            end
+
+            result = obj.source_ref;
+        end
+
+        function result = handle_slice_shapes(obj, value)
+            
+            modified = hdng.experiments.SliceShapes();
+            modified.origin = value.content.origin;
+            modified.span = value.content.span;
+            modified.resolution = value.content.resolution;
+            modified.shape_paths = cell(size(value.content.shape_paths));
+
+            if ~isempty(value.content.shape_paths)
+                for i=1:numel(value.content.shape_paths)
+                    modified.shape_paths{i} = obj.modify_path(value.content.shape_paths{i});
+                end
+            end
+
+            modified.source_ref = obj.modify_source_ref(value.content.source_ref);
+            modified.slice_names = value.content.slice_names;
+            
+            result = hdng.experiments.Value.from(modified, value.label);
+        end
+        
         function result = handle_volume_reference(obj, value)
             
             modified = hdng.experiments.VolumeReference();
 
             if ~isempty(value.content.image)
-                modified.image = hdng.experiments.ImageReference(obj.modify_path(value.content.image.path));
+                modified.image = hdng.experiments.ImageReference( ...
+                    obj.modify_path(value.content.image.path), ...
+                    obj.modify_source_ref(value.content.image.source_ref));
             end
 
             if ~isempty(value.content.scalars)
-                modified.scalars = hdng.experiments.FileReference(obj.modify_path(value.content.scalars.path));
+                modified.scalars = hdng.experiments.FileReference( ...
+                    obj.modify_path(value.content.scalars.path), ...
+                    obj.modify_source_ref(value.content.scalars.source_ref));
             end
 
             modified.slice_names = value.content.slice_names;
@@ -94,15 +133,44 @@ classdef PathRebaser < hdng.experiments.ValueModifier
             
             modified = hdng.experiments.ImageReference();
             modified.path = obj.modify_path(value.content.path);
+            modified.source_ref = obj.modify_source_ref(value.content.source_ref);
 
-            result = hdng.experiments.Value.from(modified, value.label);
+            label = value.label;
+
+            if label == value.content.path
+                label = modified.path;
+            end
+
+            result = hdng.experiments.Value.from(modified, label);
         end
 
         function result = handle_file_reference(obj, value)
             
             modified = hdng.experiments.FileReference();
             modified.path = obj.modify_path(value.content.path);
+            modified.source_ref = obj.modify_source_ref(value.content.source_ref);
+            
+            label = value.label;
 
+            if label == value.content.path
+                label = modified.path;
+            end
+
+
+            result = hdng.experiments.Value.from(modified, label);
+        end
+        
+        function result = handle_list(obj, value)
+            
+            modified = {};
+
+            for index=1:numel(value.content)
+                element = value.content{index};
+                element_value = hdng.experiments.Value.from(element);
+                element_value = obj.apply(element_value);
+                modified{index} = element_value.content; %#ok<AGROW> 
+            end
+            
             result = hdng.experiments.Value.from(modified, value.label);
         end
         
@@ -126,12 +194,30 @@ classdef PathRebaser < hdng.experiments.ValueModifier
             
             modified = geospm.validation.ModelSamples();
             
-            modified.file = hdng.experiments.FileReference(obj.modify_path(value.content.file.path));
-            modified.image = hdng.experiments.ImageReference(obj.modify_path(value.content.image.path));
-            
-            result = hdng.experiments.Value.from(modified, value.label);
-        end
+            modified.file = hdng.experiments.FileReference( ...
+                obj.modify_path(value.content.file.path), ...
+                obj.modify_source_ref(value.content.file.source_ref));
+            modified.image = hdng.experiments.ImageReference( ...
+                obj.modify_path(value.content.image.path), ...
+                obj.modify_source_ref(value.content.image.source_ref));
 
+            result = hdng.experiments.Value.from(modified);
+        end
+        
+        function result = handle_image_layer(obj, value)
+            
+            modified = geospm.validation.ImageLayer();
+            modified.identifier = value.content.identifier;
+            modified.category = value.content.category;
+            modified.blend_mode = value.content.blend_mode;
+
+            modified.image = hdng.experiments.ImageReference( ...
+                obj.modify_path(value.content.image.path), ...
+                obj.modify_source_ref(value.content.image.source_ref));
+
+            result = hdng.experiments.Value.from(modified);
+        end
+        
         function result = handle_records(obj, value)
 
             records = value.content;
