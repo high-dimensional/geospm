@@ -16,7 +16,7 @@
 classdef SpatialExperimentScore < hdng.experiments.Score
     %SpatialExperimentScore 
     %   
-    
+
     properties (Dependent, Transient)
     end
     

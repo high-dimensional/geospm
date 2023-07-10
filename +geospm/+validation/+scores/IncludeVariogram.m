@@ -193,15 +193,18 @@ classdef IncludeVariogram < geospm.validation.SpatialExperimentScore
             
             file = hdng.experiments.FileReference();
             file.path = experiment.canonical_path(eps_path);
+            file.source_ref = experiment.source_ref;
             file_records('variograms.eps') = hdng.experiments.Value.from(file);
             
             
             file = hdng.experiments.ImageReference();
             file.path = experiment.canonical_path(png_path);
+            file.source_ref = experiment.source_ref;
             file_records('variograms.png') = hdng.experiments.Value.from(file);
             
             file = hdng.experiments.FileReference();
             file.path = experiment.canonical_path(json_path);
+            file.source_ref = experiment.source_ref;
             file_records('variograms.json') = hdng.experiments.Value.from(file); %#ok<NASGU>
             
             obj.finalise_results(evaluation, mode);

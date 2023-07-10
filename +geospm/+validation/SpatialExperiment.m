@@ -39,6 +39,7 @@ classdef SpatialExperiment < handle
         
         directory
         canonical_base_path
+        source_ref
         
         run_mode
         
@@ -74,6 +75,7 @@ classdef SpatialExperiment < handle
         colour_map
         
         add_georeference_to_images
+        centre_pixels
         
         results
         result_attributes
@@ -105,6 +107,7 @@ classdef SpatialExperiment < handle
             
             obj.directory = directory;
             obj.canonical_base_path = directory;
+            obj.source_ref = '';
             
             obj.run_mode = run_mode;
             
@@ -160,6 +163,7 @@ classdef SpatialExperiment < handle
             obj.colour_map_mode = hdng.colour_mapping.ColourMap.LAYER_MODE;
             
             obj.add_georeference_to_images = true;
+            obj.centre_pixels = false;
             
             obj.results = hdng.utilities.Dictionary();
             obj.result_attributes = hdng.experiments.RecordAttributeMap();
@@ -563,6 +567,7 @@ classdef SpatialExperiment < handle
         
         function compute_spatial_data(obj)
             obj.spatial_data = obj.spatial_data_expression.compute_spatial_data(obj.model.domain, obj.model_data);
+            obj.spatial_data.attachments = obj.model_data.attachments;
         end
         
         function write_spatial_data(obj, file_records, drop_z)
@@ -580,6 +585,7 @@ classdef SpatialExperiment < handle
                 
             file = hdng.experiments.FileReference();
             file.path = obj.canonical_path(expression_data_path);
+            file.source_ref = obj.source_ref;
             file_records([obj.expression_data_name '.csv']) = hdng.experiments.Value.from(file); %#ok<NASGU>
         end
         
@@ -600,6 +606,7 @@ classdef SpatialExperiment < handle
             
             file = hdng.experiments.FileReference();
             file.path = obj.canonical_path(model_data_path);
+            file.source_ref = obj.source_ref;
             file_records('model_data.json') = hdng.experiments.Value.from(file);
             
             model_data_path = fullfile(obj.directory, [model_data_name '.csv']);
@@ -610,6 +617,7 @@ classdef SpatialExperiment < handle
             
             file = hdng.experiments.FileReference();
             file.path = obj.canonical_path(model_data_path);
+            file.source_ref = obj.source_ref;
             file_records('model_data.csv') = hdng.experiments.Value.from(file);
             
             scatter_plot_path = fullfile(obj.directory, [model_data_name '.eps']);
@@ -620,6 +628,7 @@ classdef SpatialExperiment < handle
             
             file = hdng.experiments.FileReference();
             file.path = obj.canonical_path(scatter_plot_path);
+            file.source_ref = obj.source_ref;
             file_records('model_data.eps') = hdng.experiments.Value.from(file);
             
             scatter_plot_path = fullfile(obj.directory, [model_data_name '.png']);
@@ -630,6 +639,7 @@ classdef SpatialExperiment < handle
             
             file = hdng.experiments.ImageReference();
             file.path = obj.canonical_path(scatter_plot_path);
+            file.source_ref = obj.source_ref;
             file_records('model_data.png') = hdng.experiments.Value.from(file); %#ok<NASGU>
         end
         
@@ -699,12 +709,12 @@ classdef SpatialExperiment < handle
                     if numel(image_paths) == 1
                         
                         volume = hdng.experiments.VolumeReference();
-                        volume.scalars = hdng.experiments.ImageReference(path);
+                        volume.scalars = hdng.experiments.ImageReference(path, obj.source_ref);
 
                         path = image_paths{1};
                         path = obj.canonical_path(path);
                         
-                        volume.image = hdng.experiments.ImageReference(path);
+                        volume.image = hdng.experiments.ImageReference(path, obj.source_ref);
                         volume = hdng.experiments.Value.from(volume);
                     else
                         volume = hdng.experiments.Value.empty_with_label('No target');
@@ -732,9 +742,9 @@ classdef SpatialExperiment < handle
                     paths = target_paths(term_name);
 
                     volume = hdng.experiments.VolumeReference();
-                    volume.scalars = hdng.experiments.ImageReference(obj.canonical_path(paths{1}));
-                    volume.image = hdng.experiments.ImageReference(obj.canonical_path(paths{2}));
-
+                    volume.scalars = hdng.experiments.ImageReference(obj.canonical_path(paths{1}), obj.source_ref);
+                    volume.image = hdng.experiments.ImageReference(obj.canonical_path(paths{2}), obj.source_ref);
+                    
                     target = hdng.utilities.Dictionary();
                     target('term') = hdng.experiments.Value.from(term_name);
                     target('target') = hdng.experiments.Value.from(volume);
