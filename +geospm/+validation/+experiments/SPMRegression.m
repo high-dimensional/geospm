@@ -248,7 +248,6 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
             grid.span_frame([1, 1, 0], [obj.model.spatial_resolution + 1 0], obj.model.spatial_resolution);
 
             grid_stage = geospm.stages.GridTransform(analysis, 'grid', grid, 'assigned_grid', obj.model_grid, 'data_product', 'untransformed_grid_data');
-            %grid_stage.grid.span_frame([1, 1, 0], [obj.model.spatial_resolution + 1 0], obj.model.spatial_resolution);
             
             geospm.stages.ObservationTransform(analysis, ...
                 'data_requirement', 'untransformed_grid_data', ...
@@ -274,14 +273,29 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 render_image_stage.render_intercept_separately = obj.render_intercept_separately;
                 render_image_stage.volume_renderer.colour_map = obj.colour_map;
                 render_image_stage.volume_renderer.colour_map_mode = obj.colour_map_mode;
-                render_image_stage.ignore_crs = ~obj.add_georeference_to_images;
+                render_image_stage.ignore_crs = true; %~obj.add_georeference_to_images;
+                render_image_stage.centre_pixels = obj.centre_pixels;
                 
                 if ~obj.render_images
                     render_image_stage.gather_volumes_only = true;
                 end
+
+                if obj.add_georeference_to_images
+                    render_image_stage_2 = geospm.stages.SPMRenderImages(analysis, 'geo_');
+                    render_image_stage_2.render_intercept_separately = obj.render_intercept_separately;
+                    render_image_stage_2.volume_renderer.colour_map = obj.colour_map;
+                    render_image_stage_2.volume_renderer.colour_map_mode = obj.colour_map_mode;
+                    render_image_stage_2.ignore_crs = false;
+                    render_image_stage_2.centre_pixels = obj.centre_pixels;
+    
+                    if ~obj.render_images
+                        render_image_stage_2.gather_volumes_only = true;
+                    end
+                end
                 
                 if obj.trace_thresholds
-                    geospm.stages.SPMTraceThresholdRegions(analysis);
+                    threshold_stage = geospm.stages.SPMTraceThresholdRegions(analysis);
+                    threshold_stage.centre_pixels = obj.centre_pixels;
                 end
             end
             
@@ -442,6 +456,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
             
             spm_output_directory = hdng.experiments.FileReference();
             spm_output_directory.path = obj.canonical_path(results.spm_output_directory);
+            spm_output_directory.source_ref = obj.source_ref;
             
             obj.results('spm_output_directory') = hdng.experiments.Value.from(spm_output_directory);
             
@@ -450,6 +465,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
             for index=1:numel(results.threshold_directories)
                 threshold_directory = hdng.experiments.FileReference();
                 threshold_directory.path = obj.canonical_path(results.threshold_directories{index});
+                threshold_directory.source_ref = obj.source_ref;
                 threshold_directories{index} = threshold_directory;
             end
             
@@ -546,7 +562,25 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 image_path = obj.canonical_path(image_path);
             end
             
-            result = hdng.experiments.build_volume_reference(scalars_path, image_path, slice_names);
+            result = hdng.experiments.build_volume_reference(scalars_path, image_path, slice_names, obj.source_ref);
+        end
+        
+        function result = build_slice_shapes(obj, shape_paths, slice_names)
+            
+            if ~exist('slice_names', 'var')
+                slice_names = [];
+            end
+            
+            for i=1:numel(shape_paths)
+                shape_paths{i} = obj.canonical_path(shape_paths{i});
+            end
+            
+            span = obj.model_grid.cell_size .* obj.model_grid.resolution;
+            
+            result = hdng.experiments.build_slice_shapes(...
+                obj.model_grid.origin(1:2), span(1:2), ...
+                obj.model_grid.resolution(1:2), ...
+                shape_paths, slice_names, obj.source_ref);
         end
         
         function result = build_term_records(obj, spm_session, threshold_directories, image_records, target_records)
@@ -633,6 +667,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 spm_contrasts = obj.unpack_volume_value(record('contrasts'));
                 spm_maps = obj.unpack_volume_value(record('maps'));
                 spm_masks = obj.unpack_volume_value(record('masks'));
+                spm_mask_traces = obj.unpack_volume_value(record('mask_traces'));
                 
                 is_unmasked = strcmp(threshold_value.type_identifier, 'builtin.null' );
                 
@@ -647,12 +682,18 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                         end
 
                         term_name = contrast.name;
+                        term_value_args = {term_name};
+                        
+                        if isfield(obj.spatial_data.attachments, 'variable_labels') && isfield(obj.spatial_data.attachments.variable_labels, term_name)
+                            term_value_args{end + 1} = obj.spatial_data.attachments.variable_labels.(term_name); %#ok<AGROW> 
+                        end
+
                         target = target_map(term_name);
                         new_record = hdng.utilities.Dictionary();
                         new_record('statistic') = hdng.experiments.Value.from(contrast.statistic);
                         new_record('threshold') = hdng.experiments.Value.empty_with_label('Not Applicable');
                         new_record('threshold_or_statistic') = new_record('statistic');
-                        new_record('term') = hdng.experiments.Value.from(term_name);
+                        new_record('term') = hdng.experiments.Value.from(term_value_args{:});
 
                         if obj.render_images
                             contrast_image_path = spm_contrasts.images{c_index};
@@ -668,6 +709,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                         new_record('contrast') = hdng.experiments.Value.from(contrast);
                         new_record('map') = hdng.experiments.Value.from(map);
                         new_record('mask') = hdng.experiments.Value.empty_with_label('Not Applicable');
+                        new_record('mask_traces') = hdng.experiments.Value.empty_with_label('Not Applicable');
                         new_record('result') = new_record('mask');
                         new_record('target') = target;
                         
@@ -722,37 +764,48 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                     
                     threshold_contrast = obj.contrasts{threshold_contrasts(c_index, 1)};
                     term_name = threshold_contrast.name;
+                    term_value_args = {term_name};
+                    
+                    if isfield(obj.spatial_data.attachments, 'variable_labels') && isfield(obj.spatial_data.attachments.variable_labels, term_name)
+                        term_value_args{end + 1} = obj.spatial_data.attachments.variable_labels.(term_name); %#ok<AGROW> 
+                    end
+
                     target = target_map(term_name);
                     
                     new_record = hdng.utilities.Dictionary();
                     new_record('statistic') = hdng.experiments.Value.empty_with_label('Not Applicable');
                     new_record('threshold') = threshold_value;
                     new_record('threshold_or_statistic') = threshold_value;
-                    new_record('term') = hdng.experiments.Value.from(term_name);
+                    new_record('term') = hdng.experiments.Value.from(term_value_args{:});
                     
                     if obj.render_images
                         contrast_image_path = spm_contrasts.images{c_index};
                         map_image_path = spm_maps.images{c_index};
                         mask_image_path = spm_masks.images{c_index};
+                        mask_trace_layer_paths = spm_mask_traces.images{c_index};
                     else
                         contrast_image_path = [];
                         map_image_path = [];
                         mask_image_path = [];
+                        mask_trace_layer_paths = [];
                     end
                     
                     contrast = obj.build_volume_reference(spm_contrasts.scalars{c_index}, contrast_image_path, obj.volume_slice_names);
                     map = obj.build_volume_reference(spm_maps.scalars{c_index}, map_image_path, obj.volume_slice_names);
                     mask = obj.build_volume_reference(spm_masks.scalars{c_index}, mask_image_path, obj.volume_slice_names);
+                    slice_shapes = obj.build_slice_shapes(mask_trace_layer_paths, obj.volume_slice_names);
                     
                     new_record('contrast') = hdng.experiments.Value.from(contrast);
                     new_record('map') = hdng.experiments.Value.from(map);
                     new_record('mask') = hdng.experiments.Value.from(mask);
+                    new_record('mask_traces') = hdng.experiments.Value.from(slice_shapes);
                     new_record('result') = new_record('mask');
                     new_record('target') = target;
                     
                     if ~isempty(set_match_result.matched_files)
                         set_level_path = hdng.experiments.FileReference();
                         set_level_path.path = obj.canonical_path(set_match_result.matched_files{c_index});
+                        set_level_path.source_ref = obj.source_ref;
                         new_record('set-level') = hdng.experiments.Value.from(set_level_path);
                     else
                         new_record('set-level') = hdng.experiments.Value.empty_with_label('Not Applicable');
@@ -761,6 +814,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                     if ~isempty(cluster_match_result.matched_files)
                         cluster_level_path = hdng.experiments.FileReference();
                         cluster_level_path.path = obj.canonical_path(cluster_match_result.matched_files{c_index});
+                        cluster_level_path.source_ref = obj.source_ref;
                         new_record('cluster-level') = hdng.experiments.Value.from(cluster_level_path);
                     else
                         new_record('cluster-level') = hdng.experiments.Value.empty_with_label('Not Applicable');
@@ -769,6 +823,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                     if ~isempty(peak_match_result.matched_files)
                         peak_level_path = hdng.experiments.FileReference();
                         peak_level_path.path = obj.canonical_path(peak_match_result.matched_files{c_index});
+                        peak_level_path.source_ref = obj.source_ref;
                         new_record('peak-level') = hdng.experiments.Value.from(peak_level_path);
                     else
                         new_record('peak-level') = hdng.experiments.Value.empty_with_label('Not Applicable');

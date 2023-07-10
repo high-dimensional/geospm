@@ -492,7 +492,7 @@ classdef Kriging < geospm.validation.SpatialExperiment
             geospm.utilities.write_nifti(statistic_map, statistic_path);
 
             map_volume = hdng.experiments.VolumeReference();
-            map_volume.scalars = hdng.experiments.ImageReference(obj.canonical_path(statistic_path));
+            map_volume.scalars = hdng.experiments.ImageReference(obj.canonical_path(statistic_path), obj.source_ref);
             obj.render_image(map_volume, context, renderer);
             
             for i=1:numel(obj.thresholds)
@@ -562,10 +562,10 @@ classdef Kriging < geospm.validation.SpatialExperiment
                 target_volume = matched_target_record('target');
                 
                 pred_volume = hdng.experiments.VolumeReference();
-                pred_volume.scalars = hdng.experiments.ImageReference(obj.canonical_path(pred_path));
+                pred_volume.scalars = hdng.experiments.ImageReference(obj.canonical_path(pred_path), obj.source_ref);
 
                 var_volume = hdng.experiments.VolumeReference();
-                var_volume.scalars = hdng.experiments.ImageReference(obj.canonical_path(var_path));
+                var_volume.scalars = hdng.experiments.ImageReference(obj.canonical_path(var_path), obj.source_ref);
                 
                 context.output_directory = image_directory;
 
@@ -621,7 +621,7 @@ classdef Kriging < geospm.validation.SpatialExperiment
                     geospm.utilities.write_nifti(cast(term.mask{j}, 'uint8'), mask_path, spm_type('uint8'));
 
                     mask_volume = hdng.experiments.VolumeReference();
-                    mask_volume.scalars = hdng.experiments.ImageReference(obj.canonical_path(mask_path));
+                    mask_volume.scalars = hdng.experiments.ImageReference(obj.canonical_path(mask_path), obj.source_ref);
 
                     context.output_directory = fullfile(image_directory, threshold_string);
 
@@ -675,7 +675,7 @@ classdef Kriging < geospm.validation.SpatialExperiment
                 record('name') = term_name_value;
                 
                 cov_volume = hdng.experiments.VolumeReference();
-                cov_volume.scalars = hdng.experiments.ImageReference(obj.canonical_path(cov_path));
+                cov_volume.scalars = hdng.experiments.ImageReference(obj.canonical_path(cov_path), obj.source_ref);
                 
                 context.output_directory = image_directory;
 
@@ -702,8 +702,8 @@ classdef Kriging < geospm.validation.SpatialExperiment
             image_path = obj.canonical_path(image_path);
             
             result = hdng.experiments.VolumeReference();
-            result.scalars = hdng.experiments.ImageReference(scalars_path);
-            result.image = hdng.experiments.ImageReference(image_path);
+            result.scalars = hdng.experiments.ImageReference(scalars_path, obj.source_ref);
+            result.image = hdng.experiments.ImageReference(image_path, obj.source_ref);
             result.slice_names = slice_names;
             
         end
@@ -720,7 +720,7 @@ classdef Kriging < geospm.validation.SpatialExperiment
             image_paths = renderer.render(context);
             image_paths = image_paths{1};
             image_path = obj.canonical_path(image_paths{1});
-            volume.image = hdng.experiments.ImageReference(image_path);
+            volume.image = hdng.experiments.ImageReference(image_path, obj.source_ref);
         end
         
         function [term_records, covariance_records, duration] = ...
