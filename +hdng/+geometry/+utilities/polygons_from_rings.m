@@ -37,8 +37,17 @@ function [coords, rings, polygons] = polygons_from_rings(points, rings)
     end
     
     extents = compute_ring_extents(rings, vertices);
+
+    % This is just an estimate of containment, as we are only checking
+    % bounding boxes, not the polygons themselves
+
     C = compute_containment_matrix(extents);
     
+    % Make sure that rings which are not holes are not marked as being
+    % contained
+
+    C = C & repmat(holes, N_rings, 1);
+
     all_ones = ones(N_rings, N_rings, 'logical');
     available = ones(1, N_rings, 'logical');
     
