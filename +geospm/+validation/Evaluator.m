@@ -15,7 +15,7 @@
 
 classdef Evaluator < hdng.experiments.Evaluator
     
-    %SimulatedEvaluator Encapsulates a method of generating stages in a study.
+    %Evaluator Encapsulates a method of generating stages in a study.
     %
     
     properties
@@ -39,6 +39,9 @@ classdef Evaluator < hdng.experiments.Evaluator
         render_intercept_separately
         
         add_georeference_to_images
+        
+        presentation_layers
+        
         do_write_spatial_data
         
         null_level
@@ -80,6 +83,9 @@ classdef Evaluator < hdng.experiments.Evaluator
             obj.render_intercept_separately = false;
             
             obj.add_georeference_to_images = false;
+            
+            obj.presentation_layers = {};
+
             obj.do_write_spatial_data = true;
             
             obj.null_level = 0.5;
@@ -200,6 +206,7 @@ classdef Evaluator < hdng.experiments.Evaluator
                             
                 experiment.add_probes = obj.add_probes;
                 experiment.canonical_base_path = evaluation.canonical_base_path;
+                experiment.source_ref = evaluation.source_ref;
                 experiment.do_write_spatial_data = obj.do_write_spatial_data;
                 
                 experiment.colour_map_mode = obj.colour_map_mode;
