@@ -33,11 +33,19 @@
         mask_renderer
         ignore_crs
     end
+
+    properties (GetAccess=public, SetAccess=private)
+        record_prefix
+    end
     
     methods
         
-        function obj = SPMRenderImages(analysis)
+        function obj = SPMRenderImages(analysis, record_prefix)
             
+            if ~exist('record_prefix', 'var')
+                record_prefix = '';
+            end
+
             obj = obj@geospm.stages.SpatialAnalysisStage(analysis);
 
             obj.volume_renderer = geospm.volumes.ColourMapping();
@@ -50,12 +58,13 @@
             
             obj.ignore_crs = false;
             obj.image_formats = {'tif'};
-            obj.centre_pixels = true;
+            obj.centre_pixels = false;
             obj.gather_volumes_only = false;
             obj.render_component_contrasts = false;
             obj.render_maskless_maps = true;
             obj.render_residuals = true;
             obj.render_intercept_separately = false;
+            obj.record_prefix = record_prefix;
             
             obj.define_requirement('directory');
             obj.define_requirement('spm_output_directory');
@@ -73,10 +82,10 @@
             obj.define_requirement('grid_data', ...
                 struct(), 'is_optional', true, 'default_value', []);
             
-            obj.define_product('image_records');
-            obj.define_product('beta_records');
-            obj.define_product('density_image');
-            obj.define_product('volume_mask_image');
+            obj.define_product([record_prefix 'image_records']);
+            obj.define_product([record_prefix 'beta_records']);
+            obj.define_product([record_prefix 'density_image']);
+            obj.define_product([record_prefix 'volume_mask_image']);
         end
         
         function result = render_images(obj, image_set, alpha_set, render_settings, directory, renderer)
@@ -336,7 +345,7 @@
             image_record('contrasts') = contrasts_value;
         end
         
-        function [pseudo_contrasts, pseudo_maps] = define_pseudo_contrasts_and_maps(~, session, beta_volumes)
+        function [pseudo_contrasts, pseudo_maps] = define_beta_pseudo_contrasts_and_maps(~, session, beta_volumes)
             
             pseudo_contrasts = containers.Map('KeyType', 'char', 'ValueType', 'any');
             pseudo_maps = containers.Map('KeyType', 'char', 'ValueType', 'any');
@@ -375,8 +384,8 @@
             image_records = hdng.experiments.RecordArray();
             beta_records = hdng.experiments.RecordArray();
             
-            result.image_records = image_records;
-            result.beta_records = beta_records;
+            result.([obj.record_prefix 'image_records']) = image_records;
+            result.([obj.record_prefix 'beta_records']) = beta_records;
             
             session = geospm.spm.SPMSession(fullfile(arguments.spm_output_directory, 'SPM.mat'));
             
@@ -399,7 +408,7 @@
             settings.crs = crs;
             settings.centre_pixels = obj.centre_pixels;
             
-            output_directory = fullfile(arguments.directory, 'images');
+            output_directory = fullfile(arguments.directory, [obj.record_prefix 'images']);
             hdng.utilities.rmdir(output_directory, true, false);
             
             [dirstatus, dirmsg] = mkdir(output_directory);
@@ -419,9 +428,9 @@
                 end
                 
                 density_files = density_files{1};
-                result.density_image = density_files{1};
+                result.([obj.record_prefix 'density_image']) = density_files{1};
             else
-                result.density_image = '';
+                result.([obj.record_prefix 'density_image']) = '';
             end
             
             bw = hdng.colour_mapping.GenericColourMap.monochrome(0, 1);
@@ -438,9 +447,9 @@
                 end
                 
                 volume_mask_files = volume_mask_files{1};
-                result.volume_mask_image = volume_mask_files{1};
+                result.([obj.record_prefix 'volume_mask_image']) = volume_mask_files{1};
             else
-                result.volume_mask_image = '';
+                result.([obj.record_prefix 'volume_mask_image']) = '';
             end
             
             if obj.render_residuals && ~obj.gather_volumes_only
@@ -458,7 +467,7 @@
             
             unmasked_beta_volumes = unmasked_betas_value.content('volumes').content;
             
-            [pseudo_contrasts, pseudo_maps] = obj.define_pseudo_contrasts_and_maps(session, unmasked_beta_volumes);
+            [pseudo_contrasts, pseudo_maps] = obj.define_beta_pseudo_contrasts_and_maps(session, unmasked_beta_volumes);
             
             entry = struct();
             entry.volumes = unmasked_contrasts_value.content('volumes').content;

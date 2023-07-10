@@ -21,6 +21,7 @@
         shape_formats
         centre_pixels
         volume_renderer
+        render_component_contrasts
     end
     
     methods
@@ -31,7 +32,8 @@
 
             obj.volume_renderer = geospm.volumes.Tracing();
             obj.shape_formats = {'shp'};
-            obj.centre_pixels = true;
+            obj.centre_pixels = false;
+            obj.render_component_contrasts = false;
             
             obj.define_requirement('directory');
             obj.define_requirement('spm_output_directory');
@@ -43,6 +45,9 @@
                 struct(), 'is_optional', true, 'default_value', []);
             
             obj.define_requirement('volume_mask_file', ...
+                struct(), 'is_optional', true, 'default_value', []);
+            
+            obj.define_requirement('image_records', ...
                 struct(), 'is_optional', true, 'default_value', []);
         end
         
@@ -67,12 +72,13 @@
             settings.crs = crs;
             settings.centre_pixels = obj.centre_pixels;
 
+            context = geospm.volumes.RenderContext();
+            context.render_settings = settings;
+
             if ~isempty(arguments.volume_mask_file)
                 mask_set = geospm.volumes.VolumeSet();
                 mask_set.file_paths = { arguments.volume_mask_file };
 
-                context = geospm.volumes.RenderContext();
-                context.render_settings = settings;
                 context.image_volumes = mask_set;
                 context.output_directory = fullfile(arguments.directory, 'images');
 
@@ -88,39 +94,88 @@
                 [~, directory_name, ext] = fileparts(threshold_directory);
                 directory_name = [directory_name ext]; %#ok<AGROW>
                 
-                [match_result, matched_statistics] = session.match_statistic_threshold_files('', threshold_directory);
-                
-                if ~match_result.did_match_all_files
-                    error(['SPMTraceThresholdRegions.run(): Couldn''t locate all threshold files in ''' threshold_directory '''.']);
-                end
-                
-                if numel(matched_statistics) ~= 1
-                    error('SPMTraceThresholdRegions.run(): Cannot handle a threshold with more than one statistic.');
-                end
-                
-                mask_set = geospm.volumes.VolumeSet();
-                mask_set.file_paths = match_result.matched_files;
-                
-                context = geospm.volumes.RenderContext();
-                context.render_settings = settings;
-                context.image_volumes = mask_set;
-                context.output_directory = fullfile(arguments.directory, 'images', directory_name);
-                
-                obj.volume_renderer.render(context);
+                threshold_output_directory = fullfile(arguments.directory, 'images', directory_name);
+                paired_trace_paths = {};
+                trace_paths = {};
                 
                 [matched_files, ~, matched_statistics] = session.match_statistic_paired_threshold_files('', threshold_directory);
                 
                 if ~isempty(matched_files)
 
                     if numel(matched_statistics) ~= 1
-                    error('SPMTraceThresholdRegions.run(): Cannot handle a threshold with more than one statistic.');
+                        error('SPMTraceThresholdRegions.run(): Cannot handle a threshold with more than one statistic.');
                     end
                     
+                    mask_set = geospm.volumes.VolumeSet();
                     mask_set.file_paths = matched_files;
-                    obj.volume_renderer.render(context);
+
+                    context.image_volumes = mask_set;
+                    context.output_directory = threshold_output_directory;
+
+                    paired_trace_paths = obj.volume_renderer.render(context);
                 end
+                
+                [match_result, matched_statistics] = session.match_statistic_threshold_files('', threshold_directory);
+                
+
+                if isempty(matched_files) || obj.render_component_contrasts
+                    
+                    if ~match_result.did_match_all_files
+                        error(['SPMTraceThresholdRegions.run(): Couldn''t locate all threshold files in ''' threshold_directory '''.']);
+                    end
+                    
+                    if numel(matched_statistics) ~= 1
+                        error('SPMTraceThresholdRegions.run(): Cannot handle a threshold with more than one statistic.');
+                    end
+                    
+                    mask_set = geospm.volumes.VolumeSet();
+                    mask_set.file_paths = match_result.matched_files;
+                    
+                    context.image_volumes = mask_set;
+                    context.output_directory = threshold_output_directory;
+                    
+                    trace_paths = obj.volume_renderer.render(context);
+                end
+                
+                image_record = obj.image_record_for_threshold(arguments, i);
+
+                if isempty(image_record)
+                    continue
+                end
+                
+                mask_traces = hdng.utilities.Dictionary();
+                mask_traces('volumes') = hdng.experiments.Value.from({});
+                mask_traces('images') = hdng.experiments.Value.from([paired_trace_paths; trace_paths]);
+                mask_traces('descriptions') = hdng.experiments.Value.from({});
+
+                image_record('mask_traces') = hdng.experiments.Value.from(mask_traces); %#ok<NASGU> 
             end
+
+            image_record = obj.image_record_for_threshold(arguments, []);
+            image_record('mask_traces') = hdng.experiments.Value.empty_with_label('No mask traces.'); %#ok<NASGU> 
         end
         
+        function result = image_record_for_threshold(~, arguments, index)
+                
+            result = [];
+
+            if isempty(arguments.image_records)
+                return
+            end
+            
+            if isempty(index)
+                match_value = hdng.experiments.Value.empty_with_label('');
+            else
+                match_value = hdng.experiments.Value.from(index);
+            end
+
+            image_records = arguments.image_records.select(hdng.one_struct('threshold', match_value));
+
+            if image_records.length ~= 1
+                return
+            end
+
+            result = image_records.unsorted_records{1};
+        end
     end
 end
