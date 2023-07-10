@@ -38,7 +38,7 @@ classdef Builtins < hdng.experiments.ValueLoader
         
         function obj = Builtins()
             obj = obj@hdng.experiments.ValueLoader();
-            obj.supported_types_ = {
+            obj.supported_types_ = [{
                 'builtin.float', ...
                 'builtin.float.symbolic', ...
                 'builtin.int', ...
@@ -50,13 +50,17 @@ classdef Builtins < hdng.experiments.ValueLoader
                 'builtin.missing', ...
                 'builtin.str', ...
                 'builtin.url', ...
-                'builtin.model_samples', ...
                 'builtin.records', ...
                 'builtin.partitioning', ...
                 'builtin.file', ...
                 'builtin.image_file', ...
-                'builtin.volume' ...
-            };
+                'builtin.volume', ...
+                'builtin.slice_shapes', ...
+                'builtin.model_samples', ...
+                'builtin.presentation_layer', ...
+                'builtin.image_layer', ...
+                'builtin.slice_shapes'
+            }, hdng.experiments.Builtins.custom_types()];
         end
         
         function [content, serialised_value] = from_serialised_value_and_type(~, serialised_value, type_identifier)
@@ -171,13 +175,13 @@ classdef Builtins < hdng.experiments.ValueLoader
                 return;
             end
             
-            if strcmp(type_identifier, 'builtin.null')
-                content = [];
+            if strcmp(type_identifier, 'builtin.slice_shapes')
+                content = hdng.experiments.SliceShapes.from_serialised_value_and_type(serialised_value, type_identifier);
                 return;
             end
             
-            if strcmp(type_identifier, 'builtin.model_samples')
-                content = geospm.validation.ModelSamples.from_serialised_value_and_type(serialised_value, type_identifier);
+            if strcmp(type_identifier, 'builtin.null')
+                content = [];
                 return;
             end
             
@@ -195,8 +199,25 @@ classdef Builtins < hdng.experiments.ValueLoader
                 content = [];
                 return;
             end
+
+            if strcmp(type_identifier, 'builtin.model_samples')
+                content = geospm.validation.ModelSamples.from_serialised_value_and_type(serialised_value, type_identifier);
+                return;
+            end
+
+            if strcmp(type_identifier, 'builtin.presentation_layer')
+                content = geospm.validation.PresentationLayer.from_serialised_value_and_type(serialised_value, type_identifier);
+                return;
+            end
+
+            if strcmp(type_identifier, 'builtin.image_layer')
+                content = geospm.validation.ImageLayer.from_serialised_value_and_type(serialised_value, type_identifier);
+                return;
+            end
             
-            error('hdng.experiments.Builtins.from_serialised_value_and_type(): Unknown type: ''%s''.', type_identifier);
+            content = hdng.experiments.Builtins.from_custom_serialised_value_and_type(serialised_value, type_identifier);
+
+            %error('hdng.experiments.Builtins.from_serialised_value_and_type(): Unknown type: ''%s''.', type_identifier);
         end
     end
     
@@ -208,6 +229,57 @@ classdef Builtins < hdng.experiments.ValueLoader
     end
     
     methods (Static, Access=public)
+
+        function register_custom_type(type_identifier, Ctor)
+            hdng.experiments.Builtins.custom_registry(type_identifier, Ctor);
+        end
+    
+        function result = lookup_custom_type(type_identifier)
+            result = hdng.experiments.Builtins.custom_registry(type_identifier);
+        end
+
+        function [content, serialised_value] = from_custom_serialised_value_and_type(serialised_value, type_identifier)
+            Ctor = hdng.experiments.Builtins.custom_lookup(type_identifier);
+            custom_from_serialised_value_and_type = str2func([Ctor '.from_serialised_value_and_type']);
+            content = custom_from_serialised_value_and_type(serialised_value, type_identifier);
+        end
+
+        function result = custom_types()
+            registry = hdng.experiments.Builtins.custom_registry();
+            result = registry.keys();
+        end
+    end
+
+    methods (Static, Access=protected)
+
+        function result = custom_registry(type_identifier, Ctor)
+            
+            persistent REGISTRY;
+
+            if isempty(REGISTRY)
+                REGISTRY = containers.Map('KeyType', 'char', 'ValueType', 'any');
+            end
+
+            result = [];
+
+            if ~exist('type_identifier', 'var')
+                result = REGISTRY;
+                return;
+            end
+            
+            if ~exist('Ctor', 'var')
+
+                if ~isKey(REGISTRY, type_identifier)
+                    error('hdng.experiments.Builtins.custom_registry(): Unknown type: ''%s''.', type_identifier);
+                end
+
+                result = REGISTRY(type_identifier);
+                return;
+            end
+
+            REGISTRY(type_identifier) = Ctor;
+        end
+
     end
     
 end
