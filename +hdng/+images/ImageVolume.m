@@ -442,13 +442,22 @@ classdef ImageVolume < handle
             end
             
             crs_identifier = '';
+            crs = [];
             
-            if ischar(crs_or_identifier)
-                crs_identifier = crs_or_identifier;
-            elseif isa(crs_or_identifier, 'hdng.SpatialCRS') && ~isempty(crs_or_identifier)
-                crs_identifier = crs_or_identifier.identifier;
+            if ~isempty(crs_or_identifier)
+                if ischar(crs_or_identifier)
+                    crs_identifier = crs_or_identifier;
+                    crs = hdng.SpatialCRS.from_identifier(crs_identifier);
+                elseif isa(crs_or_identifier, 'hdng.SpatialCRS')
+                    crs_identifier = crs_or_identifier.identifier;
+                    crs = crs_or_identifier;
+                end
+                
+                if ~strcmpi(crs.authority_name, 'EPSG')
+                    warning('ImageVolume.batch_render_as_geotiff(): CRS authority name must be EPSG to be supported by the GeoTIFF file format. No CRS will be attached to the GeoTIFF file.');
+                end
             end
-            
+
             for i=1:numel(batch)
                 volume = batch{i};
                 
@@ -490,8 +499,13 @@ classdef ImageVolume < handle
                     file_path = [volume.path '_' num2str(j, '%03d') '.tif'];
                     
                     I_level = cat(3, L, L_alpha);
-                    
+
                     N_samples = size(I_level, 3);
+                    
+                    %marker = repmat(255, 1, N_samples);
+
+                    %I_level(1, 1, :) = marker;
+                    %I_level(end, end, :) = marker;
 
                     tags = struct();
                     tags.('Compression') = Tiff.Compression.LZW;
@@ -507,12 +521,32 @@ classdef ImageVolume < handle
                     end
 
                     extra_arguments = {...
-                        %'GeoKeyDirectoryTag', info.GeoTIFFTags.GeoKeyDirectoryTag, ...
                         'TiffTags', tags};
                     
                     if ~isempty(crs_identifier)
-                        extra_arguments{end + 1} = 'CoordRefSysCode'; %#ok<AGROW>
-                        extra_arguments{end + 1} = crs_identifier; %#ok<AGROW>
+                        if strcmpi(crs.authority_name, 'EPSG')
+                            GTModelTypeGeoKey = 2;
+        
+                            if crs.is_projected
+                                GTModelTypeGeoKey = 1;
+                            end
+        
+                            CRSGeoKey = 'GeographicTypeGeoKey';
+                            CRSGeoValue = str2double(crs.authority_issued_identifier);
+        
+                            if crs.is_projected
+                                CRSGeoKey = 'ProjectedCSTypeGeoKey';
+                            end
+        
+                            extra_arguments{end + 1} = 'GeoKeyDirectoryTag';  %#ok<AGROW>
+                            extra_arguments{end + 1} = hdng.one_struct(...
+                                'GTModelTypeGeoKey', GTModelTypeGeoKey, ...
+                                'GTRasterTypeGeoKey', 1, ... %PixelIsArea
+                                CRSGeoKey, CRSGeoValue );  %#ok<AGROW>
+                        else
+                            extra_arguments{end + 1} = 'CoordRefSysCode'; %#ok<AGROW>
+                            extra_arguments{end + 1} = crs_identifier; %#ok<AGROW>
+                        end
                     end
                     
                     raster_ref = grid.compute_raster_reference_for_w(j, centre_pixels);
@@ -520,7 +554,7 @@ classdef ImageVolume < handle
                     
                     geospm.geotiffpatch.geotiffwrite(file_path, I_level, R, ...
                         extra_arguments{:});
-                    
+
                     paths{j} = file_path;
                 end
                 

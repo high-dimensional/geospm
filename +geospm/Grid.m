@@ -252,8 +252,8 @@ classdef Grid < handle
                       T(2, 1), T(2, 2), w * T(2, 3) + T(2, 4) + obj.cell_size_(2)];
             
             if ~centre_pixels
-                result(1, 3) = result(1, 3) - obj.cell_size_(1) * 0.5;
-                result(2, 3) = result(2, 3) - obj.cell_size_(2) * 0.5;
+                result(1, 3) = result(1, 3) + obj.cell_size_(1) * 0.5;
+                result(2, 3) = result(2, 3) + obj.cell_size_(2) * 0.5;
             end
             
             if flip_y
