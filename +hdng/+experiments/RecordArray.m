@@ -308,9 +308,15 @@ classdef RecordArray < hdng.experiments.ValueContent
         
         function result = select(obj, match_value_struct)
             
+            is_dictionary = isa(match_value_struct, 'hdng.utilities.Dictionary');
             result = hdng.experiments.RecordArray();
-            names = fieldnames(match_value_struct);
-            
+
+            if ~is_dictionary
+                names = fieldnames(match_value_struct);
+            else
+                names = match_value_struct.keys();
+            end
+
             for index=1:numel(names)
                 name = names{index};
                 
@@ -324,11 +330,15 @@ classdef RecordArray < hdng.experiments.ValueContent
             for index=1:numel(names)
                 name = names{index};
                 
+                if ~is_dictionary
+                    value = match_value_struct.(name);
+                else
+                    value = match_value_struct(name);
+                end
+                
                 if index == 1
                     
                     value_index = obj.value_index_for_name(name);
-                    
-                    value = match_value_struct.(name);
                     value_records = value_index.records_for_value(value);
                 
                     for r_index=1:numel(value_records)
@@ -337,7 +347,6 @@ classdef RecordArray < hdng.experiments.ValueContent
                     
                 else
                     
-                    value = match_value_struct.(name);
                     result_records = result.unsorted_records;
                     
                     for r_index=1:numel(result_records)
@@ -425,13 +434,12 @@ classdef RecordArray < hdng.experiments.ValueContent
     
     methods (Static)
         
-        function result = from_serialised_value_and_type(serialised_value, type_identifier) %#ok<INUSD>
+        function result = from_serialised_value_and_type(serialised_value, type_identifier) %#ok<INUSD> 
             
             result = hdng.experiments.RecordArray();
             
             format = hdng.experiments.JSONFormat();
             value_modifier = hdng.experiments.ValueModifier();
-
             format.build_records_from_proxy(serialised_value, result, value_modifier);
             
         end
