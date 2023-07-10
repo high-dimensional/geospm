@@ -22,18 +22,21 @@ classdef ImageReference < hdng.experiments.FileReference
     
     methods
         
-        function obj = ImageReference(path)
+        function obj = ImageReference(path, source_ref)
             
             if ~exist('path', 'var')
                 path = '';
             end
             
-            obj = obj@hdng.experiments.FileReference(path);
+            if ~exist('source_ref', 'var')
+                source_ref = '';
+            end
+            
+            obj = obj@hdng.experiments.FileReference(path, source_ref);
         end
         
         function [serialised_value, type_identifier] = as_serialised_value_and_type(obj)
-            serialised_value = containers.Map('KeyType', 'char', 'ValueType', 'any');
-            serialised_value('path') = obj.path;
+            serialised_value = as_serialised_value_and_type@hdng.experiments.FileReference(obj);
             type_identifier = 'builtin.image_file';
         end
         
@@ -59,24 +62,9 @@ classdef ImageReference < hdng.experiments.FileReference
     
     methods (Static)
         
-        function result = from_serialised_value_and_type(serialised_value, type_identifier) %#ok<INUSD>
-            
-            if ~isa(serialised_value, 'containers.Map')
-                error('hdng.experiments.ImageReference.from_serialised_value_and_type(): Expected serialised value to be a containers.Map instance.');
-            end
-            
-            
-            if ~isKey(serialised_value, 'path')
-                error('hdng.experiments.ImageReference.from_serialised_value_and_type(): Expected ''path'' field.');
-            end
-            
-            path = serialised_value('path');
-            
-            if ~ischar(path)
-                error('hdng.experiments.ImageReference.from_serialised_value_and_type(): Expected ''path'' field to be of type char.');
-            end
-            
-            result = hdng.experiments.ImageReference(path);
+        function result = from_serialised_value_and_type(serialised_value, type_identifier)
+            result = from_serialised_value_and_type@hdng.experiments.FileReference(serialised_value, type_identifier);
+            result = hdng.experiments.ImageReference(result.path, result.source_ref);
         end
     end
 end

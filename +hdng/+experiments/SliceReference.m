@@ -23,7 +23,7 @@ classdef SliceReference < hdng.experiments.ImageReference
     
     methods
         
-        function obj = SliceReference(path, slice)
+        function obj = SliceReference(path, slice, source_ref)
             
             if ~exist('path', 'var')
                 path = '';
@@ -33,13 +33,18 @@ classdef SliceReference < hdng.experiments.ImageReference
                 slice = 0;
             end
             
-            obj = obj@hdng.experiments.ImageReference(path);
+            if ~exist('source_ref', 'var')
+                source_ref = '';
+            end
+            
+            obj = obj@hdng.experiments.ImageReference(path, source_ref);
             obj.slice = slice;
         end
         
         function [serialised_value, type_identifier] = as_serialised_value_and_type(obj)
             serialised_value = containers.Map('KeyType', 'char', 'ValueType', 'any');
             serialised_value('path') = obj.path;
+            serialised_value('source_ref') = obj.source_ref;
             serialised_value('slice') = obj.slice;
             type_identifier = 'builtin.image_slice';
         end

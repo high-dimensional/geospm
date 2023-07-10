@@ -81,7 +81,7 @@ classdef VolumeReference < hdng.experiments.ValueContent
     
     methods (Static)
         
-        function result = from_serialised_value_and_type(serialised_value, type_identifier) %#ok<INUSD>
+        function result = from_serialised_value_and_type(serialised_value, type_identifier)
             
             if ~isa(serialised_value, 'containers.Map')
                 error('hdng.experiments.VolumeReference.from_serialised_value_and_type(): Expected serialised value to be a containers.Map instance.');
