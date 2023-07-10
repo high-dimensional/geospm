@@ -56,7 +56,13 @@ function study_path = run_comparative_study(varargin)
     spatial_data_specifier.value_generator = hdng.experiments.ValueList.from(options.spatial_data_specifier{:});
     spatial_data_specifier.description = 'Spatial Data Specifier';
     
-    options.extra_variables = [{n_samples method spatial_data_specifier}, ...
+    experiment_label = struct();
+    experiment_label.identifier = 'experiment_label';
+    experiment_label.requirements = {'spatial_data_specifier'};
+    experiment_label.value_generator = geospm.validation.value_generators.ExtractStructField('from', 'spatial_data_specifier', 'field', 'identifier', 'label_field', 'label');
+    experiment_label.description = 'Experiment Label';
+    
+    options.extra_variables = [{n_samples method spatial_data_specifier, experiment_label}, ...
                                 options.extra_variables];
     
     options = rmfield(options, 'n_samples');
