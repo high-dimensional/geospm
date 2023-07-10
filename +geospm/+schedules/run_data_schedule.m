@@ -75,9 +75,9 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
     if ~isfield(options, 'add_georeference_to_images')
         options.add_georeference_to_images = true;
     end
-    
-    if ~isfield(options, 'background_image')
-        options.background_image = {};
+
+    if ~isfield(options, 'presentation_layers')
+        options.presentation_layers = {};
     end
 
     if ~isfield(options, 'render_intercept_separately')
@@ -122,10 +122,18 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
             model_specifier.interactions = {};
         end
         
+        if ~isfield(model_specifier, 'variable_labels')
+            model_specifier.variable_labels = {};
+        end
+        
         model_file_specifier = file_specifier;
+        model_file_specifier.identifier = model_specifier.identifier;
         model_file_specifier.label = model_specifier.label;
+        model_file_specifier.group_identifier = model_specifier.group_identifier;
+        model_file_specifier.group_label = model_specifier.group_label;
         model_file_specifier.include = [model_file_specifier.include, model_specifier.variables];
         model_file_specifier.interactions = model_specifier.interactions;
+        model_file_specifier.variable_labels = model_specifier.variable_labels;
         
         if isfield(model_file_specifier, 'bool_variables')
             model_file_specifier = rmfield(model_file_specifier, 'bool_variables');
@@ -180,6 +188,9 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
     
     options.evaluator.add_georeference_to_images = options.add_georeference_to_images;
     options = rmfield(options, 'add_georeference_to_images');
+    
+    options.evaluator.presentation_layers = options.presentation_layers;
+    options = rmfield(options, 'presentation_layers');
     
     options.evaluator.set_model_grid = options.set_model_grid;
     options = rmfield(options, 'set_model_grid');
