@@ -134,7 +134,7 @@ classdef RecordValueIndex < handle
             end
             
             if entry.N_values == 0
-                remove(obj.values_, key);
+                remove(obj.values_, entry.key);
             end
         end
         
