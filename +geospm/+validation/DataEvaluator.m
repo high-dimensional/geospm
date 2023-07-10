@@ -74,6 +74,63 @@ classdef DataEvaluator < geospm.validation.Evaluator
             
             obj.adjust_variance = false;
             obj.set_model_grid = true;
+            
+            attribute = obj.configuration_attributes.define(...
+                geospm.validation.Constants.EXPERIMENT);
+            attribute.description = 'Experiment';
+            
+            attribute = obj.configuration_attributes.define(...
+                'experiment_label');
+            attribute.description = 'Experiment Label';
+            
+            attribute = obj.configuration_attributes.define(...
+                'group_label');
+            attribute.description = 'Group Label';
+
+            attribute = obj.configuration_attributes.define(...
+                geospm.validation.Constants.SPATIAL_MODEL);
+            attribute.description = 'Spatial Model';
+
+            attribute = obj.configuration_attributes.define(...
+                geospm.validation.Constants.SAMPLING_STRATEGY);
+            attribute.description = 'Sampling Strategy';
+
+            attribute = obj.configuration_attributes.define(...
+                geospm.validation.Constants.DOMAIN_EXPRESSION);
+            attribute.description = 'Domain Expression';
+            
+            attribute = obj.configuration_attributes.define(...
+                geospm.validation.Constants.SMOOTHING_LEVELS);
+            attribute.description = 'Smoothing Levels';
+            
+            attribute = obj.configuration_attributes.define(...
+                geospm.validation.Constants.SMOOTHING_LEVELS_P_VALUE);
+            attribute.description = 'Smoothing Levels P Value';
+            
+            attribute = obj.configuration_attributes.define(...
+                geospm.validation.Constants.SMOOTHING_METHOD);
+            attribute.description = 'Smoothing Method';
+
+            attribute = obj.configuration_attributes.define(...
+                'spm_regression_thresholds');
+            attribute.description = 'SPM Thresholds';
+
+            attribute = obj.configuration_attributes.define(...
+                'spm_observation_transforms');
+            attribute.description = 'SPM Observation Transforms';
+
+            attribute = obj.configuration_attributes.define(...
+                'spm_add_intercept');
+            attribute.description = 'SPM Add Intercept';
+
+            
+            attribute = obj.configuration_attributes.define(...
+                'kriging_thresholds');
+            attribute.description = 'Kriging Thresholds';
+
+            attribute = obj.configuration_attributes.define(...
+                'image_layers');
+            attribute.description = 'Image Layers';
         end
         
         
@@ -90,6 +147,65 @@ classdef DataEvaluator < geospm.validation.Evaluator
             args.x = x;
             args.y = y;
             args.z = z;
+        end
+
+        function path = render_map_presentation_layer(~, directory, layer, context)
+        
+            mapping_service = hdng.maps.MappingService.lookup(layer.service_identifier);
+
+            image = mapping_service.generate( ...
+                context.spatial_data.crs, ...
+                context.grid_min_location, ...
+                context.grid_max_location, ...
+                context.grid_spatial_resolution(1:2) * layer.pixel_density);
+            
+            name = [layer.identifier '.png'];
+            path = fullfile(directory, name);
+
+            imwrite(image, path);
+        end
+        
+        function path = render_image_presentation_layer(~, directory, layer, ~)
+            
+            [~, ~, ext] = fileparts(layer.path);
+            path = fullfile(directory, [layer.identifier ext]);
+            copyfile(layer.path, path);
+        end
+        
+        function result = render_presentation_layers(obj, base_directory, context)
+            
+            directory = fullfile(base_directory, 'presentation');
+            
+            [dirstatus, dirmsg] = mkdir(directory);
+            if dirstatus ~= 1; error(dirmsg); end
+
+            result = cell(numel(obj.presentation_layers), 1);
+            
+            for i=1:numel(obj.presentation_layers)
+                layer = obj.presentation_layers{i};
+                
+                switch layer.type
+                    case 'image-file'
+                        path = obj.render_image_presentation_layer(directory, layer, context);
+                    
+                    case 'map'
+                        path = obj.render_map_presentation_layer(directory, layer, context);
+
+                    otherwise
+                        continue
+                end
+                
+                
+                path = path(numel(context.canonical_base_path)+numel(filesep)+1:end);
+                
+                image_layer = geospm.validation.ImageLayer();
+                image_layer.identifier = layer.identifier;
+                image_layer.category = layer.category;
+                image_layer.blend_mode = layer.blend_mode;
+                image_layer.image = hdng.experiments.ImageReference(path, context.source_ref);
+
+                result{i} = image_layer;
+            end
         end
         
         function apply(obj, evaluation, options)
@@ -138,8 +254,15 @@ classdef DataEvaluator < geospm.validation.Evaluator
                     grid_options_copy.min_location, ...
                     grid_options_copy.max_location, ...
                     grid_options_copy.spatial_resolution);
+
+                grid_min_location = grid_options_copy.min_location;
+                grid_max_location = grid_options_copy.max_location;
+                grid_spatial_resolution = grid_options_copy.spatial_resolution;
             else
                 grid_options_copy.grid = grid_options_copy.grid.clone();
+                grid_min_location = grid_options_copy.grid.origin(1:2);
+                grid_max_location = grid_options_copy.grid.cell_size(1:2) .* grid_options_copy.grid.resolution(1:2);
+                grid_spatial_resolution = grid_options_copy.grid.resolution;
             end
             
             spm_arguments_copy = obj.geospm_arguments;
@@ -201,7 +324,7 @@ classdef DataEvaluator < geospm.validation.Evaluator
                     hdng.experiments.Value.from(spm_arguments_copy.smoothing_levels_p_value);
                 
                 configuration.values(geospm.validation.Constants.SMOOTHING_METHOD) = ...
-                    hdng.experiments.Value.from(spm_arguments_copy.smoothing_method, 'Smoothing Method');
+                    hdng.experiments.Value.from(spm_arguments_copy.smoothing_method);
                 
                 configuration.values('spm_regression_thresholds') = ...
                     hdng.experiments.Value.from(spm_arguments_copy.spm_thresholds);
@@ -246,6 +369,28 @@ classdef DataEvaluator < geospm.validation.Evaluator
             
             apply@geospm.validation.Evaluator(obj, evaluation, options);
             
+            image_layers = {};
+
+            if ~isempty(obj.presentation_layers)
+
+                context = hdng.one_struct( ...
+                    'spatial_data', spatial_data, ...
+                    'grid_min_location', grid_min_location, ...
+                    'grid_max_location', grid_max_location, ...
+                    'grid_spatial_resolution', grid_spatial_resolution, ...
+                    'source_ref', evaluation.source_ref, ...
+                    'canonical_base_path', evaluation.canonical_base_path);
+
+                image_layers = obj.render_presentation_layers(evaluation.directory, context);
+            end
+
+            if ~isfield(spatial_data.attachments, 'group_label')
+                spatial_data.attachments.group_label = configuration.values('experiment_label').label;
+            end
+
+            configuration.values('image_layers') = hdng.experiments.Value.from(image_layers, 'Image Layers');
+            configuration.values('group_label') = hdng.experiments.Value.from(spatial_data.attachments.group_identifier, spatial_data.attachments.group_label);
+
             if ~isempty(obj.report_generator)
                 obj.report_generator.gather(evaluation, obj.last_experiment);
             end
@@ -275,9 +420,26 @@ classdef DataEvaluator < geospm.validation.Evaluator
                 specifier.interactions = [];
             end
             
-            if ~isfield(specifier, 'label')
-                specifier.label = '';
+            if ~isfield(specifier, 'identifier')
+                specifier.identifier = '';
             end
+            
+            if ~isfield(specifier, 'label')
+                specifier.label = specifier.identifier;
+            end
+            
+            if ~isfield(specifier, 'group_identifier')
+                specifier.group_identifier = '';
+            end
+            
+            if ~isfield(specifier, 'group_label')
+                specifier.group_label = specifier.group_identifier;
+            end
+            
+            if ~isfield(specifier, 'variable_labels')
+                specifier.variable_labels = struct();
+            end
+            
             
             tmp = specifier;
             tmp = rmfield(tmp, 'file_path');
@@ -285,7 +447,11 @@ classdef DataEvaluator < geospm.validation.Evaluator
             tmp = rmfield(tmp, 'bool_variables');
             tmp = rmfield(tmp, 'standardise');
             tmp = rmfield(tmp, 'interactions');
+            tmp = rmfield(tmp, 'identifier');
             tmp = rmfield(tmp, 'label');
+            tmp = rmfield(tmp, 'group_identifier');
+            tmp = rmfield(tmp, 'group_label');
+            tmp = rmfield(tmp, 'variable_labels');
             
             arguments = hdng.utilities.struct_to_name_value_sequence(tmp);
             
@@ -319,6 +485,10 @@ classdef DataEvaluator < geospm.validation.Evaluator
                     [], ...
                     @(args) geospm.validation.DataEvaluator.add_interactions(args, specifier.interactions));
             end
+            
+            spatial_data.attachments.group_identifier = specifier.group_identifier;
+            spatial_data.attachments.group_label = specifier.group_label;
+            spatial_data.attachments.variable_labels = specifier.variable_labels;
         end
         
         function domain = build_data_domain(~, spatial_data)
