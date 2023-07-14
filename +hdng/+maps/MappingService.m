@@ -20,15 +20,30 @@ classdef MappingService < handle
     properties
     end
     
+    properties (Dependent, Transient)
+        layers
+    end
+
     methods
         
         function obj = MappingService()
             
         end
         
-        function generate(obj, crs, min_location, max_location, spatial_resolution) %#ok<INUSD> 
+        function result = get.layers(obj)
+            result = obj.access_layers();
+        end
+
+        function layer_images = generate(obj, crs, min_location, max_location, ...
+                          spatial_resolution, layers) %#ok<STOUT,INUSD> 
             error('MappingService.generate() must be implemented by a subclass');
         end        
+    end
+
+    methods (Access=protected)
+        function result = access_layers(~) %#ok<STOUT> 
+            error('MappingService.access_layers() must be implemented by a subclass.');
+        end
     end
 
     methods (Static, Access=public)

@@ -48,23 +48,38 @@ classdef PrerenderedMap < hdng.maps.MappingService
             obj.image_format = 'png';
         end
         
-        function image = generate(obj, crs, min_location, max_location, spatial_resolution)
+        function layer_images = generate(obj, crs, min_location, max_location, ...
+                                  spatial_resolution, layers)
             
-            image = [];
+            layer_images = {};
 
             if ~strcmp(crs.identifier, obj.crs.identifier)
                 return
             end
 
-            image = obj.extract_image(min_location, max_location, spatial_resolution);
+            if ~exist('layers', 'var')
+                layers = obj.layers(1);
+            end
+            
+            for i=1:numel(layers)
+                image = obj.extract_image(min_location, max_location, ...
+                    spatial_resolution, layers{i});
+                
+                layer_images{i} = image; %#ok<AGROW> 
+            end
         end        
     end
 
     methods (Access=protected)
+
+        function result = access_layers(~)
+            result = {'combined', 'foreground', 'background'};
+        end
+
         
-        function image = extract_image(obj, min_location, max_location, spatial_resolution)
+        function image = extract_image(obj, min_location, max_location, spatial_resolution, layer)
             
-            [tile_images, tiles_span, offset, span] = obj.load_tile_images(min_location, max_location);
+            [tile_images, tiles_span, offset, span] = obj.load_tile_images(min_location, max_location, layer);
             
             combined_image = [];
 
@@ -94,7 +109,7 @@ classdef PrerenderedMap < hdng.maps.MappingService
             image = imresize(image, spatial_resolution, 'bilinear');
         end
 
-        function [tile_images, tiles_span, offset, span] = load_tile_images(obj, min_location, max_location)
+        function [tile_images, tiles_span, offset, span] = load_tile_images(obj, min_location, max_location, layer)
 
             %[in_cache, cache_min, cache_max] = obj.clip_location_span_to_cache(min_location, max_location);
             
@@ -116,7 +131,7 @@ classdef PrerenderedMap < hdng.maps.MappingService
                     continue;
                 end
 
-                tile_path = fullfile(obj.cache_path, [tile_name '.' obj.image_format]);
+                tile_path = fullfile(obj.cache_path, lower(layer), [tile_name '.' obj.image_format]);
                 tile_images{i} = imread(tile_path);
             end
         end

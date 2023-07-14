@@ -21,8 +21,8 @@ function [result, options] = configure_map_presentation_layer(varargin)
         options.service_identifier = 'default';
     end
     
-    if ~isfield(options, 'layers')
-        options.layers = 'all';
+    if ~isfield(options, 'layer')
+        options.layer = 'combined';
     end
     
     if ~isfield(options, 'pixel_density')
@@ -30,6 +30,6 @@ function [result, options] = configure_map_presentation_layer(varargin)
     end
     
     result.service_identifier = options.service_identifier;
-    result.layers = options.layers;
+    result.layer = options.layer;
     result.pixel_density = options.pixel_density;
 end
