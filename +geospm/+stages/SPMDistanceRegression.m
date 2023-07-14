@@ -141,17 +141,7 @@ classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
             
             for index=1:numel(arguments.contrasts)
                 contrasts_job = arguments.contrasts{index};
-                
-                if any(strcmp(contrasts_job.statistic, {'beta_coeff'}))
-                    continue;
-                end
-                
                 identifier = [lower(contrasts_job.statistic) '_contrasts'];
-                
-                if strcmp(contrasts_job.statistic, 't_map')
-                    identifier = 't_contrasts';
-                end
-                
                 contrasts_job = obj.create_spm_job_entry(identifier, contrasts_job);
                 contrasts_job.do_add_intercept = factorial_design_job.do_add_intercept;
                 

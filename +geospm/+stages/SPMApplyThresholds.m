@@ -130,17 +130,6 @@
                 
                 contrasts = arguments.threshold_contrasts{i};
 
-                if strcmp(testing_threshold.distribution, 'beta_coeff')
-                    spm_contrast_offset = spm_contrast_offset + numel(contrasts);
-                    obj.threshold_betas(session, testing_threshold, results_directory);
-                    continue;
-                end
-
-                if strcmp(testing_threshold.distribution, 't_map')
-                    obj.threshold_t_map(session, testing_threshold, contrasts - spm_contrast_offset, results_directory);
-                    continue;
-                end
-                
                 threshold_value = testing_threshold.tail_level;
                 
                 spm_job_list = {};
@@ -197,59 +186,6 @@
             result.threshold_directories = threshold_directories;
         end
         
-        function threshold_betas(~, session, testing_threshold, results_directory)
-            
-            beta_files = session.regression_beta_files;
-
-            for i=1:numel(beta_files)
-
-                beta_file = beta_files{i};
-                
-                beta_volume = geospm.utilities.read_nifti(beta_file);
-
-                test_result = testing_threshold.test(beta_volume, 'statistics', beta_volume(:));
-
-                [~, beta_name, ~] = fileparts(beta_file);
-                beta_name = [beta_name '_mask.nii']; %#ok<AGROW>
-
-                test_result = cast(test_result, 'uint8');
-                test_path = fullfile(results_directory, beta_name);
-
-                geospm.utilities.write_nifti(test_result, test_path, spm_type('uint8'));
-            end
-        end
-        
-        function threshold_t_map(~, session, testing_threshold, contrasts, results_directory)
-            
-            statistic_files = session.contrast_map_files(contrasts);
-            
-            for i=1:numel(statistic_files)
-
-                statistic_file = statistic_files{i};
-                
-                statistic_volume = geospm.utilities.read_nifti(statistic_file);
-
-                test_result = testing_threshold.test(statistic_volume, 'statistics', statistic_volume(:));
-
-                [~, file_name, file_ext] = fileparts(statistic_file);
-                file_name = [file_name, file_ext]; %#ok<AGROW>
-                
-                [start, tokens] = regexp(file_name, '^spmT_([0-9]+)\.nii$', 'start', 'tokens');
-
-                if isempty(start)
-                    continue
-                end
-                
-                %file_index = str2double(tokens{1});
-                
-                statistic_name = ['t_map_' tokens{1}{1} '_mask.nii'];
-                
-                test_result = cast(test_result, 'uint8');
-                test_path = fullfile(results_directory, statistic_name);
-
-                geospm.utilities.write_nifti(test_result, test_path, spm_type('uint8'));
-            end
-        end
         
         function save_contrasts(obj, session, match_result, contrasts, results_directory)
             

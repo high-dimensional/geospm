@@ -111,7 +111,7 @@ classdef SignificanceTest < handle
             
             value = sort(value);
             
-            if any(strcmp(obj.distribution, {geospm.SignificanceTest.F_DISTRIBUTION, 'beta_coeff', 't_map'}))
+            if any(strcmp(obj.distribution, {geospm.SignificanceTest.F_DISTRIBUTION}))
                 if ~isempty(value)
                     error(['geospm.SignificanceTest.tails: Cannot assign non-empty tails to ' obj.distribution ' distribution test.']);
                 end
@@ -290,26 +290,6 @@ classdef SignificanceTest < handle
                             error('geospm.SignificanceTest.compute_interval(): Specified tails are incompatible with step distribution.');
                     end
                     
-                case 'beta_coeff'
-                    
-                    if ~isfield(options, 'statistics')
-                        error('geospm.SignificanceTest.compute_interval(): Missing statistics parameter for beta_coeff distribution.');
-                    end
-                    
-                    q = quantile(options.statistics(:), alpha);
-                    
-                    result = [-Inf, q];
-                    
-                case 't_map'
-                    
-                    if ~isfield(options, 'statistics')
-                        error('geospm.SignificanceTest.compute_interval(): Missing statistics parameter for t_map distribution.');
-                    end
-                    
-                    q = quantile(options.statistics(:), alpha);
-                    
-                    result = [-Inf, q];
-                    
                     
                 otherwise
                     error('geospm.SignificanceTest.compute_interval(): Unsupported distribution ''%s''.', obj.distribution);
@@ -372,7 +352,7 @@ classdef SignificanceTest < handle
                 if ~isempty(parts.tails)
                     parts.tails = parts.tails(2:end - 1);
                     parts.tails = eval(['[' parts.tails ']']);
-                elseif any(strcmp(parts.distribution, {geospm.SignificanceTest.F_DISTRIBUTION, 'beta_coeff', 't_map'}))
+                elseif any(strcmp(parts.distribution, {geospm.SignificanceTest.F_DISTRIBUTION}))
                     parts.tails = [];
                 else
                     parts.tails = [1, 2];

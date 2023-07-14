@@ -64,18 +64,6 @@ function [contrasts, contrasts_per_threshold] = ...
                 threshold_contrasts = build_domain_contrasts(term_names, 'F', I, contrast_map, threshold_indices);
                 threshold_composite_contrasts = threshold_contrasts;
 
-            case 'beta_coeff'
-                
-                I = reshape(eye(N_terms), 1, N_terms, N_terms);
-                threshold_contrasts = build_domain_contrasts(term_names, 'beta_coeff', I, contrast_map, threshold_indices);
-                threshold_composite_contrasts = threshold_contrasts;
-
-            case 't_map'
-                
-                I = reshape(eye(N_terms), 1, N_terms, N_terms);
-                threshold_contrasts = build_domain_contrasts(term_names, 't_map', I, contrast_map, threshold_indices);
-                threshold_composite_contrasts = threshold_contrasts;
-
             otherwise
                 error('geospm.utilities.define_domain_contrasts(): Unknown test distribution: ''%s''.', distribution);
         end

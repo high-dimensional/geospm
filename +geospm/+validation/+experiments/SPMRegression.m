@@ -417,7 +417,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 
             [obj.contrasts, obj.contrast_groups] = ...
                 geospm.utilities.order_domain_contrasts(...
-                obj.contrasts, {'T', 'F', 'beta_coeff', 't_map'});
+                obj.contrasts, {'T', 'F'});
             
             contrasts_per_threshold_tmp = obj.contrasts_per_threshold;
             
