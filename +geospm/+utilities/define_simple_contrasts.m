@@ -14,7 +14,7 @@
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
 function [contrasts, contrasts_per_threshold] = ...
-            define_domain_contrasts(thresholds, term_names)
+            define_simple_contrasts(thresholds, term_names)
 
     N_terms = numel(term_names);
     N_thresholds = numel(thresholds); 
@@ -65,7 +65,7 @@ function [contrasts, contrasts_per_threshold] = ...
                 threshold_composite_contrasts = threshold_contrasts;
 
             otherwise
-                error('geospm.utilities.define_domain_contrasts(): Unknown test distribution: ''%s''.', distribution);
+                error('geospm.utilities.define_simple_contrasts(): Unknown test distribution: ''%s''.', distribution);
         end
         
         merged_composite_contrasts = {};
