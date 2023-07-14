@@ -249,14 +249,22 @@ function result = load_data(file_path, varargin)
         variable_types = ['int64'; variable_types];
     end
     
-    for i=1:numel(variable_names)
-        variable_name = variable_names{i};
-        if ~options.map_variables.isKey(variable_name)
-            continue
+    if ~isempty(options.map_variables)
+        
+        variable_name_map = containers.Map('KeyType', 'char', 'ValueType', 'any');
+    
+        for i=1:numel(variable_names)
+            variable_name_map(variable_names{i}) = i;
         end
+        
+        for i=1:2:numel(options.map_variables)
+            variable_name = options.map_variables{i};
+            handler = options.map_variables{i + 1};
+            
+            column_index = variable_name_map(variable_name);
 
-        handler = options.map_variables(variable_name);
-        variable_matrix(:, i) = handler(variable_name, variable_matrix(:, i));
+            variable_matrix(:, column_index) = handler(variable_name, column_index, variable_matrix, variable_name_map);
+        end
     end
 
     result = geospm.SpatialData(x, y, [], variable_matrix, crs_or_crs_identifier, ...
