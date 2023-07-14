@@ -151,14 +151,16 @@ function run_parallel_data_schedule(study_random_seed, study_directory, ...
         records_path = fullfile(study_directory, 'records.json.gz');
         hdng.experiments.save_records(records, records_path);
     else
-        records_path = fullfile(study_directory, 'records.json.gz');
-        records = hdng.experiments.load_records(records_path);
+        %records_path = fullfile(study_directory, 'records.json.gz');
+        %records = hdng.experiments.load_records(records_path);
     end
-
+    
+    %{
     geospm.schedules.grid_summary(records, ...
         'configuration.experiment_label', 'result.terms.term', ...
         fullfile(study_directory, 'grid_summary'), ...
         'unnest_field', 'result.terms');
+    %}
 end
 
 function result = create_model_mat_command(study_random_seed, study_directory, file_specifier, model_specifier, run_mode, options)
