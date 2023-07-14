@@ -152,7 +152,10 @@
             end
 
             image_record = obj.image_record_for_threshold(arguments, []);
-            image_record('mask_traces') = hdng.experiments.Value.empty_with_label('No mask traces.'); %#ok<NASGU> 
+
+            if ~isempty(image_record)
+                image_record('mask_traces') = hdng.experiments.Value.empty_with_label('No mask traces.'); %#ok<NASGU> 
+            end
         end
         
         function result = image_record_for_threshold(~, arguments, index)

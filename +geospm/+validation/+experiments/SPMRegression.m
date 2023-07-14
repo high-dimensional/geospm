@@ -273,7 +273,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 render_image_stage.render_intercept_separately = obj.render_intercept_separately;
                 render_image_stage.volume_renderer.colour_map = obj.colour_map;
                 render_image_stage.volume_renderer.colour_map_mode = obj.colour_map_mode;
-                render_image_stage.ignore_crs = true; %~obj.add_georeference_to_images;
+                render_image_stage.ignore_crs = true;
                 render_image_stage.centre_pixels = obj.centre_pixels;
                 
                 if ~obj.render_images
@@ -607,10 +607,15 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
             result.define_attribute('threshold_or_statistic').description = 'Threshold or Statistic';
             
             result.define_attribute('term').description = 'Term';
+
             result.define_attribute('contrast').description = 'Contrast';
-            
             result.define_attribute('map').description = 'Map';
+
+            result.define_attribute('masked_contrast').description = 'Masked Contrast';
+            result.define_attribute('masked_map').description = 'Masked Map';
+
             result.define_attribute('mask').description = 'Mask';
+            result.define_attribute('mask_traces').description = 'Mask Traces';
             
             result.define_attribute('set-level').description = 'Set-Level Statistics';
             result.define_attribute('cluster-level').description = 'Cluster-Level Statistics';
@@ -626,7 +631,10 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 struct('identifier', 'term', 'category', 'partitioning'), ...
                 struct('identifier', 'contrast', 'category', 'content'), ...
                 struct('identifier', 'map', 'category', 'content'), ...
+                struct('identifier', 'masked_contrast', 'category', 'content'), ...
+                struct('identifier', 'masked_map', 'category', 'content'), ...
                 struct('identifier', 'mask', 'category', 'content'), ...
+                struct('identifier', 'mask_traces', 'category', 'content'), ...
                 struct('identifier', 'result', 'category', 'content'), ...
                 struct('identifier', 'target', 'category', 'content'), ...
                 struct('identifier', 'set-level', 'category', 'content'), ...
@@ -666,6 +674,8 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 
                 spm_contrasts = obj.unpack_volume_value(record('contrasts'));
                 spm_maps = obj.unpack_volume_value(record('maps'));
+                spm_masked_contrasts = obj.unpack_volume_value(record('masked_contrasts'));
+                spm_masked_maps = obj.unpack_volume_value(record('masked_maps'));
                 spm_masks = obj.unpack_volume_value(record('masks'));
                 spm_mask_traces = obj.unpack_volume_value(record('mask_traces'));
                 
@@ -719,8 +729,6 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
 
                         result.include_record(new_record);
                     end
-                    
-                    continue
                 end
                 
                 threshold_index = threshold_value.content;
@@ -781,22 +789,30 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                     if obj.render_images
                         contrast_image_path = spm_contrasts.images{c_index};
                         map_image_path = spm_maps.images{c_index};
+                        masked_contrast_image_path = spm_masked_contrasts.images{c_index};
+                        masked_map_image_path = spm_masked_maps.images{c_index};
                         mask_image_path = spm_masks.images{c_index};
                         mask_trace_layer_paths = spm_mask_traces.images{c_index};
                     else
                         contrast_image_path = [];
                         map_image_path = [];
+                        masked_contrast_image_path = [];
+                        masked_map_image_path = [];
                         mask_image_path = [];
                         mask_trace_layer_paths = [];
                     end
                     
                     contrast = obj.build_volume_reference(spm_contrasts.scalars{c_index}, contrast_image_path, obj.volume_slice_names);
                     map = obj.build_volume_reference(spm_maps.scalars{c_index}, map_image_path, obj.volume_slice_names);
+                    masked_contrast = obj.build_volume_reference(spm_masked_contrasts.scalars{c_index}, masked_contrast_image_path, obj.volume_slice_names);
+                    masked_map = obj.build_volume_reference(spm_masked_maps.scalars{c_index}, masked_map_image_path, obj.volume_slice_names);
                     mask = obj.build_volume_reference(spm_masks.scalars{c_index}, mask_image_path, obj.volume_slice_names);
                     slice_shapes = obj.build_slice_shapes(mask_trace_layer_paths, obj.volume_slice_names);
                     
                     new_record('contrast') = hdng.experiments.Value.from(contrast);
                     new_record('map') = hdng.experiments.Value.from(map);
+                    new_record('masked_contrast') = hdng.experiments.Value.from(masked_contrast);
+                    new_record('masked_map') = hdng.experiments.Value.from(masked_map);
                     new_record('mask') = hdng.experiments.Value.from(mask);
                     new_record('mask_traces') = hdng.experiments.Value.from(slice_shapes);
                     new_record('result') = new_record('mask');

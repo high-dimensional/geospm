@@ -311,7 +311,7 @@
             map_set.descriptions = map_descriptions;
             map_set.optional_output_names = map_output_names;
 
-            maps_value = obj.render_images(map_set, mask_set, settings, output_directory);
+            masked_maps_value = obj.render_images(map_set, mask_set, settings, output_directory);
             
             if obj.render_maskless_maps
                 map_without_mask_set = geospm.volumes.VolumeSet();
@@ -332,17 +332,43 @@
                 end
 
                 maps_value = obj.render_images(map_without_mask_set, [], settings, output_directory);
+            else
+                maps_value = [];
             end
             
             contrast_set = geospm.volumes.VolumeSet();
             contrast_set.file_paths = contrast_file_paths;
             contrast_set.descriptions = contrast_descriptions;
 
-            contrasts_value = obj.render_images(contrast_set, mask_set, settings, output_directory);
+            masked_contrasts_value = obj.render_images(contrast_set, mask_set, settings, output_directory);
+            
+            if obj.render_maskless_maps
+                contrast_without_mask_set = geospm.volumes.VolumeSet();
+                contrast_without_mask_set.file_paths = contrast_file_paths;
+                contrast_without_mask_set.descriptions = contrast_descriptions;
+                contrast_without_mask_set.optional_output_names = contrast_file_paths;
+
+                for i=1:numel(contrast_without_mask_set.file_paths)
+
+                    [~, output_name, ~] = fileparts(contrast_without_mask_set.file_paths{i});
+                    output_name = [output_name '_unmasked']; %#ok<AGROW>
+
+                    contrast_without_mask_set.optional_output_names{i} = output_name;
+                end
+
+                contrasts_value = obj.render_images(contrast_without_mask_set, [], settings, output_directory);
+            else
+                contrasts_value = [];
+            end
 
             image_record('masks') = masks_value;
+
             image_record('maps') = maps_value;
             image_record('contrasts') = contrasts_value;
+
+
+            image_record('masked_maps') = masked_maps_value;
+            image_record('masked_contrasts') = masked_contrasts_value;
         end
         
         function [pseudo_contrasts, pseudo_maps] = define_beta_pseudo_contrasts_and_maps(~, session, beta_volumes)
@@ -488,20 +514,20 @@
             % Image record array:
             %
             %   threshold
-            %   statistic <- Do we really need this?
+            %   statistic
             %   contrasts
             %   maps
             %   masks
             %
             
-            image_record = hdng.utilities.Dictionary();
-            image_record('threshold') = hdng.experiments.Value.empty_with_label('No threshold');
-            image_record('statistic') = hdng.experiments.Value.empty_with_label('All statistics');
-            image_record('masks') = hdng.experiments.Value.empty_with_label('No masks');
-            image_record('maps') = unmasked_maps_value;
-            image_record('contrasts') = unmasked_contrasts_value;
+            %image_record = hdng.utilities.Dictionary();
+            %image_record('threshold') = hdng.experiments.Value.empty_with_label('No threshold');
+            %image_record('statistic') = hdng.experiments.Value.empty_with_label('All statistics');
+            %image_record('masks') = hdng.experiments.Value.empty_with_label('No masks');
+            %image_record('maps') = unmasked_maps_value;
+            %image_record('contrasts') = unmasked_contrasts_value;
             
-            image_records.include_record(image_record);
+            %image_records.include_record(image_record);
             
             for threshold_index=1:numel(arguments.threshold_directories)
 
