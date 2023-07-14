@@ -157,12 +157,13 @@ classdef DataEvaluator < geospm.validation.Evaluator
                 context.spatial_data.crs, ...
                 context.grid_min_location, ...
                 context.grid_max_location, ...
-                context.grid_spatial_resolution(1:2) * layer.pixel_density);
+                context.grid_spatial_resolution(1:2) * layer.pixel_density, ...
+                {layer.layer});
             
             name = [layer.identifier '.png'];
             path = fullfile(directory, name);
 
-            imwrite(image, path);
+            imwrite(image{1}, path);
         end
         
         function path = render_image_presentation_layer(~, directory, layer, ~)
