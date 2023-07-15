@@ -178,12 +178,12 @@ classdef SPMInterface < matlab.mixin.Copyable
         
         function result = create_f_contrasts_job(obj, ...
                             spmmat_dep, ...
-                            contrasts, ...
+                            contrast_weights, ...
                             contrast_names, ...
                             do_add_intercept )
             
-            N_contrasts = numel(contrasts);
-            N_variables = size(contrasts{1}, 2);
+            N_contrasts = numel(contrast_weights);
+            N_variables = size(contrast_weights{1}, 2);
             
             S = {};
             
@@ -191,7 +191,7 @@ classdef SPMInterface < matlab.mixin.Copyable
             
             for i=1:N_contrasts
                 S.consess{i}.fcon.name = contrast_names{i};
-                S.consess{i}.fcon.weights = contrasts{i};
+                S.consess{i}.fcon.weights = contrast_weights{i};
                 S.consess{i}.fcon.sessrep = 'none';
             end
             
@@ -218,12 +218,12 @@ classdef SPMInterface < matlab.mixin.Copyable
         
         function result = create_t_contrasts_job(obj, ...
                             spmmat_dep, ...
-                            contrasts, ...
+                            contrast_weights, ...
                             contrast_names, ...
                             do_add_intercept )
             
-            N_contrasts = numel(contrasts);
-            N_variables = size(contrasts{1}, 2);
+            N_contrasts = numel(contrast_weights);
+            N_variables = size(contrast_weights{1}, 2);
             
             S = {};
             
@@ -231,7 +231,7 @@ classdef SPMInterface < matlab.mixin.Copyable
             
             for i=1:N_contrasts
                 S.consess{i}.tcon.name = contrast_names{i};
-                S.consess{i}.tcon.weights = contrasts{i};
+                S.consess{i}.tcon.weights = contrast_weights{i};
                 S.consess{i}.tcon.sessrep = 'none';
             end
             

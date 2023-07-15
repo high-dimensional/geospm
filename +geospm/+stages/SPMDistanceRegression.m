@@ -76,12 +76,12 @@ classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
                 struct(), 'is_optional', true, 'default_value', true);
             
             contrasts_default = struct();
-            contrasts_default.statistic = [];
+            contrasts_default.statistic = 'T';
             contrasts_default.contrasts = {};
             contrasts_default.contrast_names = {};
             
             obj.define_requirement('contrasts', ...
-                struct(), 'is_optional', true, 'default_value', contrasts_default);
+                struct(), 'is_optional', true, 'default_value', {contrasts_default});
             
             obj.define_requirement('regression_add_intercept', ...
                 struct(), 'is_optional', true, 'default_value', false);
