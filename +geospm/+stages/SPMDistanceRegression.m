@@ -120,7 +120,7 @@ classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
             
             spm_job_list = {};
             
-            factorial_design_job = obj.create_spm_job_entry('factorial_design');
+            factorial_design_job = geospm.spm.SPMJobList.create_spm_job_entry('factorial_design');
             
             [factorial_design_job.observations, ...
              factorial_design_job.variable_names] = ...
@@ -132,7 +132,7 @@ classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
             if isempty(arguments.regression_spmmat_path)
                 spm_job_list{end + 1} = factorial_design_job;
 
-                model_estimation_job = obj.create_spm_job_entry('fmri_model_estimation');
+                model_estimation_job = geospm.spm.SPMJobList.create_spm_job_entry('fmri_model_estimation');
                 spm_job_list{end + 1} = model_estimation_job;
             else
                 session = geospm.spm.SPMSession(arguments.regression_spmmat_path);
@@ -142,7 +142,7 @@ classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
             for index=1:numel(arguments.contrasts)
                 contrasts_job = arguments.contrasts{index};
                 identifier = [lower(contrasts_job.statistic) '_contrasts'];
-                contrasts_job = obj.create_spm_job_entry(identifier, contrasts_job);
+                contrasts_job = geospm.spm.SPMJobList.create_spm_job_entry(identifier, contrasts_job);
                 contrasts_job.do_add_intercept = factorial_design_job.do_add_intercept;
                 
                 if ~isempty(arguments.regression_spmmat_path)
@@ -151,7 +151,7 @@ classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
                 
                 spm_job_list{end + 1} = contrasts_job; %#ok<AGROW>
             end
-            
+
             output_directory = fullfile(arguments.directory, obj.output_directory_name);
             
             computation = geospm.spm.SPMJobList(...
@@ -282,16 +282,6 @@ classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
             else
                 global_mask = sample_density >= obj.volume_mask_factor * peak_values;
             end
-        end
-        
-        function result = create_spm_job_entry(~, identifier, model)
-            
-            if ~exist('model', 'var')
-                model = struct();
-            end
-            
-            model.job_identifier = identifier;
-            result = model;
         end
     end
     

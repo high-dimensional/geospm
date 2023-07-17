@@ -450,6 +450,16 @@ classdef SPMJobList < handle
     
     methods (Static)
         
+        function result = create_spm_job_entry(identifier, model)
+            
+            if ~exist('model', 'var')
+                model = struct();
+            end
+            
+            model.job_identifier = identifier;
+            result = model;
+        end
+
         function result = access_spm_interface()
             
             persistent spm_interface;
