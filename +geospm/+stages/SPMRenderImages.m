@@ -207,65 +207,19 @@
             end
         end
         
-        function result = render_contrast_images(obj, threshold_contrasts, output_directory, session, render_settings)
+        function result = render_contrast_images(obj, output_directory, session, render_settings)
             
+            volume_set = geospm.volumes.VolumeSet();
+            volume_set.file_paths = session.contrast_files;
+            volume_set.descriptions = session.contrast_names;
             
-            result = hdng.utilities.Dictionary();
-
-            volumes = {};
-            images = {};
-            descriptions = {};
-
-            for index=1:numel(threshold_contrasts)
-    
-                contrasts = threshold_contrasts{index};
-                
-                % When there are multiple components in a composite 
-                % contrast we only select the first one.
-
-                volume_set = geospm.volumes.VolumeSet();
-                volume_set.file_paths = session.contrast_files(contrasts(:, 1));
-                volume_set.descriptions = session.contrast_names(contrasts(:, 1));
-                
-                for k=1:numel(volume_set.descriptions)
-                    volume_set.descriptions{k} = [volume_set.descriptions{k} ' [contrast]'];
-                end
-                
-                if size(contrasts, 2) > 1
-
-                    volume_set.optional_output_names = cell(size(contrasts, 1), 1);
-
-                    for k=1:size(contrasts, 1)
-
-                        contrast_name = 'con';
-
-                        for c=1:size(contrasts, 2)
-                            contrast_name = [contrast_name, '_', sprintf('%04d', contrasts(k, c))]; %#ok<AGROW> 
-                        end
-
-                        volume_set.optional_output_names{k} = contrast_name;
-                    end
-                end
-
-                result = obj.render_images(volume_set, [], render_settings, output_directory);
-                result = result.content;
-
-                tmp_volumes = result('volumes').content;
-                tmp_images = result('images').content;
-                tmp_descriptions = result('descriptions').content;
-
-                volumes = [volumes; tmp_volumes]; %#ok<AGROW> 
-                images = [images; tmp_images]; %#ok<AGROW> 
-                descriptions = [descriptions; tmp_descriptions]; %#ok<AGROW> 
+            for k=1:numel(volume_set.descriptions)
+                volume_set.descriptions{k} = [volume_set.descriptions{k} ' [contrast]'];
             end
-            
-            result('volumes') = hdng.experiments.Value.from(volumes);
-            result('images') = hdng.experiments.Value.from(images);
-            result('descriptions') = hdng.experiments.Value.from(descriptions);
 
-            result = hdng.experiments.Value.from(result);
+            result = obj.render_images(volume_set, [], render_settings, output_directory);
         end
-        
+
         function result = render_map_images(obj, output_directory, session, render_settings)
             
             volume_set = geospm.volumes.VolumeSet();
@@ -488,7 +442,8 @@
             threshold_contrasts = arguments.threshold_contrasts;
 
             unmasked_betas_value = obj.render_beta_images(beta_records, output_directory, session, settings);
-            unmasked_contrasts_value = obj.render_contrast_images(threshold_contrasts, output_directory, session, settings);
+            %unmasked_contrasts_value = obj.render_contrast_images(threshold_contrasts, output_directory, session, settings);
+            unmasked_contrasts_value = obj.render_contrast_images(output_directory, session, settings);
             unmasked_maps_value = obj.render_map_images(output_directory, session, settings);
             
             unmasked_beta_volumes = unmasked_betas_value.content('volumes').content;
