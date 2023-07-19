@@ -47,31 +47,6 @@ function run_parallel_data_schedule(study_random_seed, study_directory, ...
         [~, options.study_name, ~] = fileparts(study_directory);
     end
     
-    if ~isfield(options, 'source_ref')
-        options.source_ref = '';
-    end
-    
-    if ~isfield(options, 'granular')
-        options.granular = hdng.one_struct( ...
-            'server_url', 'http://localhost:9999' ...
-        );
-    end
-    
-    if isempty(options.source_ref)
-        if ~isempty(options.granular.server_url)
-            granular_service = hdng.granular.Service.local_instance();
-            granular_connection = granular_service.connect(options.granular.server_url);
-            
-            [source, ~] = granular_connection.add_local_directory_source(study_directory, options.study_name);
-            
-            if isempty(source)
-                error('run_parallel_data_schedule(): Couldn''t create granular source.');
-            end
-        
-            options.source_ref = source.file_root;
-        end
-    end
-
     PROCESS_ID_FILE = fullfile(study_directory, 'running_pids.txt');
     PROCESS_LOG_FILE = fullfile(study_directory, 'completed.txt');
 

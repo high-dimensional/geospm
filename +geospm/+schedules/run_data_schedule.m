@@ -79,7 +79,36 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
     if ~isfield(options, 'presentation_layers')
         options.presentation_layers = {};
     end
-
+    
+    if ~isfield(options, 'study_name')
+        [~, options.study_name, ~] = fileparts(study_directory);
+    end
+    
+    if ~isfield(options, 'source_ref')
+        options.source_ref = '';
+    end
+    
+    if ~isfield(options, 'granular')
+        options.granular = hdng.one_struct( ...
+            'server_url', 'http://localhost:9999' ...
+        );
+    end
+    
+    if isempty(options.source_ref)
+        if ~isempty(options.granular.server_url)
+            granular_service = hdng.granular.Service.local_instance();
+            granular_connection = granular_service.connect(options.granular.server_url);
+            
+            [source, ~] = granular_connection.add_local_directory_source(study_directory, options.study_name);
+            
+            if isempty(source)
+                error('run_parallel_data_schedule(): Couldn''t create granular source.');
+            end
+        
+            options.source_ref = source.file_root;
+        end
+    end
+    
     if ~isfield(options, 'render_intercept_separately')
         options.render_intercept_separately = false;
     end
@@ -111,7 +140,7 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
     if ~isfield(options.kriging_arguments, 'kriging_thresholds')
         options.kriging_arguments.kriging_thresholds = { 'normal [2]: p < 0.05', 'normal [1,2]: p < 0.05' };
     end
-
+    
     options.spatial_data_specifier = {};
     
     for i=1:numel(model_specifiers)
