@@ -32,6 +32,9 @@ classdef SignificanceTest < handle
         LEFT_TAILED = 1
         RIGHT_TAILED = 2
         TWO_TAILED = 3
+
+        LEFT_TAIL = 1
+        RIGHT_TAIL = 2
         
         corrections = {
                  geospm.SignificanceTest.NO_CORRECTION, ...
@@ -152,7 +155,7 @@ classdef SignificanceTest < handle
             
             if ~is_valid
                 if ~strcmp(lower(value), value)
-                    error(['geospm.SignificanceTest.set.type(): ''' value ''' is not a valid threshold type.']);
+                    error(['geospm.SignificanceTest.set.type(): ''' value ''' is not a valid correction.']);
                 else
                     obj.correction_ = value;
                 end
