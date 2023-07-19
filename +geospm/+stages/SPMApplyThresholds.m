@@ -103,7 +103,6 @@
             thresholds = arguments.thresholds;
             
             spm_output_files = hdng.utilities.list_files(spm_output_directory);
-            spm_contrast_offset = 0;
             
             threshold_directories = cell(numel(thresholds), 1);
             
@@ -135,7 +134,6 @@
                 spm_job_list = {};
                 
                 for c=1:numel(contrasts)
-                    
                     if ~strcmp(testing_threshold.distribution, contrast_map_statistics{contrasts(c)})
                         error('SPMApplyThresholds.run(): Testing threshold distribution doesn''t match contrast statistic.');
                     end
@@ -189,6 +187,14 @@
         
         function save_contrasts(obj, session, match_result, contrasts, results_directory)
             
+            [~, contrast_order] = sortrows(match_result.matched_contrasts);
+
+            sorted_matched_files = ...
+                match_result.matched_files(contrast_order);
+            
+            contrast_map = zeros(max(match_result.matched_contrasts), 1);
+            contrast_map(match_result.matched_contrasts) = contrast_order;
+            
             contrast_table = '';
 
             for c=1:numel(contrasts)
@@ -198,15 +204,11 @@
                     session.variables.xCon(contrast).name, newline]; %#ok<AGROW>
             end
             
-            %contrast_pairs = obj.match_contrast_pairs(session, contrasts);
             contrast_pairs = [];
 
             if size(contrasts, 2) ~= 1
                 contrast_pairs = contrasts;
             end
-
-            contrast_map = zeros(session.N_contrasts, 1);
-            contrast_map(contrasts) = 1:numel(contrasts);
 
             if size(contrast_pairs, 1) == 0
                 contrast_table = ['Contrasts', newline, ...
@@ -215,14 +217,14 @@
                 contrast_table = ['Component Contrasts', newline, ...
                       contrast_table, 'Paired Contrasts', newline];
             end
-
+            
             for p=1:size(contrast_pairs, 1)
                 contrast1 = contrast_pairs(p, 1);
                 contrast2 = contrast_pairs(p, 2);
                 pair_name = sprintf('spmT_%04d_%04d_mask.nii', contrast1, contrast2);
 
-                path1 = match_result.matched_files{contrast_map(contrast1)};
-                path2 = match_result.matched_files{contrast_map(contrast2)};
+                path1 = sorted_matched_files{contrast_map(contrast1)};
+                path2 = sorted_matched_files{contrast_map(contrast2)};
                 path3 = fullfile(results_directory, pair_name);
 
                 obj.merge_mask_files(path1, path2, path3);
@@ -248,35 +250,6 @@
             
             data = cast(data1 + data2, 'uint8');
             geospm.utilities.write_nifti(data, path3, spm_type('uint8'));
-        end
-        
-        function pairs = match_contrast_pairs(~, session, selection)
-            
-            statistics = session.contrast_map_statistics;
-            statistics = cellfun(@(x) strcmp(x, 'T'), statistics, 'UniformOutput', 1);
-            
-            selector = zeros(numel(statistics), 1, 'logical');
-            selector(selection) = statistics(selection);
-            
-            definitions = session.contrast_definitions(selector);
-            indices = 1:numel(session.contrast_definitions);
-            indices = indices(selector);
-
-            pairs = [];
-
-            for index1=1:numel(definitions)
-                definition1 = definitions{index1};
-
-                for index2=index1 + 1:numel(definitions)
-                    definition2 = definitions{index2};
-
-                    if isequal(definition1, -definition2)
-                        pairs = [pairs; [indices(index1), indices(index2)]]; %#ok<AGROW>
-                        %fprintf('Matched contrasts %d and %d.\n', indices(index1), indices(index2));
-                    end
-                end
-            end
-            
         end
         
         function result = extra_values_from_contrast_p_values(obj, contrast_p_values)     %#ok<INUSD>
