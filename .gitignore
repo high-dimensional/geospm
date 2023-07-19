@@ -3,5 +3,7 @@
 +hdng/commit/*
 +geospm/commit/*
 +geospm/+geotiffpatch/+patched/*
++geospm/+volumes/+tests/*
 **/.DS_Store
-
+in\ progress/*
+mapping_services/**

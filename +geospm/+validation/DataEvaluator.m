@@ -27,6 +27,7 @@ classdef DataEvaluator < geospm.validation.Evaluator
         
         adjust_variance
         set_model_grid
+        default_coincident_observations_mode
     end
     
     properties (Dependent, Transient)
@@ -74,6 +75,8 @@ classdef DataEvaluator < geospm.validation.Evaluator
             
             obj.adjust_variance = false;
             obj.set_model_grid = true;
+            obj.default_coincident_observations_mode = ...
+                geospm.models.sampling.Subsampling.IDENTITY_MODE;
             
             attribute = obj.configuration_attributes.define(...
                 geospm.validation.Constants.EXPERIMENT);
@@ -133,22 +136,6 @@ classdef DataEvaluator < geospm.validation.Evaluator
             attribute.description = 'Image Layers';
         end
         
-        
-        function args = add_jitter(~, args, jitter_x, jitter_y)
-            args.x = args.x + jitter_x;
-            args.y = args.y + jitter_y;
-        end
-        
-        function args = add_constant(~, args)
-            args.observations = [ones(size(args.observations, 1), 1), args.observations];
-        end
-        
-        function args = update_coordinates(~, args, x, y, z)
-            args.x = x;
-            args.y = y;
-            args.z = z;
-        end
-
         function path = render_map_presentation_layer(~, directory, layer, context)
         
             mapping_service = hdng.maps.MappingService.lookup(layer.service_identifier);
@@ -218,7 +205,7 @@ classdef DataEvaluator < geospm.validation.Evaluator
             if configuration.values.holds_key('coincident_observations_mode')
                 coincident_observations_mode = configuration('coincident_observations_mode');
             else
-                coincident_observations_mode = [];
+                coincident_observations_mode = obj.default_coincident_observations_mode;
             end
             
             grid_options_copy = obj.grid_options;
