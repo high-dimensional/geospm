@@ -31,7 +31,15 @@ function [result, options] = configure_presentation_layer(varargin)
     if ~isfield(options, 'category')
         options.category = 'overlay';
     end
-    
+
+    if ~isfield(options, 'priority')
+        options.priority = 0;
+    end
+
+    if ~isfield(options, 'opacity')
+        options.opacity = 1.0;
+    end
+
     if ~isfield(options, 'blend_mode')
         options.blend_mode = 'normal';
     end
@@ -41,6 +49,8 @@ function [result, options] = configure_presentation_layer(varargin)
     result.type = options.type;
     result.identifier = options.identifier;
     result.category = options.category;
+    result.priority = options.priority;
+    result.opacity = options.opacity;
     result.blend_mode = options.blend_mode;
 end
 

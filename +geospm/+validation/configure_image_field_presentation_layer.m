@@ -13,13 +13,17 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function [result, options] = configure_image_presentation_layer(varargin)
+function [result, options] = configure_image_field_presentation_layer(varargin)
     
-    [result, options] = geospm.validation.configure_presentation_layer(varargin{:}, 'type', 'image-file');
+    [result, options] = geospm.validation.configure_presentation_layer(varargin{:}, 'type', 'image-field');
 
-    if ~isfield(options, 'path')
-        error('geospm.validation.configure_image_presentation_layer() is missing an path argument.');
+    if ~isfield(options, 'record_path')
+        error('geospm.validation.configure_image_field_presentation_layer() is missing a record_path argument.');
+    end
+    if ~isfield(options, 'property_path')
+        error('geospm.validation.configure_image_field_presentation_layer() is missing a property_path argument.');
     end
     
-    result.path = options.path;
+    result.record_path = options.record_path;
+    result.property_path = options.property_path;
 end

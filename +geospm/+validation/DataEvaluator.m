@@ -160,6 +160,49 @@ classdef DataEvaluator < geospm.validation.Evaluator
             copyfile(layer.path, path);
         end
         
+        function path = render_image_field_presentation_layer(~, directory, layer, context)
+            
+            path = [];
+            parts = split(layer.record_path, '.');
+
+            if ~strcmp(parts{1}, 'results')
+                return
+            end
+
+            value = context.results;
+
+            for index=2:numel(parts)
+                key = parts{index};
+
+                if ~value.holds_key(key)
+                    return
+                end
+
+                value = value(key);
+
+                if isa(value, 'hdng.experiments.Value')
+                    value = value.content;
+                end
+            end
+
+            parts = split(layer.property_path, '.');
+
+            for index=1:numel(parts)
+                key = parts{index};
+                value = value.(key);
+
+                if isa(value, 'hdng.experiments.Value')
+                    value = value.content;
+                end
+            end
+
+            if ~isa(value, 'hdng.experiments.ImageReference')
+                return
+            end
+            
+            path = value.path;
+        end
+        
         function result = render_presentation_layers(obj, base_directory, context)
             
             directory = fullfile(base_directory, 'presentation');
@@ -175,6 +218,9 @@ classdef DataEvaluator < geospm.validation.Evaluator
                 switch layer.type
                     case 'image-file'
                         path = obj.render_image_presentation_layer(directory, layer, context);
+
+                    case 'image-field'
+                        path = obj.render_image_field_presentation_layer(directory, layer, context);
                     
                     case 'map'
                         path = obj.render_map_presentation_layer(directory, layer, context);
@@ -183,8 +229,9 @@ classdef DataEvaluator < geospm.validation.Evaluator
                         continue
                 end
                 
-                
-                path = path(numel(context.canonical_base_path)+numel(filesep)+1:end);
+                if startsWith(path, context.canonical_base_path)
+                    path = path(numel(context.canonical_base_path)+numel(filesep)+1:end);
+                end
                 
                 image_layer = geospm.validation.ImageLayer();
                 image_layer.identifier = layer.identifier;
@@ -367,7 +414,8 @@ classdef DataEvaluator < geospm.validation.Evaluator
                     'grid_max_location', grid_max_location, ...
                     'grid_spatial_resolution', grid_spatial_resolution, ...
                     'source_ref', evaluation.source_ref, ...
-                    'canonical_base_path', evaluation.canonical_base_path);
+                    'canonical_base_path', evaluation.canonical_base_path, ...
+                    'results', evaluation.results);
 
                 image_layers = obj.render_presentation_layers(evaluation.directory, context);
             end

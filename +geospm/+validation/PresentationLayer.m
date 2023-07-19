@@ -20,7 +20,9 @@ classdef PresentationLayer < hdng.experiments.ValueContent
     properties
         identifier
         category
+        priority
         blend_mode
+        opacity
     end
 
     methods
@@ -31,7 +33,9 @@ classdef PresentationLayer < hdng.experiments.ValueContent
             
             obj.identifier = '';
             obj.category = 'underlay';
+            obj.priority = 0;
             obj.blend_mode = 'normal';
+            obj.opacity = 1.0;
         end
         
         function [serialised_value, type_identifier] = as_serialised_value_and_type(obj)
@@ -40,7 +44,9 @@ classdef PresentationLayer < hdng.experiments.ValueContent
             
             serialised_value('identifier') = obj.identifier;
             serialised_value('category') = obj.category;
+            serialised_value('priority') = obj.priority;
             serialised_value('blend_mode') = obj.blend_mode;
+            serialised_value('opacity') = obj.opacity;
 
             
             type_identifier = 'builtin.presentation_layer';
@@ -75,10 +81,22 @@ classdef PresentationLayer < hdng.experiments.ValueContent
                 result.category = category;
             end
             
+            if isKey(serialised_value, 'priority')
+                
+                priority = serialised_value('priority');
+                result.priority = priority;
+            end
+            
             if isKey(serialised_value, 'blend_mode')
                 
                 blend_mode = serialised_value('blend_mode');
                 result.blend_mode = blend_mode;
+            end
+            
+            if isKey(serialised_value, 'opacity')
+                
+                opacity = serialised_value('opacity');
+                result.opacity = opacity;
             end
         end
     end
