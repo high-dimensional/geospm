@@ -34,7 +34,7 @@ classdef PrerenderedMap < hdng.maps.MappingService
 
             obj = obj@hdng.maps.MappingService();
             obj.crs = hdng.SpatialCRS.from_identifier('epsg:27700');
-            obj.cache_path = fullfile('mapping_services', 'pre-rendered', 'epsg_27700');
+            obj.cache_path = fullfile(mapping_services, 'pre_rendered', 'epsg_27700');
             
             obj.cache_name_format = hdng.one_struct(...
                 'format', {'%northing', '%easting'}, ...
