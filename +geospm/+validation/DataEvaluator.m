@@ -137,20 +137,19 @@ classdef DataEvaluator < geospm.validation.Evaluator
         end
         
         function path = render_map_presentation_layer(~, directory, layer, context)
-        
-            mapping_service = hdng.maps.MappingService.lookup(layer.service_identifier);
-
-            image = mapping_service.generate( ...
+            
+            image = geospm.utilities.generate_map_image(...
                 context.spatial_data.crs, ...
                 context.grid_min_location, ...
                 context.grid_max_location, ...
                 context.grid_spatial_resolution(1:2) * layer.pixel_density, ...
-                {layer.layer});
+                layer.layer, ...
+                layer.service_identifier);
             
             name = [layer.identifier '.png'];
             path = fullfile(directory, name);
 
-            imwrite(image{1}, path);
+            imwrite(image, path);
         end
         
         function path = render_image_presentation_layer(~, directory, layer, ~)

@@ -19,6 +19,8 @@ classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
         apply_volume_mask
         write_volume_mask
         volume_mask_factor
+
+        optional_mask
     end
     
     properties (SetAccess=immutable)
@@ -96,6 +98,7 @@ classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
             obj.apply_volume_mask = true;
             obj.write_volume_mask = true;
             obj.volume_mask_factor = 10.0;
+            obj.optional_mask = [];
         end
         
         function [observations, variable_names] = encode_grid_data(~, grid_data, encoding)
@@ -170,17 +173,25 @@ classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
             try
                 
                 if obj.apply_volume_mask
-                    global_mask = obj.compute_global_mask( ...
+                    global_mask = obj.compute_global_density_mask( ...
                         volume_generator, ...
                         arguments.sample_density);
                 else
                     global_mask = [];
                 end
+                
+                if ~isempty(obj.optional_mask)
+                    if isempty(global_mask)
+                        global_mask = obj.optional_mask;
+                    else
+                        global_mask = global_mask & obj.optional_mask;
+                    end
+                end
 
                 if arguments.regression_run_computation
                     
                     volume_generator.global_mask = global_mask;
-                    volume_generator.apply_global_mask_inline = obj.apply_volume_mask;
+                    volume_generator.apply_global_mask_inline = ~isempty(global_mask);
     
                     computation.run();
                 end
@@ -265,7 +276,7 @@ classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
     
     methods (Access=protected)
         
-        function global_mask = compute_global_mask(obj, ...
+        function global_mask = compute_global_density_mask(obj, ...
                 volume_generator, sample_density)
             
             peak_values = volume_generator.peak_values;

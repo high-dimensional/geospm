@@ -73,6 +73,8 @@ classdef SpatialExperiment < handle
         
         colour_map_mode
         colour_map
+
+        apply_geographic_mask
         
         add_georeference_to_images
         centre_pixels
@@ -162,6 +164,8 @@ classdef SpatialExperiment < handle
             obj.colour_map = hdng.colour_mapping.GenericColourMap.twilight_27();
             obj.colour_map_mode = hdng.colour_mapping.ColourMap.LAYER_MODE;
             
+            obj.apply_geographic_mask = true;
+
             obj.add_georeference_to_images = true;
             obj.centre_pixels = false;
             
@@ -565,6 +569,27 @@ classdef SpatialExperiment < handle
             end
         end
         
+        function mask = compute_geographic_mask(obj)
+
+            if isempty(obj.spatial_data) || ~obj.spatial_data.has_crs
+                mask = ones(obj.model_grid.resolution(2:1), 'logical');
+                return;
+            end
+            
+            min_location = obj.model_grid.origin(1:2);
+            max_location = obj.model_grid.origin(1:2) + obj.model_grid.resolution(1:2) .* obj.model_grid.cell_size(1:2);
+
+            mask = geospm.utilities.generate_map_image(...
+                obj.spatial_data.crs, ...
+                min_location, ...
+                max_location, ...
+                obj.model_grid.resolution(1:2), ...
+                'mask');
+
+            mask = mask(:, :, 1) < 128;
+            mask = rot90(mask, 3);
+        end
+
         function compute_spatial_data(obj)
             obj.spatial_data = obj.spatial_data_expression.compute_spatial_data(obj.model.domain, obj.model_data);
             obj.spatial_data.attachments = obj.model_data.attachments;

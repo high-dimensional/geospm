@@ -87,26 +87,27 @@ classdef PrerenderedMap < hdng.maps.MappingService
                 strip = tile_images{i, 1};
 
                 for j=2:size(tile_images, 2)
-                    strip = [strip, tile_images{i, j}]; %#ok<AGROW> 
+                    strip = [tile_images{i, j}; strip]; %#ok<AGROW> 
                 end
-
-                combined_image = [combined_image; strip]; %#ok<AGROW> 
+                
+                combined_image = [combined_image, strip]; %#ok<AGROW> 
             end
             
-            combined_image_size = size(combined_image, 2, 1);
+            combined_image_size = size(combined_image, 2, 1); % flip dimensions
 
             tile_resolution = combined_image_size ./ tiles_span;
 
-            image_offset = [offset(1), tiles_span(2) - offset(2) - span(2)] .* tile_resolution;
+            image_offset = [offset(1), tiles_span(2) - (offset(2) + span(2))] .* tile_resolution;
             image_span = span .* tile_resolution;
             
             aligned_image_offset = floor(image_offset) + 1;
             aligned_image_limit = ceil(image_offset + image_span);
             
             image = combined_image(aligned_image_offset(2):aligned_image_limit(2), ...
-                                   aligned_image_offset(1):aligned_image_limit(1));
+                                   aligned_image_offset(1):aligned_image_limit(1), ...
+                                   :);
 
-            image = imresize(image, spatial_resolution, 'bilinear');
+            image = imresize(image, [spatial_resolution(2), spatial_resolution(1)], 'bilinear');
         end
 
         function [tile_images, tiles_span, offset, span] = load_tile_images(obj, min_location, max_location, layer)
@@ -120,7 +121,6 @@ classdef PrerenderedMap < hdng.maps.MappingService
             [tile_min, tile_max, tiles_span, offset, span] = obj.tile_span_from_location_span(min_location, max_location);
 
             tile_names = obj.tile_names_from_tile_span(tile_min, tile_max);
-            tile_names = flip(tile_names);
             tile_images = cell(size(tile_names));
 
             for i=1:numel(tile_names)
@@ -164,10 +164,9 @@ classdef PrerenderedMap < hdng.maps.MappingService
         
         function tile_names = tile_names_from_tile_span(obj, tile_min, tile_max)
 
-            tile_names = cell(flip(tile_max - tile_min + 1));
-            
             range = tile_max - tile_min + 1;
-
+            tile_names = cell(range);
+            
             for i=1:range(1)
                 h = tile_min(1) + i - 1;
 
@@ -181,7 +180,7 @@ classdef PrerenderedMap < hdng.maps.MappingService
 
                     values = hdng.one_struct('easting', h, 'northing', v);
                     filename = obj.format_tile_name(values);
-                    tile_names{j, i} = filename;
+                    tile_names{i, j} = filename;
                 end
             end
         end

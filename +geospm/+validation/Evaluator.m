@@ -29,6 +29,8 @@ classdef Evaluator < hdng.experiments.Evaluator
         
         apply_volume_mask
         volume_mask_factor
+
+        apply_geographic_mask
         
         no_targets
         load_targets
@@ -73,6 +75,7 @@ classdef Evaluator < hdng.experiments.Evaluator
             obj.trace_thresholds = false;
             obj.apply_volume_mask = false;
             obj.volume_mask_factor = [];
+            obj.apply_geographic_mask = true;
             
             obj.no_targets = false;
             obj.load_targets = false;
@@ -229,6 +232,10 @@ classdef Evaluator < hdng.experiments.Evaluator
                     if isprop(experiment, 'volume_mask_factor') && ~isempty(obj.volume_mask_factor)
                         experiment.volume_mask_factor = obj.volume_mask_factor;
                     end
+                end
+
+                if isprop(experiment, 'apply_geographic_mask')
+                    experiment.apply_geographic_mask = obj.apply_geographic_mask;
                 end
                 
                 if isprop(experiment, 'no_targets')

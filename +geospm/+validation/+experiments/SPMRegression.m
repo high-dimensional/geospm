@@ -263,6 +263,10 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
             if ~isempty(obj.volume_mask_factor)
                 obj.regression_stage.volume_mask_factor = obj.volume_mask_factor;
             end
+
+            if obj.apply_geographic_mask
+                obj.regression_stage.optional_mask = obj.compute_geographic_mask();
+            end
             
             if strcmp(obj.run_mode, geospm.validation.SpatialExperiment.REGULAR_MODE) || ...
                  strcmp(obj.run_mode, geospm.validation.SpatialExperiment.RESUME_MODE)

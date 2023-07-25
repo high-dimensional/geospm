@@ -72,6 +72,10 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
         options.density_mask_factor = 10.0;
     end
     
+    if ~isfield(options, 'apply_geographic_mask')
+        options.apply_geographic_mask = true;
+    end
+    
     if ~isfield(options, 'add_georeference_to_images')
         options.add_georeference_to_images = true;
     end
@@ -211,6 +215,9 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
     
     options = rmfield(options, 'apply_density_mask');
     options = rmfield(options, 'density_mask_factor');
+
+    options.evaluator.apply_geographic_mask = options.apply_geographic_mask;
+    options = rmfield(options, 'apply_geographic_mask');
     
     options.evaluator.render_intercept_separately = options.render_intercept_separately;
     options = rmfield(options, 'render_intercept_separately');
