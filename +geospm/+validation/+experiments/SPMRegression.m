@@ -30,8 +30,9 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
         
         render_images
         trace_thresholds
-        apply_volume_mask
-        volume_mask_factor
+
+        apply_density_mask
+        density_mask_factor
         
         add_intercept
         render_intercept_separately
@@ -85,8 +86,8 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
             
             obj.render_images = true;
             obj.trace_thresholds = false;
-            obj.apply_volume_mask = false;
-            obj.volume_mask_factor = [];
+            obj.apply_density_mask = false;
+            obj.density_mask_factor = [];
             
             obj.add_intercept = add_intercept;
             obj.render_intercept_separately = true;
@@ -257,11 +258,11 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
             geospm.stages.SPMSpatialSmoothing(analysis);
             
             obj.regression_stage = geospm.stages.SPMDistanceRegression(analysis);
-            obj.regression_stage.apply_volume_mask = obj.apply_volume_mask;
-            obj.regression_stage.write_volume_mask = true;
+            obj.regression_stage.apply_density_mask = obj.apply_density_mask;
+            obj.regression_stage.write_applied_mask = true;
             
-            if ~isempty(obj.volume_mask_factor)
-                obj.regression_stage.volume_mask_factor = obj.volume_mask_factor;
+            if ~isempty(obj.density_mask_factor)
+                obj.regression_stage.density_mask_factor = obj.density_mask_factor;
             end
 
             if obj.apply_geographic_mask

@@ -45,12 +45,12 @@ function run(varargin)
         options.trace_thresholds = false;
     end
     
-    if ~isfield(options, 'apply_volume_mask')
-        options.apply_volume_mask = false;
+    if ~isfield(options, 'apply_density_mask')
+        options.apply_density_mask = false;
     end
     
-    if ~isfield(options, 'volume_mask_factor')
-        options.volume_mask_factor = [];
+    if ~isfield(options, 'density_mask_factor')
+        options.density_mask_factor = [];
     end
     
     if ~isfield(options, 'null_level')
@@ -392,8 +392,8 @@ function run(varargin)
     evaluator.nifti_mode = options.nifti_mode;
     evaluator.add_probes = options.add_probes;
     evaluator.trace_thresholds = options.trace_thresholds;
-    evaluator.apply_volume_mask = options.apply_volume_mask;
-    evaluator.volume_mask_factor = options.volume_mask_factor;
+    evaluator.apply_density_mask = options.apply_density_mask;
+    evaluator.density_mask_factor = options.density_mask_factor;
     evaluator.null_level = options.null_level;
     evaluator.null_level_map = options.null_level_map;
     evaluator.standardise_predictions = options.standardise_predictions;

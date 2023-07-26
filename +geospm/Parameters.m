@@ -31,6 +31,12 @@ classdef Parameters < handle
     %   each smoothing level is multiplied by this number.
     %   Default value is 10.0.
     %
+    %   apply_geographic_mask - If a coordinate reference system was defined
+    %   for the data limit analysis to raster cells that are on land.
+    %
+    %   write_applied_mask - Indicates whether the combined mask applied
+    %   to the analysis should be written to disk
+    %
     %   thresholds - A cell array of threshold strings.
     %   Default value is { 'T[1, 2]: p<0.05 (FWE)' }, which specifies a 
     %   single two-sided per-voxel family-wise error of 5%. Cf.
@@ -63,6 +69,9 @@ classdef Parameters < handle
         
         apply_density_mask % default: true
         density_mask_factor % default: []
+
+        apply_geographic_mask % default: true
+        write_applied_mask % default: true
         
         thresholds % default: A single two-sided t test at a significance level of 5% with family-wise error correction.
         trace_thresholds % default: true
@@ -128,6 +137,41 @@ classdef Parameters < handle
             end
             
             obj.density_mask_factor_ = cast(value, 'double');
+        end
+
+        
+        function result = get.apply_geographic_mask(obj)
+            result = obj.apply_geographic_mask_;
+        end
+        
+        function set.apply_geographic_mask(obj, value)
+            
+            if isempty(value)
+                error('Parameters.set.apply_geographic_mask(): argument cannot be empty.');
+            end
+            
+            if ~isa(value, 'logical')
+                error('Parameters.set.apply_geographic_mask(): argument is not a logical value.');
+            end
+            
+            obj.apply_geographic_mask_ = value;
+        end
+        
+        function result = get.write_applied_mask(obj)
+            result = obj.write_applied_mask_;
+        end
+        
+        function set.write_applied_mask(obj, value)
+            
+            if isempty(value)
+                error('Parameters.set.write_applied_mask(): argument cannot be empty.');
+            end
+            
+            if ~isa(value, 'logical')
+                error('Parameters.set.write_applied_mask(): argument is not a logical value.');
+            end
+            
+            obj.write_applied_mask_ = value;
         end
         
         function result = get.thresholds(obj)
@@ -279,6 +323,9 @@ classdef Parameters < handle
             obj.apply_density_mask_ = true;
             obj.density_mask_factor_ = 10.0;
 
+            obj.apply_geographic_mask_ = true;
+            obj.write_applied_mask_ = true;
+
             obj.thresholds_ = {'T[1,2]: p<0.05 (FWE)'};
             obj.trace_thresholds_ = true;
 
@@ -325,6 +372,9 @@ classdef Parameters < handle
         apply_density_mask_
         density_mask_factor_
         
+        apply_geographic_mask_
+        write_applied_mask_
+
         thresholds_
         
         smoothing_levels_

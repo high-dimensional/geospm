@@ -85,6 +85,9 @@ function [result, record] = compute(directory, spatial_data, ...
         kernel). More accurately, the maximum value of the kernel for
         each smoothing level is multiplied by this number.
         Default value is 10.0.
+
+        apply_geographic_mask - If a coordinate reference system was defined
+        for the data limit analysis to raster cells that are on land.
                                             
         thresholds - A cell array of threshold strings.
         Default value is { 'T[1, 2]: p<0.05 (FWE)' }, which specifies a 
@@ -135,6 +138,8 @@ function [result, record] = compute(directory, spatial_data, ...
         options.grid = parameters.grid;
         options.apply_density_mask = parameters.apply_density_mask;
         options.density_mask_factor = parameters.density_mask_factor;
+        options.apply_geographic_mask = parameters.apply_geographic_mask;
+        options.write_applied_mask = parameters.write_applied_mask;
         
         options.thresholds = parameters.thresholds;
         options.trace_thresholds = parameters.trace_thresholds;
@@ -179,6 +184,14 @@ function [result, record] = compute(directory, spatial_data, ...
     
     if ~isfield(options, 'density_mask_factor')
         options.density_mask_factor = 10.0;
+    end
+    
+    if ~isfield(options, 'apply_geographic_mask')
+        options.apply_geographic_mask = true;
+    end
+    
+    if ~isfield(options, 'write_applied_mask')
+        options.write_applied_mask = true;
     end
     
     if numel(directory) == 0
@@ -286,11 +299,11 @@ function [result, record] = compute(directory, spatial_data, ...
     
     geospm.stages.SPMSpatialSmoothing(analysis);
     regression_stage = geospm.stages.SPMDistanceRegression(analysis);
-    regression_stage.apply_volume_mask = options.apply_density_mask;
-    regression_stage.write_volume_mask = options.apply_density_mask;
+    regression_stage.apply_density_mask = options.apply_density_mask;
+    regression_stage.write_applied_mask = options.write_applied_mask;
     
     if ~isempty(options.density_mask_factor)
-        regression_stage.volume_mask_factor = options.density_mask_factor;
+        regression_stage.density_mask_factor = options.density_mask_factor;
     end
 
     if strcmp(options.run_mode, REGULAR_RUN_MODE) || ...

@@ -129,8 +129,8 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
         options.do_write_spatial_data = true;
     end
     
-    if ~isfield(options.geospm_arguments, 'write_volume_mask')
-        options.geospm_arguments.write_volume_mask = true;
+    if ~isfield(options.geospm_arguments, 'write_applied_mask')
+        options.geospm_arguments.write_applied_mask = true;
     end
 
     if ~isfield(options.geospm_arguments, 'spm_add_intercept')
@@ -210,8 +210,8 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
     options.evaluator.do_write_spatial_data = options.do_write_spatial_data;
     options = rmfield(options, 'do_write_spatial_data');
     
-    options.evaluator.apply_volume_mask = options.apply_density_mask;
-    options.evaluator.volume_mask_factor = options.density_mask_factor;
+    options.evaluator.apply_density_mask = options.apply_density_mask;
+    options.evaluator.density_mask_factor = options.density_mask_factor;
     
     options = rmfield(options, 'apply_density_mask');
     options = rmfield(options, 'density_mask_factor');

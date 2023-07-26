@@ -27,8 +27,8 @@ classdef Evaluator < hdng.experiments.Evaluator
         add_probes
         trace_thresholds
         
-        apply_volume_mask
-        volume_mask_factor
+        apply_density_mask
+        density_mask_factor
 
         apply_geographic_mask
         
@@ -73,8 +73,8 @@ classdef Evaluator < hdng.experiments.Evaluator
             obj.nifti_mode = geospm.validation.SpatialExperiment.NIFTI_KEEP;
             obj.add_probes = false;
             obj.trace_thresholds = false;
-            obj.apply_volume_mask = false;
-            obj.volume_mask_factor = [];
+            obj.apply_density_mask = false;
+            obj.density_mask_factor = [];
             obj.apply_geographic_mask = true;
             
             obj.no_targets = false;
@@ -226,11 +226,11 @@ classdef Evaluator < hdng.experiments.Evaluator
                     experiment.trace_thresholds = obj.trace_thresholds;
                 end
                  
-                if isprop(experiment, 'apply_volume_mask')
-                    experiment.apply_volume_mask = obj.apply_volume_mask;
+                if isprop(experiment, 'apply_density_mask')
+                    experiment.apply_density_mask = obj.apply_density_mask;
                      
-                    if isprop(experiment, 'volume_mask_factor') && ~isempty(obj.volume_mask_factor)
-                        experiment.volume_mask_factor = obj.volume_mask_factor;
+                    if isprop(experiment, 'density_mask_factor') && ~isempty(obj.density_mask_factor)
+                        experiment.density_mask_factor = obj.density_mask_factor;
                     end
                 end
 

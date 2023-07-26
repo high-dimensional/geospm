@@ -16,10 +16,11 @@
 classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
     
     properties
-        apply_volume_mask
-        write_volume_mask
-        volume_mask_factor
-
+        apply_density_mask
+        density_mask_factor
+        
+        write_applied_mask
+        
         optional_mask
     end
     
@@ -95,9 +96,9 @@ classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
             obj.define_product('volume_mask_file');
             
             obj.output_directory_name = 'spm_output';
-            obj.apply_volume_mask = true;
-            obj.write_volume_mask = true;
-            obj.volume_mask_factor = 10.0;
+            obj.apply_density_mask = true;
+            obj.write_applied_mask = true;
+            obj.density_mask_factor = 10.0;
             obj.optional_mask = [];
         end
         
@@ -172,7 +173,7 @@ classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
             
             try
                 
-                if obj.apply_volume_mask
+                if obj.apply_density_mask
                     global_mask = obj.compute_global_density_mask( ...
                         volume_generator, ...
                         arguments.sample_density);
@@ -223,7 +224,7 @@ classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
             
             global_mask_path = '';
             
-            if obj.write_volume_mask
+            if obj.write_applied_mask
                 
                 global_mask_path = fullfile(arguments.directory, 'global_mask.nii');
                 geospm.utilities.write_nifti(global_mask, global_mask_path);
@@ -286,12 +287,12 @@ classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
                 
                 for index=1:numel(peak_values)
                     p = peak_values(index);
-                    selector = sample_density(:, :, index) >= obj.volume_mask_factor * p;
+                    selector = sample_density(:, :, index) >= obj.density_mask_factor * p;
                     global_mask(:, :, index) = selector;
                 end
                 
             else
-                global_mask = sample_density >= obj.volume_mask_factor * peak_values;
+                global_mask = sample_density >= obj.density_mask_factor * peak_values;
             end
         end
     end
