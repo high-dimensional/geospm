@@ -34,7 +34,7 @@ classdef MappingService < handle
             result = obj.access_layers();
         end
 
-        function layer_images = generate(obj, crs, min_location, max_location, ...
+        function [images, alphas] = generate(obj, crs, min_location, max_location, ...
                           spatial_resolution, layers) %#ok<STOUT,INUSD> 
             error('MappingService.generate() must be implemented by a subclass');
         end        

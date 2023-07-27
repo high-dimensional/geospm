@@ -138,7 +138,7 @@ classdef DataEvaluator < geospm.validation.Evaluator
         
         function path = render_map_presentation_layer(~, directory, layer, context)
             
-            image = geospm.utilities.generate_map_image(...
+            [image, alpha] = geospm.utilities.generate_map_image(...
                 context.spatial_data.crs, ...
                 context.grid_min_location, ...
                 context.grid_max_location, ...
@@ -148,8 +148,16 @@ classdef DataEvaluator < geospm.validation.Evaluator
             
             name = [layer.identifier '.png'];
             path = fullfile(directory, name);
+            
+            options = struct();
 
-            imwrite(image, path);
+            if ~isempty(alpha)
+                options.Alpha = alpha;
+            end
+
+            arguments = hdng.utilities.struct_to_name_value_sequence(options);
+            
+            imwrite(image, path, arguments{:});
         end
         
         function path = render_image_presentation_layer(~, directory, layer, ~)

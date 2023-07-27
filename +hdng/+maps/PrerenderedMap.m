@@ -43,15 +43,17 @@ classdef PrerenderedMap < hdng.maps.MappingService
 
             obj.cache_min_location = [0, 0];
             obj.cache_max_location = [700000, 1300000];
-            obj.cache_n_tiles = [7, 13];
-            obj.tile_size = [4000, 4000];
+            %obj.cache_n_tiles = [7, 13];
+            %obj.tile_size = [4000, 4000];
+            obj.cache_n_tiles = [14, 26];
+            obj.tile_size = [2500, 2500];
             obj.image_format = 'png';
         end
         
-        function layer_images = generate(obj, crs, min_location, max_location, ...
+        function [images, alphas] = generate(obj, crs, min_location, max_location, ...
                                   spatial_resolution, layers)
             
-            layer_images = {};
+            images = {};
 
             if ~strcmp(crs.identifier, obj.crs.identifier)
                 return
@@ -62,10 +64,11 @@ classdef PrerenderedMap < hdng.maps.MappingService
             end
             
             for i=1:numel(layers)
-                image = obj.extract_image(min_location, max_location, ...
+                [image, alpha] = obj.extract_image(min_location, max_location, ...
                     spatial_resolution, layers{i});
                 
-                layer_images{i} = image; %#ok<AGROW> 
+                images{i} = image; %#ok<AGROW>
+                alphas{i} = alpha; %#ok<AGROW>
             end
         end        
     end
@@ -77,20 +80,24 @@ classdef PrerenderedMap < hdng.maps.MappingService
         end
 
         
-        function image = extract_image(obj, min_location, max_location, spatial_resolution, layer)
+        function [image, alpha] = extract_image(obj, min_location, max_location, spatial_resolution, layer)
             
-            [tile_images, tiles_span, offset, span] = obj.load_tile_images(min_location, max_location, layer);
+            [tile_images, tiles_span, offset, span, tile_alphas] = obj.load_tile_images(min_location, max_location, layer);
             
             combined_image = [];
+            combined_alpha = [];
 
             for i=1:size(tile_images, 1)
                 strip = tile_images{i, 1};
+                alpha_strip = tile_alphas{i, 1};
 
                 for j=2:size(tile_images, 2)
                     strip = [tile_images{i, j}; strip]; %#ok<AGROW> 
+                    alpha_strip = [tile_alphas{i, j}; alpha_strip]; %#ok<AGROW> 
                 end
                 
                 combined_image = [combined_image, strip]; %#ok<AGROW> 
+                combined_alpha = [combined_alpha, alpha_strip]; %#ok<AGROW> 
             end
             
             combined_image_size = size(combined_image, 2, 1); % flip dimensions
@@ -108,9 +115,19 @@ classdef PrerenderedMap < hdng.maps.MappingService
                                    :);
 
             image = imresize(image, [spatial_resolution(2), spatial_resolution(1)], 'bilinear');
+            
+            if ~isempty(combined_alpha)
+                alpha = combined_alpha(aligned_image_offset(2):aligned_image_limit(2), ...
+                                       aligned_image_offset(1):aligned_image_limit(1), ...
+                                       :);
+
+                alpha = imresize(alpha, [spatial_resolution(2), spatial_resolution(1)], 'bilinear');
+            else
+                alpha = [];
+            end
         end
 
-        function [tile_images, tiles_span, offset, span] = load_tile_images(obj, min_location, max_location, layer)
+        function [tile_images, tiles_span, offset, span, tile_alphas] = load_tile_images(obj, min_location, max_location, layer)
 
             %[in_cache, cache_min, cache_max] = obj.clip_location_span_to_cache(min_location, max_location);
             
@@ -122,17 +139,19 @@ classdef PrerenderedMap < hdng.maps.MappingService
 
             tile_names = obj.tile_names_from_tile_span(tile_min, tile_max);
             tile_images = cell(size(tile_names));
+            tile_alphas = cell(size(tile_names));
 
             for i=1:numel(tile_names)
                 tile_name = tile_names{i};
 
                 if isempty(tile_name)
                     tile_images{i} = cast(ones(obj.tile_size) * 255, 'uint8');
+                    tile_alphas{i} = double.empty;
                     continue;
                 end
 
                 tile_path = fullfile(obj.cache_path, lower(layer), [tile_name '.' obj.image_format]);
-                tile_images{i} = imread(tile_path);
+                [tile_images{i}, ~, tile_alphas{i}] = imread(tile_path);
             end
         end
 
