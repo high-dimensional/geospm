@@ -243,16 +243,18 @@ classdef NumericData < handle
             %   row_map - a vector of row indices: each entry maps a row in this object to a position in the row selection of from
             
             if ~exist('row_selection', 'var')
-                row_selection = ones(obj.N, 1, 'logical');
+                row_selection = ones(from.N, 1, 'logical');
             end
             
             if ~exist('row_map', 'var') || isempty(row_map)
-                row_indices = 1:obj.N;
-                row_indices = row_indices(row_selection);
-                row_map = 1:numel(row_indices);
+                row_indices = 1:from.N;
+                %row_indices = row_indices(row_selection);
+                %row_map = 1:numel(row_indices);
+                row_map = row_indices(row_selection);
             end
             
-            row_attachments = from.row_attachments(row_selection);
+            %row_attachments = from.row_attachments(row_selection);
+            row_attachments = from.row_attachments;
             
             if isfield(row_attachments, 'labels')
                 obj.assign_row_attachment_impl('labels', row_attachments, row_map);
