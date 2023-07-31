@@ -266,7 +266,7 @@ classdef SpatialData < geospm.NumericData
             end
         end
         
-        function render_in_figure(obj, origin, frame_size)
+        function render_in_figure(obj, origin, frame_size, variant, varargin)
             
             if ~exist('origin', 'var')
                 origin = [obj.x_min, obj.y_min];
@@ -276,48 +276,147 @@ classdef SpatialData < geospm.NumericData
                 frame_size = [obj.x_max, obj.y_max] - origin;
             end
             
-            obj.render_xy_in_figure(obj.x, obj.y, obj.categories, origin, frame_size);
+            if ~exist('variant', 'var')
+                variant = 'categories';
+            end
+            
+            method_name = ['render_' variant '_in_figure'];
+
+            if ~ismethod(obj, method_name)
+                return;
+            end
+            
+            obj.(method_name)(origin, frame_size, varargin{:});
+        end
+
+        function render_categories_in_figure(obj, origin, frame_size)
+            obj.render_xy_in_figure(obj.x, obj.y, origin, frame_size);
+        end
+
+        function render_frequencies_in_figure(obj, origin, frame_size, varargin)
+
+            options = hdng.utilities.parse_struct_from_varargin(varargin{:});
+
+            if isempty(origin)
+                origin = obj.min_xy;
+            end
+
+            if isempty(frame_size)
+                frame_size = obj.max_xy - obj.min_xy;
+            end
+
+            if ~isfield(options, 'grid_size')
+                cell_size = max(frame_size) / 100;
+                options.grid_size = ceil(frame_size ./ cell_size);
+            end
+            
+            grid = geospm.Grid();
+            grid.span_frame(origin, origin + frame_size, options.grid_size);
+            
+            [grid_data, ~] = grid.grid_data(obj);
+            
+            linear_index = sub2ind(grid.resolution(1:2), grid_data.u, grid_data.v);
+
+            [cell_index, occurrences] = hdng.utilities.compute_unique_values(linear_index);
+            frequencies = cellfun(@(x) numel(x), occurrences);
+            marker_sizes = frequencies ./ max(frequencies) * 10;
+
+            %N = 10;
+            %q = quantile(frequencies, N - 1);
+            %marker_sizes = N - sum(frequencies <= q', 1);
+            
+            cell_size = options.max_pixel_size / max(options.grid_size);
+            cell_size = cell_size / 3;
+
+            marker_sizes = marker_sizes * cell_size;
+
+            [u, v] = ind2sub(grid.resolution(1:2), cell_index);
+            
+            geospm.diagrams.scatter(u, v, [0, 0], options.grid_size, ...
+                'marker_sizes', marker_sizes, ...
+                'marker_symbol', 'o', varargin{:} );
         end
         
-        function write_as_eps(obj, file_path, point1, point2)
+        function write_as_eps(obj, file_path, point1, point2, variant, varargin)
             
-            if ~exist('point1', 'var')
+            if ~exist('point1', 'var') || isempty(point1)
                 point1 = [obj.x_min, obj.y_min];
             end
             
-            if ~exist('point2', 'var')
+            if ~exist('point2', 'var') || isempty(point2)
                 point2 = [obj.x_max, obj.y_max];
+            end
+
+            if ~exist('variant', 'var')
+                variant = [];
+            end
+            
+            options = hdng.utilities.parse_struct_from_varargin(varargin{:});
+
+            if ~isfield(options, 'max_pixel_size')
+                options.max_pixel_size = 150;
             end
             
             [origin, frame_size] = obj.span_frame(point1, point2);
             
+            resolution_factor = options.max_pixel_size / max(frame_size);
+            options.max_pixel_size = max(frame_size);
+            
             figure('Renderer', 'painters');
-            ax = gca;
-            obj.render_in_figure(origin, frame_size);
+            %ax = gca;
+            
+            arguments = hdng.utilities.struct_to_name_value_sequence(options);
 
-            saveas(ax, file_path, 'epsc');
+            obj.render_in_figure(origin, frame_size, variant, arguments{:});
+
+            %saveas(ax, file_path, 'epsc');
+            
+            print(file_path, '-depsc', ['-r' num2str(72 * resolution_factor)], '-noui');
             
             close;
         end
         
-        function write_as_png(obj, file_path, point1, point2)
+        function write_as_png(obj, file_path, point1, point2, variant, varargin)
             
-            if ~exist('point1', 'var')
+            if ~exist('point1', 'var') || isempty(point1)
                 point1 = [obj.x_min, obj.y_min];
             end
             
-            if ~exist('point2', 'var')
+            if ~exist('point2', 'var') || isempty(point2)
                 point2 = [obj.x_max, obj.y_max];
             end
+
+            if ~exist('variant', 'var')
+                variant = [];
+            end
             
+            options = hdng.utilities.parse_struct_from_varargin(varargin{:});
+
+            if ~isfield(options, 'max_pixel_size')
+                options.max_pixel_size = 150;
+            end
+
             [origin, frame_size] = obj.span_frame(point1, point2);
             
+            resolution_factor = options.max_pixel_size / max(frame_size);
+            options.max_pixel_size = max(frame_size);
+
             figure('Renderer', 'painters');
-            ax = gca;
+            %ax = gca;
+            %f = gcf;
             
-            obj.render_in_figure(origin, frame_size);
+            arguments = hdng.utilities.struct_to_name_value_sequence(options);
+
+            obj.render_in_figure(origin, frame_size, variant, arguments{:});
             
-            saveas(ax, file_path, 'png');
+            %saveas(ax, file_path, 'png');
+            %exportgraphics(ax, file_path, 'Resolution', 100, 'BackgroundColor', 'none');
+            
+            %r = groot;
+            %monitorSize = r.MonitorPositions(1, :);
+
+            %f.Position = [0, 0, f.PaperSize];
+            print(file_path, '-dpng', ['-r' num2str(72 * resolution_factor)], '-noui');
             
             close;
             
@@ -637,98 +736,17 @@ classdef SpatialData < geospm.NumericData
             result{:, N_cols + 1 - P:end} = observations;
         end
         
-        function render_xy_in_figure(x, y, categories, origin, frame_size)
+        function render_xy_in_figure(x, y, categories, origin, frame_size, varargin)
             
             if ~exist('origin', 'var')
-                origin = [min(x), min(y)];
+                origin = [];
             end
             
             if ~exist('frame_size', 'var')
-                frame_size = [max(x), max(y)] - origin;
+                frame_size = [];
             end
             
-            N = size(x, 1);
-            
-            if N ~= size(y, 1)
-                error('SpatialData.render_xy_in_figure(): X and Y size do not match.');
-            end
-            
-            if N ~= size(categories, 1)
-                error('SpatialData.render_xy_in_figure(): X and categories size do not match.');
-            end
-            
-            colours = {
-                [153, 153, 153], ...
-                [255, 102, 51], ...
-                [0, 204, 153], ...
-                [0, 204, 255], ...
-                [255, 217,  100], ...
-                [148, 96, 208], ...
-                [69, 208, 59]
-                };
-            
-            ratio = frame_size(2) / frame_size(1);
-            
-            pixel_size = 150;
-            mark_size = 2;
-            
-            f = gcf;
-            set(f, 'MenuBar', 'none', 'ToolBar', 'none');
-            set(f, 'Units', 'points');
-            set(f, 'Position', [100 100 pixel_size + mark_size pixel_size * ratio + mark_size]);
-            
-            ax = gca;
-            
-            hold on;
-            
-            
-            %Plot background polygon
-            
-            X = [origin(1) origin(1) origin(1) + frame_size(1) origin(1) + frame_size(1)];
-            Y = [origin(2) origin(2) + frame_size(2) origin(2) + frame_size(2) origin(2)];
-            
-            frame = polyshape(X, Y);
-            plot(frame, 'FaceColor', 'white', 'FaceAlpha', 0.5, 'LineStyle', 'none');
-            
-            mark_size_squared = mark_size * mark_size;
-            
-            N_categories = 7;
-            
-            marker_colours = zeros(N, 3);
-            
-            for k=1:N_categories
-                
-                selector = categories == k;
-                colour = repmat(colours{k}, sum(selector), 1);
-                marker_colours(categories == k, :) = colour;
-            end
-            
-            marker_colours = marker_colours ./ 255.0;
-            
-            props = scatter(x, y, mark_size_squared, 'filled', 'Marker', 'o', 'MarkerEdgeColor', 'none'); %, 'Marker', 'o', 'MarkerEdgeColor', 'none', 'MarkerFaceColor', 'magenta');
-            props.CData = marker_colours;
-            
-            
-            hold off;
-            
-            set(ax,'units','points');
-            
-            axis(ax, 'equal', 'manual', [origin(1), origin(1) + frame_size(1), origin(2), origin(2) + frame_size(2)]);
-            set(ax,'color','none')
-            set(ax,'visible','off');
-            set(ax,'xtick',[], 'ytick', []);
-            set(ax,'XColor', 'none','YColor','none');
-            
-            try
-                set(ax,'PositionConstraint', 'innerposition');
-            catch
-            end
-            
-            margin = mark_size / 2;
-            
-            set(ax,'Position', [margin, margin, pixel_size, pixel_size * ratio]);
-            set(f, 'PaperPositionMode', 'auto', 'PaperSize', [f.PaperPosition(3), f.PaperPosition(4)]);
-            
+            geospm.diagrams.scatter(x, y, 2, categories, origin, frame_size, varargin{:});
         end
         
         function [result, other_observations] = from_csv(file_path)

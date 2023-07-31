@@ -221,7 +221,7 @@ classdef GridData < geospm.SpatialData
                 frame_size = [obj.u_max, obj.v_max] - origin;
             end
             
-            obj.render_xy_in_figure(obj.u, obj.v, obj.categories, origin, frame_size);
+            obj.render_categories_in_figure(obj.u, obj.v, origin, frame_size);
         end
         
         

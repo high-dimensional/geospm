@@ -572,7 +572,7 @@ classdef SpatialExperiment < handle
         function mask = compute_geographic_mask(obj)
 
             if isempty(obj.spatial_data) || ~obj.spatial_data.has_crs
-                mask = ones(obj.model_grid.resolution(2:1), 'logical');
+                mask = ones(obj.model_grid.resolution([2,1]), 'logical');
                 return;
             end
             
@@ -647,8 +647,14 @@ classdef SpatialExperiment < handle
             
             scatter_plot_path = fullfile(obj.directory, [model_data_name '.eps']);
             
+            arguments = {...
+                'frequencies', 'grid_size', obj.model_grid.resolution(1:2), ...
+                'max_pixel_size', max(obj.model_grid.resolution(1:2)) * 16, ...
+                'no_background', true,
+                };
+
             if obj.should_write_files()
-                obj.model_data.write_as_eps(scatter_plot_path, [1, 1], obj.model.spatial_resolution + 1);
+                obj.model_data.write_as_eps(scatter_plot_path, [1, 1], obj.model.spatial_resolution + 1, arguments{:});
             end
             
             file = hdng.experiments.FileReference();
@@ -659,7 +665,7 @@ classdef SpatialExperiment < handle
             scatter_plot_path = fullfile(obj.directory, [model_data_name '.png']);
             
             if obj.should_write_files()
-                obj.model_data.write_as_png(scatter_plot_path, [1, 1], obj.model.spatial_resolution + 1);
+                obj.model_data.write_as_png(scatter_plot_path, [1, 1], obj.model.spatial_resolution + 1, arguments{:});
             end
             
             file = hdng.experiments.ImageReference();
