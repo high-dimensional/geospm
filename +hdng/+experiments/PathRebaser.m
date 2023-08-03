@@ -210,6 +210,8 @@ classdef PathRebaser < hdng.experiments.ValueModifier
             modified.identifier = value.content.identifier;
             modified.category = value.content.category;
             modified.blend_mode = value.content.blend_mode;
+            modified.opacity = value.content.opacity;
+            modified.priority = value.content.priority;
 
             modified.image = hdng.experiments.ImageReference( ...
                 obj.modify_path(value.content.image.path), ...

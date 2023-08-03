@@ -13,8 +13,11 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function scatter(x, y, origin, frame_size, varargin)
+function result = scatter(x, y, origin, frame_size, varargin)
     
+    result = struct();
+    result.corrective_scale_factor = 1.0;
+
     if ~exist('origin', 'var') || isempty(origin)
         origin = [min(x), min(y)];
     end
@@ -33,6 +36,10 @@ function scatter(x, y, origin, frame_size, varargin)
         options.marker_sizes = 2;
     end
 
+    if ~isfield(options, 'marker_scale')
+        options.marker_scale = 1;
+    end
+
     if ~isfield(options, 'marker_symbol')
         options.marker_symbol = '+';
     end
@@ -43,6 +50,10 @@ function scatter(x, y, origin, frame_size, varargin)
     
     if ~isfield(options, 'max_pixel_size')
         options.max_pixel_size = 150;
+    end
+    
+    if ~isfield(options, 'line_width')
+        options.line_width = 0.5;
     end
     
     N = size(x, 1);
@@ -60,6 +71,7 @@ function scatter(x, y, origin, frame_size, varargin)
     end
     
     diagram_size = options.max_pixel_size * (frame_size ./ max(frame_size));
+    cell_size = options.marker_scale * options.max_pixel_size / max(frame_size);
 
     f = gcf;
     ax = gca;
@@ -101,12 +113,15 @@ function scatter(x, y, origin, frame_size, varargin)
         plot(frame, 'FaceColor', 'white', 'FaceAlpha', 1, 'LineStyle', 'none');
     
     end
+    
+    dpi = groot().ScreenPixelsPerInch;
+    scale_factor = 72 / dpi;
 
     %Plot markers
     
     scatter_options = struct();
     scatter_options.Marker = options.marker_symbol;
-    scatter_options.LineWidth = 0.1;
+    scatter_options.LineWidth = options.line_width * scale_factor;
     
     if options.is_marker_filled
         scatter_options.MarkerEdgeColor = 'none';
@@ -120,8 +135,11 @@ function scatter(x, y, origin, frame_size, varargin)
     if options.is_marker_filled
         arguments = ['filled', arguments];
     end
+    
+    cell_size = cell_size - scatter_options.LineWidth;
 
-    props = scatter(x, y, options.marker_sizes, arguments{:});
+    props = scatter(x, y, arguments{:});
+    props.SizeData = options.marker_sizes * cell_size * cell_size * scale_factor;
     
     %marker_colours = define_colours(N, categories);
     %props.CData = marker_colours;
@@ -133,10 +151,41 @@ function scatter(x, y, origin, frame_size, varargin)
     %set(ax,'Position', [margin, margin, pixel_size, pixel_size * ratio]);
     %set(f, 'PaperPositionMode', 'auto', 'PaperSize', [f.PaperPosition(3), f.PaperPosition(4)]);
     
-    set(f, 'PaperPositionMode', 'auto');
+    set(f, 'Position', [0, 0, diagram_size]);
+    
+    %If we don't pause here the window might not yet have been displayed by
+    %the time we check f.Position(3:4) below and we won't detect changes
+    %in window size properly.
+    
+    state = pause('on');
+    pause(5);
+
+    if ~isequal(f.Position(3:4), diagram_size)
+        % diagram size might be smaller than minimum figure window size...
+        sprintf('geospm.diagrams.scatter(): Figure position deviates from set position');
+        
+        scale_factor = ceil(max(f.Position(3:4) ./ diagram_size));
+        diagram_size = diagram_size * scale_factor;
+
+        
+        set(f, 'Position', [0, 0, diagram_size]);
+        set(ax, 'Position', [0, 0, diagram_size]);
+        
+        props.LineWidth = props.LineWidth * sqrt(scale_factor);
+        
+        cell_size = cell_size * scale_factor - props.LineWidth;
+
+        props.SizeData = options.marker_sizes * cell_size * cell_size;
+
+        result.corrective_scale_factor = scale_factor;
+    end
+
+    pause(state);
+
+    set(f, 'PaperPositionMode', 'manual');
     set(f, 'PaperSize', diagram_size);
     set(f, 'PaperPosition', [0, 0, diagram_size]);
-    set(f, 'Position', [0, 0, f.PaperSize]);
+    %set(f, 'Position', [0, 0, f.PaperSize]);
 end
 
 function marker_colours = define_colours(N, categories)

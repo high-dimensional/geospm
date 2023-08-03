@@ -20,8 +20,8 @@ function result = compute_neighbourhood_from_index(index)
     
     value = index - 1;
     
-    result(2, 1) = (value & 1) ~= 0;
-    result(2, 2) = (value & 2) ~= 0;
-    result(1, 1) = (value & 4) ~= 0;
-    result(1, 2) = (value & 8) ~= 0;
+    result(2, 1) = bitand(value, 1) ~= 0;
+    result(2, 2) = bitand(value, 2) ~= 0;
+    result(1, 1) = bitand(value, 4) ~= 0;
+    result(1, 2) = bitand(value, 8) ~= 0;
 end

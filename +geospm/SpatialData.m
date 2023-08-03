@@ -266,8 +266,11 @@ classdef SpatialData < geospm.NumericData
             end
         end
         
-        function render_in_figure(obj, origin, frame_size, variant, varargin)
+        function result = render_in_figure(obj, origin, frame_size, variant, varargin)
             
+            result = struct();
+            result.corrective_scale_factor = 1.0;
+
             if ~exist('origin', 'var')
                 origin = [obj.x_min, obj.y_min];
             end
@@ -286,14 +289,14 @@ classdef SpatialData < geospm.NumericData
                 return;
             end
             
-            obj.(method_name)(origin, frame_size, varargin{:});
+            result = obj.(method_name)(origin, frame_size, varargin{:});
         end
 
-        function render_categories_in_figure(obj, origin, frame_size)
-            obj.render_xy_in_figure(obj.x, obj.y, origin, frame_size);
+        function result = render_categories_in_figure(obj, origin, frame_size)
+            result = obj.render_xy_in_figure(obj.x, obj.y, origin, frame_size);
         end
 
-        function render_frequencies_in_figure(obj, origin, frame_size, varargin)
+        function result = render_frequencies_in_figure(obj, origin, frame_size, varargin)
 
             options = hdng.utilities.parse_struct_from_varargin(varargin{:});
 
@@ -310,6 +313,14 @@ classdef SpatialData < geospm.NumericData
                 options.grid_size = ceil(frame_size ./ cell_size);
             end
             
+            if ~isfield(options, 'marker_alignment')
+                options.marker_alignment = [0.5 0.5];
+            end
+            
+            if ~isfield(options, 'marker_scale')
+                options.marker_scale = 1;
+            end
+            
             grid = geospm.Grid();
             grid.span_frame(origin, origin + frame_size, options.grid_size);
             
@@ -319,32 +330,44 @@ classdef SpatialData < geospm.NumericData
 
             [cell_index, occurrences] = hdng.utilities.compute_unique_values(linear_index);
             frequencies = cellfun(@(x) numel(x), occurrences);
-            marker_sizes = frequencies ./ max(frequencies) * 10;
+            marker_sizes = frequencies ./ max(frequencies);
 
             %N = 10;
             %q = quantile(frequencies, N - 1);
             %marker_sizes = N - sum(frequencies <= q', 1);
             
-            cell_size = options.max_pixel_size / max(options.grid_size);
-            cell_size = cell_size / 3;
+            cell_size = options.marker_scale * options.max_pixel_size / max(options.grid_size);
 
-            marker_sizes = marker_sizes * cell_size;
+            %marker_size_by_symbol = containers.Map('KeyType', 'char', 'ValueType', 'double');
+            %marker_size_by_symbol('x') = 4;
+            %marker_size_by_symbol('o') = 2;
+            %marker_size_by_symbol('.') = 16;
+            %marker_size_by_symbol('s') = 4;
+            %marker_size_by_symbol('+') = 0.5;
+
+            marker_symbol = 'o';
+            
+            %marker_sizes = marker_sizes .* cell_size * cell_size;
 
             [u, v] = ind2sub(grid.resolution(1:2), cell_index);
             
-            geospm.diagrams.scatter(u, v, [0, 0], options.grid_size, ...
+            result = geospm.diagrams.scatter(...
+                u, v, ...
+                [1, 1] - options.marker_alignment, ...
+                options.grid_size, ...
                 'marker_sizes', marker_sizes, ...
-                'marker_symbol', 'o', varargin{:} );
+                'marker_symbol', marker_symbol, varargin{:}, ...
+                'line_width', 0.1 * options.marker_scale );
         end
         
         function write_as_eps(obj, file_path, point1, point2, variant, varargin)
             
             if ~exist('point1', 'var') || isempty(point1)
-                point1 = [obj.x_min, obj.y_min];
+                point1 = obj.min_xy;
             end
             
             if ~exist('point2', 'var') || isempty(point2)
-                point2 = [obj.x_max, obj.y_max];
+                point2 = obj.max_xy;
             end
 
             if ~exist('variant', 'var')
@@ -367,7 +390,8 @@ classdef SpatialData < geospm.NumericData
             
             arguments = hdng.utilities.struct_to_name_value_sequence(options);
 
-            obj.render_in_figure(origin, frame_size, variant, arguments{:});
+            result = obj.render_in_figure(origin, frame_size, variant, arguments{:});
+            resolution_factor = resolution_factor / result.corrective_scale_factor;
 
             %saveas(ax, file_path, 'epsc');
             
@@ -379,11 +403,11 @@ classdef SpatialData < geospm.NumericData
         function write_as_png(obj, file_path, point1, point2, variant, varargin)
             
             if ~exist('point1', 'var') || isempty(point1)
-                point1 = [obj.x_min, obj.y_min];
+                point1 = obj.min_xy;
             end
             
             if ~exist('point2', 'var') || isempty(point2)
-                point2 = [obj.x_max, obj.y_max];
+                point2 = obj.max_xy;
             end
 
             if ~exist('variant', 'var')
@@ -407,20 +431,15 @@ classdef SpatialData < geospm.NumericData
             
             arguments = hdng.utilities.struct_to_name_value_sequence(options);
 
-            obj.render_in_figure(origin, frame_size, variant, arguments{:});
+            result = obj.render_in_figure(origin, frame_size, variant, arguments{:});
+            resolution_factor = resolution_factor / result.corrective_scale_factor;
             
             %saveas(ax, file_path, 'png');
             %exportgraphics(ax, file_path, 'Resolution', 100, 'BackgroundColor', 'none');
             
-            %r = groot;
-            %monitorSize = r.MonitorPositions(1, :);
-
-            %f.Position = [0, 0, f.PaperSize];
             print(file_path, '-dpng', ['-r' num2str(72 * resolution_factor)], '-noui');
             
             close;
-            
-            
         end
         
         function [origin, frame_size] = span_frame(~, point1, point2)
@@ -736,8 +755,11 @@ classdef SpatialData < geospm.NumericData
             result{:, N_cols + 1 - P:end} = observations;
         end
         
-        function render_xy_in_figure(x, y, categories, origin, frame_size, varargin)
+        function result = render_xy_in_figure(x, y, categories, origin, frame_size, varargin)
             
+            result = struct();
+            result.corrective_scale_factor = 1.0;
+
             if ~exist('origin', 'var')
                 origin = [];
             end

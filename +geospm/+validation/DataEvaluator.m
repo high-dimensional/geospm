@@ -244,6 +244,8 @@ classdef DataEvaluator < geospm.validation.Evaluator
                 image_layer.identifier = layer.identifier;
                 image_layer.category = layer.category;
                 image_layer.blend_mode = layer.blend_mode;
+                image_layer.opacity = layer.opacity;
+                image_layer.priority = layer.priority;
                 image_layer.image = hdng.experiments.ImageReference(path, context.source_ref);
 
                 result{i} = image_layer;
@@ -290,12 +292,26 @@ classdef DataEvaluator < geospm.validation.Evaluator
             if ~isfield(grid_options_copy, 'grid')
                 grid_options_copy = geospm.auxiliary.parse_spatial_resolution(spatial_data, grid_options_copy);
 
+                if ~isfield(grid_options_copy, 'cell_marker_alignment')
+                    grid_options_copy.cell_marker_alignment = [0.5, 0.5];
+                end
+                
+                if ~isfield(grid_options_copy, 'cell_marker_scale')
+                    grid_options_copy.cell_marker_scale = [1, 1];
+                end
+                
                 grid_options_copy.grid = geospm.Grid();
 
                 grid_options_copy.grid.span_frame( ...
                     grid_options_copy.min_location, ...
                     grid_options_copy.max_location, ...
                     grid_options_copy.spatial_resolution);
+
+                grid_options_copy.grid.cell_marker_alignment = ...
+                    grid_options_copy.cell_marker_alignment;
+
+                grid_options_copy.grid.cell_marker_scale = ...
+                    grid_options_copy.cell_marker_scale;
 
                 grid_min_location = grid_options_copy.min_location;
                 grid_max_location = grid_options_copy.max_location;

@@ -32,6 +32,9 @@ classdef Grid < handle
         flip_u % logical ? The grid is flipped along its u direction compared to the spatial coordinate system.
         flip_v % logical ? The grid is flipped along its v direction compared to the spatial coordinate system.
         
+        cell_marker_alignment % 3-vector ? position of markers within a grid cell, ranges from 0 to 1
+        cell_marker_scale % 3-vector ? size of markers in units of grid cells
+
         space_to_grid_transform
         grid_to_space_transform
         
@@ -57,6 +60,9 @@ classdef Grid < handle
         
         flip_u_
         flip_v_
+
+        cell_marker_alignment_
+        cell_marker_scale_
         
         space_to_grid_transform_
         grid_to_space_transform_
@@ -171,6 +177,44 @@ classdef Grid < handle
                 obj.flip_v_ = value;
             end
         end
+
+        function result = get.cell_marker_alignment(obj)
+            result = obj.cell_marker_alignment_;
+        end
+        
+        function set.cell_marker_alignment(obj, value)
+            
+            if ~isnumeric(value) || (numel(value) ~= 3 && numel(value) ~= 2)
+                error('Grid2.cell_marker_alignment must be specified as a 2-vector or 3-vector.');
+            end
+            
+            if numel(value) == 2
+                value = [value(:)' 0.5];
+            end
+            
+            if ~isequal(obj.cell_marker_alignment_,  value(:)')
+                obj.cell_marker_alignment_ = value(:)';
+            end
+        end
+
+        function result = get.cell_marker_scale(obj)
+            result = obj.cell_marker_scale_;
+        end
+        
+        function set.cell_marker_scale(obj, value)
+            
+            if ~isnumeric(value) || (numel(value) ~= 3 && numel(value) ~= 2)
+                error('Grid2.cell_marker_scale must be specified as a 2-vector or 3-vector.');
+            end
+            
+            if numel(value) == 2
+                value = [value(:)' 1];
+            end
+            
+            if ~isequal(obj.cell_marker_scale_,  value(:)')
+                obj.cell_marker_scale_ = value(:)';
+            end
+        end
         
         function result = get.space_to_grid_transform(obj)
             
@@ -234,6 +278,9 @@ classdef Grid < handle
 
             obj.flip_u_ = false;
             obj.flip_v_ = false;
+
+            obj.cell_marker_alignment_ = [0.5, 0.5, 0.5];
+            obj.cell_marker_scale_ = [1, 1, 1];
         end
         
         function result = compute_raster_reference_for_w(obj, w, centre_pixels, flip_y)
@@ -292,6 +339,14 @@ classdef Grid < handle
                 options.flip_v = false;
             end
             
+            if ~isfield(options, 'cell_marker_alignment')
+                options.cell_marker_alignment = [0.5 0.5 0.5];
+            end
+            
+            if ~isfield(options, 'cell_marker_scale')
+                options.cell_marker_scale = [1, 1, 1];
+            end
+            
             if isempty(options.resolution)
                 options.resolution = obj.resolution;
             end
@@ -331,6 +386,8 @@ classdef Grid < handle
             obj.rotation_z = options.rotation_z;
             obj.flip_u = options.flip_u;
             obj.flip_v = options.flip_v;
+            obj.cell_marker_alignment = options.cell_marker_alignment;
+            obj.cell_marker_scale = options.cell_marker_scale;
         end
         
         function [u, v, w] = space_to_grid(obj, x, y, z, as_integers)
@@ -467,7 +524,9 @@ classdef Grid < handle
                           'cell_size', obj.cell_size, ...
                           'rotation_z', obj.rotation_z, ...
                           'flip_u', obj.flip_u, ...
-                          'flip_v', obj.flip_v);
+                          'flip_v', obj.flip_v, ...
+                          'cell_marker_alignment', obj.cell_marker_alignment, ...
+                          'cell_marker_scale', obj.cell_marker_scale);
             
         end
         
