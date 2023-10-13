@@ -542,7 +542,12 @@ classdef DataEvaluator < geospm.validation.Evaluator
                 spatial_data = spatial_data.select(...
                     [], ...
                     [], ...
-                    @(args) geospm.validation.DataEvaluator.add_interactions(args, specifier.interactions));
+                    @(args) geospm.validation.DataEvaluator.add_interactions(...
+                        args, specifier.interactions));
+                
+                specifier.variable_labels = ...
+                    geospm.validation.DataEvaluator.add_interaction_labels(...
+                        specifier.variable_labels, specifier.interactions);
             end
             
             spatial_data.attachments.group_identifier = specifier.group_identifier;
@@ -704,6 +709,20 @@ classdef DataEvaluator < geospm.validation.Evaluator
             end
 
             args.observations = observations;
+        end
+
+        function labels = add_interaction_labels(labels, pairs)
+
+            N = size(pairs, 1);
+
+            for i=1:N
+                var1 = pairs{i, 1};
+                var2 = pairs{i, 2};
+                
+                identifier = [var1 '_x_' var2];
+                label = [labels.(var1) ' x ' labels.(var2)];
+                labels.(identifier) = label;
+            end
         end
 
     end
