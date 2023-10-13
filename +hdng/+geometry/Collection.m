@@ -157,6 +157,7 @@ classdef Collection < handle
         function result = build_point_geostruct(obj)
             
             result = struct();
+
             result.Geometry = 'Point';
             result.Lat = 0;
             result.Lon = 0;
@@ -173,6 +174,7 @@ classdef Collection < handle
         function result = build_polyline_geostruct(obj)
             
             result = struct();
+
             result.Geometry = 'Line';
             result.X = 0;
             result.Y = 0;
@@ -193,10 +195,12 @@ classdef Collection < handle
         end
         
         function result = build_polygon_geostruct(obj)
+            
             result = struct();
+
             result.Geometry = 'Polygon';
-            result.X = 0;
-            result.Y = 0;
+            result.X = [];
+            result.Y = [];
             
             coords = obj.vertices.coordinates;
             index = 1;
