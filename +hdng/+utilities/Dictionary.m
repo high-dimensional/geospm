@@ -48,9 +48,13 @@ classdef Dictionary < handle
             result = length(obj.fields__); %#ok<CPROP>
         end
         
-        function result = copy(obj)
+        function result = copy(obj, dict)
             
-            result = hdng.utilities.Dictionary();
+            if ~exist('dict', 'var')
+                result = hdng.utilities.Dictionary();
+            else
+                result = dict;
+            end
             
             keys = obj.keys();
             
