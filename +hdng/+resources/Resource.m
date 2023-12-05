@@ -72,6 +72,10 @@ classdef Resource < handle
             result = obj.url_;
         end
         
+        function set.url(obj, value)
+            obj.url_ = value;
+        end
+
         function result = get.identifier(obj)
             result = obj.identifier_;
         end
