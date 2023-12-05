@@ -25,6 +25,13 @@ classdef PresentationLayer < hdng.experiments.ValueContent
         opacity
     end
 
+    properties (Dependent, Transient)
+        x
+        y
+        width
+        height
+    end
+
     methods
         
         function obj = PresentationLayer()
@@ -36,6 +43,22 @@ classdef PresentationLayer < hdng.experiments.ValueContent
             obj.priority = 0;
             obj.blend_mode = 'normal';
             obj.opacity = 1.0;
+        end
+
+        function result = get.x(obj)
+            result = obj.access_x();
+        end
+
+        function result = get.y(obj)
+            result = obj.access_y();
+        end
+
+        function result = get.width(obj)
+            result = obj.access_width();
+        end
+
+        function result = get.height(obj)
+            result = obj.access_height();
         end
         
         function [serialised_value, type_identifier] = as_serialised_value_and_type(obj)
@@ -54,6 +77,24 @@ classdef PresentationLayer < hdng.experiments.ValueContent
         
         function result = label_for_content(~)
         	result = 'Presentation Layer';
+        end
+    end
+
+    methods (Access=protected)
+        function result = access_x(~)
+            result = [];
+        end
+        
+        function result = access_y(~)
+            result = [];
+        end
+        
+        function result = access_width(~)
+            result = [];
+        end
+
+        function result = access_height(~)
+            result = [];
         end
     end
     
