@@ -439,10 +439,7 @@
             context = geospm.volumes.RenderContext();
             context.render_settings = settings;
             
-            threshold_contrasts = arguments.threshold_contrasts;
-
             unmasked_betas_value = obj.render_beta_images(beta_records, output_directory, session, settings);
-            %unmasked_contrasts_value = obj.render_contrast_images(threshold_contrasts, output_directory, session, settings);
             unmasked_contrasts_value = obj.render_contrast_images(output_directory, session, settings);
             unmasked_maps_value = obj.render_map_images(output_directory, session, settings);
             
