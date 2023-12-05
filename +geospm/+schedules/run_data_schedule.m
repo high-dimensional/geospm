@@ -88,6 +88,10 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
         [~, options.study_name, ~] = fileparts(study_directory);
     end
     
+    if ~isfield(options, 'attachments')
+        options.attachments = struct();
+    end
+    
     if ~isfield(options, 'source_ref')
         options.source_ref = '';
     end
@@ -96,6 +100,10 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
         options.granular = hdng.one_struct( ...
             'server_url', 'http://localhost:9999' ...
         );
+    end
+
+    if ~isfield(options, 'optional_cmds')
+        options.optional_cmds = {};
     end
     
     if isempty(options.source_ref)
@@ -344,6 +352,15 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
         renderer.render(document, context);
 
         context.save_output(fullfile(study_path, 'report.html'));
+    end
+
+    for index=1:numel(options.optional_cmds)
+        
+        cmd = options.optional_cmds{index};
+        
+        optional_args = hdng.utilities.struct_to_name_value_sequence(cmd.options);
+        cmd_function = str2func(cmd.func);
+        cmd_function(cmd.arguments{:}, optional_args{:});
     end
 end
 

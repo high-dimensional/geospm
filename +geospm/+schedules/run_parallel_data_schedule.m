@@ -57,6 +57,13 @@ function run_parallel_data_schedule(study_random_seed, study_directory, ...
         );
     end
     
+    if ~isfield(options, 'optional_cmds')
+        options.optional_cmds = {};
+    end
+
+    optional_cmds = options.optional_cmds;
+    options = rmfield(options, 'optional_cmds');
+    
     if isempty(options.source_ref)
         if ~isempty(options.granular.server_url)
             granular_service = hdng.granular.Service.local_instance();
@@ -76,94 +83,80 @@ function run_parallel_data_schedule(study_random_seed, study_directory, ...
     PROCESS_LOG_FILE = fullfile(study_directory, 'completed.txt');
 
     INTERVAL = 0;
-    WAIT_INTERVAL = 10;
     
     if ~options.do_debug
         hdng.utilities.save_text('', PROCESS_ID_FILE);
     end
+    
+    model_directories = cell(numel(model_specifiers), 1);
 
-    if ~options.do_summary_only
-    
-        model_directories = cell(numel(model_specifiers), 1);
-    
-        for i=1:numel(model_specifiers)
-            model_specifier = model_specifiers{i};
+    for i=1:numel(model_specifiers)
+        model_specifier = model_specifiers{i};
+        
+        model_directory = fullfile(study_directory, model_specifier.identifier);
+        model_directories{i} = model_directory;
+        
+        [dirstatus, dirmsg] = mkdir(model_directory);
+        if dirstatus ~= 1; error(dirmsg); end
+        
+        log_path = fullfile(model_directory, [model_specifier.identifier '.log']);
+        
+        command = create_model_mat_command(study_random_seed, model_directory, file_specifier, model_specifier, run_mode, optional_cmds, options);
+        
+        if options.do_debug
+            eval(command);
+        else
+            matlab_options = ' -nodesktop -nodisplay -nosplash';
+
+            execute = ['(echo "' command '" | ' MATLAB_EXEC matlab_options ' > "' log_path '" 2>&1) & echo $!'];
+            [~, cmdout] = system(execute);
+            %fprintf(cmdout);
+
+            hdng.utilities.save_text([cmdout(1:end-numel(newline)) ':' model_directory newline], PROCESS_ID_FILE, 'append');
             
-            model_directory = fullfile(study_directory, model_specifier.identifier);
-            model_directories{i} = model_directory;
-            
-            [dirstatus, dirmsg] = mkdir(model_directory);
-            if dirstatus ~= 1; error(dirmsg); end
-            
-            log_path = fullfile(model_directory, [model_specifier.identifier '.log']);
-            
-            command = create_model_mat_command(study_random_seed, model_directory, file_specifier, model_specifier, run_mode, options);
-            
-            if options.do_debug
-                eval(command);
-            else
-                matlab_options = ' -nodesktop -nodisplay -nosplash';
-    
-                execute = ['(echo "' command '" | ' MATLAB_EXEC matlab_options ' > "' log_path '" 2>&1) & echo $!'];
+            INTERVAL = INTERVAL + 1;
+
+            if mod(INTERVAL, WAIT_INTERVAL) == 0
+                timestamp = datetime('now', 'TimeZone', 'local', 'Format', 'yyyy/MM/dd HH:mm:ss');
+
+                fprintf([char(timestamp) ': Waiting for processing slots...' newline]);
+                execute = [BARRIER_SCRIPT ' -p ' '"' PROCESS_ID_FILE '" -l "' PROCESS_LOG_FILE '" -w 20'];
                 [~, cmdout] = system(execute);
-                %fprintf(cmdout);
-    
-                hdng.utilities.save_text([cmdout(1:end-numel(newline)) ':' model_directory newline], PROCESS_ID_FILE, 'append');
-                
-                INTERVAL = INTERVAL + 1;
-    
-                if mod(INTERVAL, WAIT_INTERVAL) == 0
-                    timestamp = datetime('now', 'TimeZone', 'local', 'Format', 'yyyy/MM/dd HH:mm:ss');
-    
-                    fprintf([char(timestamp) ': Waiting for processing slots...' newline]);
-                    execute = [BARRIER_SCRIPT ' -p ' '"' PROCESS_ID_FILE '" -l "' PROCESS_LOG_FILE '" -w 20'];
-                    [~, cmdout] = system(execute);
-                    fprintf(cmdout);
-                end
+                fprintf(cmdout);
             end
         end
+    end
+
+    timestamp = datetime('now', 'TimeZone', 'local', 'Format', 'yyyy/MM/dd HH:mm:ss');
+
+    fprintf([char(timestamp) ': Waiting for completion...' newline]);
+    execute = [BARRIER_SCRIPT ' -p ' '"' PROCESS_ID_FILE '" -l "' PROCESS_LOG_FILE '" -w 20'];
+    [~, cmdout] = system(execute);
+    fprintf(cmdout);
     
-        timestamp = datetime('now', 'TimeZone', 'local', 'Format', 'yyyy/MM/dd HH:mm:ss');
-    
-        fprintf([char(timestamp) ': Waiting for completion...' newline]);
-        execute = [BARRIER_SCRIPT ' -p ' '"' PROCESS_ID_FILE '" -l "' PROCESS_LOG_FILE '" -w 20'];
-        [~, cmdout] = system(execute);
-        fprintf(cmdout);
+    record_arguments = cell(numel(model_specifiers), 1);
+
+    for i=1:numel(record_arguments)
+        argument = struct();
+        argument.path = fullfile(model_directories{i}, 'records.json.gz');
+        argument.rebase_paths = struct();
+        argument.rebase_paths.dir_regexp = ['^([^' filesep ']).+$'];
+        argument.rebase_paths.dir_replacement = [model_specifiers{i}.identifier filesep];
+        argument.rebase_paths.dir_mode = 'before';
         
-        record_arguments = cell(numel(model_specifiers), 1);
-    
-        for i=1:numel(record_arguments)
-            argument = struct();
-            argument.path = fullfile(model_directories{i}, 'records.json.gz');
-            argument.rebase_paths = struct();
-            argument.rebase_paths.dir_regexp = ['^([^' filesep ']).+$'];
-            argument.rebase_paths.dir_replacement = [model_specifiers{i}.identifier filesep];
-            argument.rebase_paths.dir_mode = 'before';
-            
-            record_arguments{i} = argument;
-        end
-        
-        records = hdng.experiments.load_records(record_arguments{:});
-        
-        records_path = fullfile(study_directory, 'debug_records.json');
-        hdng.experiments.save_records(records, records_path);
-    
-        records_path = fullfile(study_directory, 'records.json.gz');
-        hdng.experiments.save_records(records, records_path);
-    else
-        %records_path = fullfile(study_directory, 'records.json.gz');
-        %records = hdng.experiments.load_records(records_path);
+        record_arguments{i} = argument;
     end
     
-    %{
-    geospm.schedules.grid_summary(records, ...
-        'configuration.experiment_label', 'result.terms.term', ...
-        fullfile(study_directory, 'grid_summary'), ...
-        'unnest_field', 'result.terms');
-    %}
+    records = hdng.experiments.load_records(record_arguments{:});
+    
+    records_path = fullfile(study_directory, 'debug_records.json');
+    hdng.experiments.save_records(records, records_path);
+
+    records_path = fullfile(study_directory, 'records.json.gz');
+    hdng.experiments.save_records(records, records_path);
 end
 
-function result = create_model_mat_command(study_random_seed, study_directory, file_specifier, model_specifier, run_mode, options)
+function result = create_model_mat_command(study_random_seed, study_directory, file_specifier, model_specifier, run_mode, optional_cmds, options)
     
     filename = [model_specifier.identifier, '_command.mat'];
     filepath = fullfile(study_directory, filename);

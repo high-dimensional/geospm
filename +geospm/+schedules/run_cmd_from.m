@@ -13,16 +13,9 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function run_data_schedule_from(command_file)
-    args = load(command_file);
-    
-    optional_args = hdng.utilities.struct_to_name_value_sequence(args.options);
-
-    geospm.schedules.run_data_schedule(...
-        args.study_random_seed, ...
-        args.study_directory, ...
-        args.file_specifier, ...
-        args.model_specifiers, ...
-        args.run_mode, ...
-        optional_args{:});
+function run_cmd_from(command_file)
+    cmd = load(command_file);
+    optional_args = hdng.utilities.struct_to_name_value_sequence(cmd.options);
+    cmd_function = str2func(cmd.func);
+    cmd_function(cmd.arguments{:}, optional_args{:});
 end
