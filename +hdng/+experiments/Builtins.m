@@ -59,7 +59,8 @@ classdef Builtins < hdng.experiments.ValueLoader
                 'builtin.model_samples', ...
                 'builtin.presentation_layer', ...
                 'builtin.image_layer', ...
-                'builtin.slice_shapes'
+                'builtin.slice_shapes', ...
+                'builtin.record_grid_settings'
             }, hdng.experiments.Builtins.custom_types()];
         end
         
@@ -177,6 +178,11 @@ classdef Builtins < hdng.experiments.ValueLoader
             
             if strcmp(type_identifier, 'builtin.slice_shapes')
                 content = hdng.experiments.SliceShapes.from_serialised_value_and_type(serialised_value, type_identifier);
+                return;
+            end
+            
+            if strcmp(type_identifier, 'builtin.record_grid_settings')
+                content = hdng.experiments.RecordGridSettings.from_serialised_value_and_type(serialised_value, type_identifier);
                 return;
             end
             
