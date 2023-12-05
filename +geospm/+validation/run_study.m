@@ -110,6 +110,10 @@ function study_path = run_study(varargin)
         %options.n_subsamples = {500 1000 1500 2000 2500};
     end
     
+    if ~isfield(options, 'attachments')
+        options.attachments = {};
+    end
+    
     source_version = hdng.utilities.SourceVersion(fileparts(mfilename('fullpath')));
     
     schedule = hdng.experiments.Schedule();
@@ -123,8 +127,6 @@ function study_path = run_study(varargin)
         hdng.experiments.ValueList.from(options.repetition{:}), {}, ...
         'description', 'Repetition');
     
-    %hdng.experiments.constant(schedule, 'n_subsamples', 'Number of Subsamples', options.n_subsamples{:});
-
     randomisation_requirements = {};
     
     if numel(options.randomisation_variables) == 0
@@ -174,6 +176,7 @@ function study_path = run_study(varargin)
     study.strategy = strategy;
     study.prefix = options.evaluation_prefix;
     study.name = options.study_name;
+    study.attachments = options.attachments;
     
     study_options = struct();
     study_options.is_rehearsal = options.is_rehearsal;
