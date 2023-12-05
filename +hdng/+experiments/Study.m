@@ -21,13 +21,13 @@ classdef Study < handle
         strategy
         prefix
         name
+        attachments
     end
     
     properties (SetAccess=private)
         completed_stages
         records
         record_attributes
-        
         command_paths
     end
      
@@ -46,6 +46,7 @@ classdef Study < handle
             obj.completed_stages = {};
             obj.records = {};
             obj.record_attributes = hdng.experiments.RecordAttributeMap();
+            obj.attachments = struct();
             obj.command_paths = {};
 
 
@@ -245,7 +246,7 @@ classdef Study < handle
                 error(dirmsg);
             end
             
-            bytes = format.encode(obj.records, obj.record_attributes, struct(), [], options);
+            bytes = format.encode(obj.records, obj.record_attributes, obj.attachments, [], options);
             hdng.utilities.save_bytes(bytes, file_path);
         end
     end
