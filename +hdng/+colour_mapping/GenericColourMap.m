@@ -59,53 +59,74 @@ classdef GenericColourMap < hdng.colour_mapping.ColourMap
             end
         end
         
-        
-        function [results, legend] = apply_to_scopes(obj, scopes)
+        function [results, legends] = apply_to_scopes(obj, scopes)
 
             N = numel(scopes);
             S = numel(obj.stops);
-
+            
+            % Order stops topologically, independent stops first
             stop_order = hdng.colour_mapping.ColourStop.order(obj.stops);
             ordered_stops = obj.stops(stop_order);
             
-            image_statistics = hdng.stats.Collector();
+            collector = hdng.stats.Collector();
             stop_value_indices = cell(numel(obj.stops), 1);
             
             for i=1:S
                 stop = ordered_stops{i};
                 stop_index = stop_order(i);
                 
-                stop_value_indices{stop_index} = stop.register_statistics(image_statistics);
+                stop_value_indices{stop_index} = stop.register_statistics(collector);
             end
             
-            per_image_statistics = cell(N, 1);
+            scope_statistics = cell(N, 1);
             
             for i=1:N
-                per_image_statistics{i} = image_statistics.compute_statistics(scopes{i});
-                per_image_statistics{i}.stops = cell(1, S);
+                scope_statistics{i} = collector.compute_statistics(scopes{i});
+                scope_statistics{i}.stops = cell(1, S);
             end
             
             stop_values = zeros(S, N);
+            stop_fractions = zeros(S, 1);
             
             for i=1:S
                 stop = ordered_stops{i};
                 stop_index = stop_order(i);
+
+                stop_fractions(i) = (i - 1) / (S - 1);
                 
                 value_indices = stop_value_indices{stop_index};
-                stop_values(stop_index, :) = stop.compute_locations(value_indices, per_image_statistics);
+                stop_values(stop_index, :) = stop.compute_locations(value_indices, scope_statistics);
                 
                 for j=1:N
-                    per_image_statistics{j}.stops{stop_index} = stop_values(stop_index, :);
+                    scope_statistics{j}.stops{stop_index} = stop_values(stop_index, :);
                 end
             end
+
+            persistent reentry;
+
+            if isempty(reentry)
+                reentry = 0;
+            end
+
+            reentry = reentry + 1;
             
-            legend = hdng.colour_mapping.GenericColourLegend(obj, stop_values, stop_values);
+            % Create one legend per scope
+
+            legends = cell(N, 1);
             
-            
-            
+            for i=1:N
+                legend = hdng.colour_mapping.GenericColourLegend(obj, stop_values(:, i), stop_fractions);
+                
+                if reentry == 1
+                    %legend.render_and_save_as(300, 'hello_legend.png', 'This is my title');
+                end
+
+                legends{i} = legend;
+            end
+
+            reentry = reentry - 1;
             
             results = cell(N, 1);
-            
             
             for i=1:N
                 
@@ -295,6 +316,23 @@ classdef GenericColourMap < hdng.colour_mapping.ColourMap
                 {[255, 231, 196, 255]}, ...
                 {[254, 166, 118, 255]}, ...
                 {[229, 105,  51, 255]}, ...
+                {[146,  38,  42, 255], 'max'}, ...
+            });
+        
+            result.nan_rgba_colour = [234, 239, 241, 255] ./ 255;
+        end
+        
+        function result = twilight_27q()
+        
+            result = hdng.colour_mapping.GenericColourMap.define_gradient({
+                {[ 60,  91, 120, 255], 'min'}, ...
+                {[ 69, 155, 202, 255], 'quantile', struct('value', 0.25, 'condition', 'x < 0')}, ...
+                {[137, 216, 236, 255], 'quantile', struct('value', 0.5, 'condition', 'x < 0')}, ...
+                {[199, 243, 248, 255], 'quantile', struct('value', 0.75, 'condition', 'x < 0')}, ...
+                {[234, 239, 241, 255], 'constant', struct('value', 0)}, ...
+                {[255, 231, 196, 255], 'quantile', struct('value', 0.25, 'condition', 'x > 0')}, ...
+                {[254, 166, 118, 255], 'quantile', struct('value', 0.5, 'condition', 'x > 0')}, ...
+                {[229, 105,  51, 255], 'quantile', struct('value', 0.75, 'condition', 'x > 0')}, ...
                 {[146,  38,  42, 255], 'max'}, ...
             });
         

@@ -41,7 +41,7 @@ classdef ColourMap < handle
             obj.use_apply_2 = false;
         end
         
-        function [results, legend] = apply(obj, batch, mode, slice_plane) % %#ok<STOUT,INUSD>
+        function [results, legends] = apply(obj, batch, mode, slice_plane) % %#ok<STOUT,INUSD>
             if ~obj.use_apply_2
                 error('ColourMap2.apply() must be implemented by a subclass.');
             end
@@ -54,10 +54,10 @@ classdef ColourMap < handle
                 mode = hdng.colour_mapping.ColourMap.SLICE_MODE;
             end
             
-            [results, legend] = obj.apply2(batch, mode, slice_plane);
+            [results, legends] = obj.apply2(batch, mode, slice_plane);
         end
         
-        function [results, legend] = apply2(obj, batch, mode, slice_plane)
+        function [results, legends] = apply2(obj, batch, mode, slice_plane)
             
             if ~exist('slice_plane', 'var')
                 slice_plane = hdng.colour_mapping.ColourMap.PLANE_XY;
@@ -99,12 +99,14 @@ classdef ColourMap < handle
                 error('ColourMap.apply(): Unknown mode %s', mode);
             end
             
-            [scopes, legend] = obj.apply_to_scopes(scopes);
+            [scopes, scope_legends] = obj.apply_to_scopes(scopes);
             
-            
+            legends = cell(N, L);
+
             if strcmp(mode, hdng.colour_mapping.ColourMap.SLICE_MODE)
                 
                 image_slices = reshape(scopes, L, N);
+                legends = scope_legends';
                 
             elseif strcmp(mode, hdng.colour_mapping.ColourMap.LAYER_MODE)
                 
@@ -118,6 +120,7 @@ classdef ColourMap < handle
                     
                     for j=1:N
                         row{j} = scope(j);
+                        legends{j, i} = scope_legends{i};
                     end
                     
                     image_slices = [image_slices; row]; %#ok<AGROW>
@@ -128,13 +131,14 @@ classdef ColourMap < handle
                 
                 image_slices = [];
                 
-                for i=1:L
+                for i=1:N
                     
                     column = cell(L, 1);
                     scope = scopes{i};
                     
                     for j=1:L
                         column{j} = scope(j);
+                        legends{i, j} = scope_legends{i};
                     end
                     
                     image_slices = [image_slices, column]; %#ok<AGROW>
@@ -144,6 +148,7 @@ classdef ColourMap < handle
             elseif strcmp(mode, hdng.colour_mapping.ColourMap.BATCH_MODE)
                 
                 results = scopes{1};
+                legends = scope_legends;
                 return;
             else
                 error('ColourMap.apply(): Unknown mode %s', mode);
@@ -230,7 +235,7 @@ classdef ColourMap < handle
             N = size(slices, 2);
             L = size(slices, 1);
             
-            batch = cell(1, N);
+            batch = cell(N, 1);
             
             for i=1:N
             
@@ -262,7 +267,7 @@ classdef ColourMap < handle
         end
         
         
-        function [results, legend] = apply_to_scopes(obj, scopes) %#ok<STOUT,INUSD>
+        function [results, legends] = apply_to_scopes(obj, scopes) %#ok<STOUT,INUSD>
         	error('ColourMap2.apply() must be implemented by a subclass.');
         end
         
