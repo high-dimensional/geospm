@@ -26,6 +26,7 @@ classdef Grid < handle
         resolution % 3-vector ? Number of unit cells in this grid along its u, v and w directions.
         
         origin % 3-vector ? Origin (x, y, z) of this grid in the spatial coordinate system.
+        span % 3-vector ? Span (dx, dy, dz) of this grid in the spatial coordinate system.
         cell_size % 3-vector ? Size of a grid cell (u, v, w) in the scale of the spatial coordinate system.
         rotation_z % scalar ? The counter-clockwise, positive angle of rotation (in radians) of the grid about the z-axis of the spatial coordinate system.
         
@@ -110,6 +111,10 @@ classdef Grid < handle
             end
         end
         
+        function result = get.span(obj)
+            result = obj.cell_size_ .* obj.resolution_;
+        end
+
         function result = get.cell_size(obj)
             result = obj.cell_size_;
         end
