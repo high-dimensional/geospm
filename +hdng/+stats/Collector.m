@@ -167,6 +167,8 @@ classdef Collector < handle
             result = zeros(1, numel(entries));
             p = result;
             
+            % Gather all unique conditions from the quantile entries
+
             conditions = containers.Map('KeyType', 'char', 'ValueType', 'any');
             
             for i=1:numel(entries)
@@ -187,6 +189,9 @@ classdef Collector < handle
                 p(i) = entry.parameters.value;
             end
             
+            % Evaluate each unique condition and assign result to all
+            % relevant entries
+
             condition_keys = keys(conditions);
             
             for i=1:numel(condition_keys)
