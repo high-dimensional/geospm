@@ -628,6 +628,8 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
             
             result.define_attribute('result').description = 'Result';
             result.define_attribute('target').description = 'Target';
+
+            result.define_attribute('residuals').description = 'Residuals';
             
             %result.define_attribute('beta').description = 'Beta';
             
@@ -644,7 +646,8 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 struct('identifier', 'target', 'category', 'content'), ...
                 struct('identifier', 'set-level', 'category', 'content'), ...
                 struct('identifier', 'cluster-level', 'category', 'content'), ...
-                struct('identifier', 'peak-level', 'category', 'content')});
+                struct('identifier', 'peak-level', 'category', 'content'), ...
+                struct('identifier', 'residuals', 'category', 'content')});
             
             target_map = containers.Map('KeyType', 'char', 'ValueType', 'any');
             
@@ -668,6 +671,8 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 target = matched_target_record('target');
                 target_map(term_name) = target;
             end
+
+            %residuals = obj.build_volume_reference(spm_contrasts.scalars{c_index}, spm, obj.volume_slice_names);
             
             records = image_records.unsorted_records;
             
@@ -683,6 +688,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 spm_masked_maps = obj.unpack_volume_value(record('masked_maps'));
                 spm_masks = obj.unpack_volume_value(record('masks'));
                 spm_mask_traces = obj.unpack_volume_value(record('mask_traces'));
+                mask_summaries = record('mask_summaries').content;
                 
                 is_unmasked = strcmp(threshold_value.type_identifier, 'builtin.null' );
                 
@@ -725,6 +731,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                         new_record('map') = hdng.experiments.Value.from(map);
                         new_record('mask') = hdng.experiments.Value.empty_with_label('Not Applicable');
                         new_record('mask_traces') = hdng.experiments.Value.empty_with_label('Not Applicable');
+                        new_record('mask_summaries') = hdng.experiments.Value.empty_with_label('Not Applicable');
                         new_record('result') = new_record('mask');
                         new_record('target') = target;
                         
@@ -814,12 +821,24 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                     mask = obj.build_volume_reference(spm_masks.scalars{c_index}, mask_image_path, obj.volume_slice_names);
                     slice_shapes = obj.build_slice_shapes(mask_trace_layer_paths, obj.volume_slice_names);
                     
+                    contrast_mask_summaries = mask_summaries{c_index};
+                    
+                    summary_name = contrast_mask_summaries{1};
+                    summary_name = regexprep(summary_name, '\s*\[contrast\]\s*$', '');
+
+                    if ~strcmp(summary_name, term_name)
+                        contrast_mask_summaries = hdng.experiments.Value.empty_with_label('Not Available');
+                    else
+                        contrast_mask_summaries = hdng.experiments.Value.from(contrast_mask_summaries(2:end));
+                    end
+                    
                     new_record('contrast') = hdng.experiments.Value.from(contrast);
                     new_record('map') = hdng.experiments.Value.from(map);
                     new_record('masked_contrast') = hdng.experiments.Value.from(masked_contrast);
                     new_record('masked_map') = hdng.experiments.Value.from(masked_map);
                     new_record('mask') = hdng.experiments.Value.from(mask);
                     new_record('mask_traces') = hdng.experiments.Value.from(slice_shapes);
+                    new_record('mask_summaries') = contrast_mask_summaries;
                     new_record('result') = new_record('mask');
                     new_record('target') = target;
                     
