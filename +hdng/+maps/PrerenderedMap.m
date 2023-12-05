@@ -26,6 +26,9 @@ classdef PrerenderedMap < hdng.maps.MappingService
         cache_n_tiles
         tile_size
         image_format
+
+        entity_path
+        entity_cache
     end
     
     methods
@@ -34,7 +37,10 @@ classdef PrerenderedMap < hdng.maps.MappingService
 
             obj = obj@hdng.maps.MappingService();
             obj.crs = hdng.SpatialCRS.from_identifier('epsg:27700');
-            obj.cache_path = fullfile(mapping_services, 'pre_rendered', 'epsg_27700');
+            obj.cache_path = fullfile(mapping_services, 'epsg_27700', 'pre_rendered');
+            obj.entity_path = fullfile(mapping_services, 'epsg_27700', 'entities');
+
+            obj.entity_cache = struct();
             
             obj.cache_name_format = hdng.one_struct(...
                 'format', {'%northing', '%easting'}, ...
@@ -50,10 +56,67 @@ classdef PrerenderedMap < hdng.maps.MappingService
             obj.image_format = 'png';
         end
         
+        function result = query(obj, crs, min_location, max_location, entity)
+            
+            result = struct.empty;
+
+            if ~isfield(obj.entity_cache, entity)
+    
+                file_path = fullfile(obj.entity_path, [entity '.csv']);
+    
+                if ~exist(file_path, 'file')
+                    return
+                end
+                
+                sidecar_file_path = fullfile(obj.entity_path, [entity '.mat']);
+
+                if ~exist(sidecar_file_path, 'file')
+                    return
+                end
+
+                %import_opts = detectImportOptions(file_path, 'VariableNamingRule', 'preserve');
+                %variable_names = import_opts.VariableNames';
+                
+                entity_struct = load(sidecar_file_path);
+                entity_struct.data = struct();
+
+                entity_cells = readcell(file_path);
+    
+                variable_names = entity_cells(1, :);
+    
+                for index=1:numel(variable_names)
+                    name = variable_names{index};
+                    
+                    value = entity_cells{2, index};
+                    
+                    if isnumeric(value)
+                        value = cell2mat(entity_cells(2:end, index));
+                    else
+                        value = entity_cells(2:end, index);
+                    end
+    
+                    entity_struct.data.(name) = value;
+                end
+                
+                obj.entity_cache.(entity) = entity_struct;
+            else
+                entity_struct = obj.entity_cache.(entity);
+            end
+            
+            switch entity_struct.feature
+                case 'points'
+                    result = obj.query_points(crs, min_location, max_location, entity_struct);
+                
+                otherwise
+                    error('PrerenderedMap.query(): Unknown entity ''%s''', entity_struct.handler);
+            end
+        end
+
         function [images, alphas] = generate(obj, crs, min_location, max_location, ...
                                   spatial_resolution, layers)
             
             images = {};
+            alphas = {};
 
             if ~strcmp(crs.identifier, obj.crs.identifier)
                 return
@@ -79,7 +142,51 @@ classdef PrerenderedMap < hdng.maps.MappingService
             result = {'combined', 'foreground', 'background'};
         end
 
-        
+        function result = query_points(obj, crs, min_location, max_location, entity_struct)
+            
+            result = struct.empty;
+            
+            if ~strcmp(crs.identifier, obj.crs.identifier)
+                return
+            end
+            
+            search_field = entity_struct.primary_search_field;
+            search_dim = entity_struct.primary_search_dimension;
+
+            [min_index, min_insert] = hdng.utilities.binary_search(entity_struct.data.(search_field), min_location(search_dim));
+            min_index = min_index + min_insert;
+
+            [max_index, max_insert] = hdng.utilities.binary_search(entity_struct.data.(search_field), max_location(search_dim));
+            max_index = max_index + max_insert;
+            
+            if max_insert ~= 0
+                max_index = max_index - 1;
+            end
+            
+            data = entity_struct.data;
+            fields = fieldnames(data);
+
+            for index=1:numel(fields)
+                field_name = fields{index};
+                values = data.(field_name);
+                data.(field_name) = values(min_index:max_index);
+            end
+
+            search_field = entity_struct.secondary_search_field;
+            search_dim = entity_struct.secondary_search_dimension;
+            
+            selector = data.(search_field) >= min_location(search_dim) ...
+                & data.(search_field) <= max_location(search_dim);
+            
+            for index=1:numel(fields)
+                field_name = fields{index};
+                values = data.(field_name);
+                data.(field_name) = values(selector);
+            end
+            
+            result = data;
+        end
+
         function [image, alpha] = extract_image(obj, min_location, max_location, spatial_resolution, layer)
             
             [tile_images, tiles_span, offset, span, tile_alphas] = obj.load_tile_images(min_location, max_location, layer);

@@ -33,7 +33,11 @@ classdef MappingService < handle
         function result = get.layers(obj)
             result = obj.access_layers();
         end
-
+        
+        function result = query(obj, crs, min_location, max_location, entity) %#ok<STOUT,INUSD> 
+            error('MappingService.query() must be implemented by a subclass');
+        end        
+        
         function [images, alphas] = generate(obj, crs, min_location, max_location, ...
                           spatial_resolution, layers) %#ok<STOUT,INUSD> 
             error('MappingService.generate() must be implemented by a subclass');
