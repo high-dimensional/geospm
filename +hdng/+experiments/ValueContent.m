@@ -13,7 +13,7 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-classdef ValueContent < handle
+classdef ValueContent < matlab.mixin.Copyable
     
     %ValueContent Base class for complex value types.
     %
