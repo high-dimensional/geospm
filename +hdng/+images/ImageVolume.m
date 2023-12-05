@@ -294,11 +294,11 @@ classdef ImageVolume < handle
                 data_batch{i} = batch{i}.get_channel(channel);
             end
             
-            [image_result, legend] = colour_map.apply(data_batch, mode);
+            [image_result, legends] = colour_map.apply(data_batch, mode);
             
             for i=1:N
                 mapped_data{i, 1} = image_result{i};
-                mapped_data{i, 2} = legend;
+                mapped_data{i, 2} = legends(i, :);
             end
             
             [component_type, dynamic_range] = hdng.images.ImageVolume.bit_depth_parameters(bit_depth);
@@ -551,9 +551,14 @@ classdef ImageVolume < handle
                     
                     raster_ref = grid.compute_raster_reference_for_w(j, centre_pixels);
                     R = (raster_ref * C)';
+                    %R = refmatToGeoRasterReference(R, grid.resolution(1:2));
                     
+                    warning('off', 'map:geotiff:refvecmat');
+
                     geospm.geotiffpatch.geotiffwrite(file_path, I_level, R, ...
                         extra_arguments{:});
+
+                    warning('on', 'map:geotiff:refvecmat');
 
                     paths{j} = file_path;
                 end
