@@ -48,6 +48,8 @@ function [coords, rings, polygons] = polygons_from_rings(points, rings)
 
     C = C & repmat(holes, N_rings, 1);
 
+    C = fix_containment_matrix(C, points, safe_rings);
+
     all_ones = ones(N_rings, N_rings, 'logical');
     available = ones(1, N_rings, 'logical');
     
@@ -185,6 +187,34 @@ function result = is_covered_by(c_min, c_max, p_min, p_max)
              && p_max(1) >= c_max(1) ...
              && p_max(2) >= c_max(2) ...
              ;
+end
+
+function result = fix_containment_matrix(C, points, safe_rings)
+    
+    result = C;
+    [container, component] = ind2sub(size(C), find(C(:)));
+
+    vertices = hdng.geometry.Vertices.define(points);
+    
+    for index=1:numel(component)
+        K = container(index);
+        k = component(index);
+        
+        is_contained = true;
+
+        for p=safe_rings(k):safe_rings(k + 1) - 1
+
+            is_contained = vertices.contains(points(p, 1), points(p, 2), safe_rings(K), safe_rings(K + 1) - 1);
+
+            if ~is_contained
+                break;
+            end
+        end
+
+        if ~is_contained
+            result(K, k) = 0;
+        end
+    end
 end
 
 function plot_shapes()
