@@ -22,6 +22,8 @@
         centre_pixels
         volume_renderer
         render_component_contrasts
+
+        map_service_identifier
     end
     
     methods
@@ -34,6 +36,7 @@
             obj.shape_formats = {'shp'};
             obj.centre_pixels = false;
             obj.render_component_contrasts = false;
+            obj.map_service_identifier = 'default';
             
             obj.define_requirement('directory');
             obj.define_requirement('spm_output_directory');
@@ -61,8 +64,18 @@
             crs = hdng.SpatialCRS.empty;
             
             if ~isempty(arguments.grid_data)
+                grid_data = arguments.grid_data;
                 grid = arguments.grid_data.grid;
                 crs = arguments.grid_data.crs;
+                
+                obj.volume_renderer.cell_sample_counts = obj.count_samples_per_cell(grid_data);
+                
+                [obj.volume_renderer.cell_labels, ...
+                    obj.volume_renderer.cell_label_list] = obj.label_cells(grid_data);
+            else
+                obj.volume_renderer.cell_sample_counts = [];
+                obj.volume_renderer.cell_labels = [];
+                obj.volume_renderer.cell_label_list = {}; 
             end
             
             settings = geospm.volumes.RenderSettings();
@@ -98,16 +111,33 @@
                 paired_trace_paths = {};
                 trace_paths = {};
                 
-                [matched_files, ~, matched_statistics] = session.match_statistic_paired_threshold_files('', threshold_directory);
+                image_record = obj.image_record_for_threshold(arguments, i);
                 
+                contrasts = image_record('contrasts').content;
+                contrast_volumes = contrasts('volumes').content;
+                contrast_descriptions = contrasts('descriptions').content;
+                
+                masks = image_record('masks').content;
+                mask_volumes = masks('volumes').content;
+
+                % [matched_files, ~, matched_statistics] = session.match_statistic_paired_threshold_files('', threshold_directory);
+                
+                matched_files = mask_volumes;
+
                 if ~isempty(matched_files)
 
-                    if numel(matched_statistics) ~= 1
-                        error('SPMTraceThresholdRegions.run(): Cannot handle a threshold with more than one statistic.');
-                    end
+                    % if numel(matched_statistics) ~= 1
+                    %    error('SPMTraceThresholdRegions.run(): Cannot handle a threshold with more than one statistic.');
+                    % end
                     
                     mask_set = geospm.volumes.VolumeSet();
                     mask_set.file_paths = matched_files;
+
+                    mask_set.addprop('contrasts');
+                    mask_set.contrasts = contrast_volumes;
+                    
+                    mask_set.addprop('contrast_descriptions');
+                    mask_set.contrast_descriptions = contrast_descriptions;
 
                     context.image_volumes = mask_set;
                     context.output_directory = threshold_output_directory;
@@ -136,23 +166,36 @@
                     
                     trace_paths = obj.volume_renderer.render(context);
                 end
-                
-                image_record = obj.image_record_for_threshold(arguments, i);
 
-                if isempty(image_record)
-                    continue
+                if ~isempty(image_record)
+
+                    mask_traces = hdng.utilities.Dictionary();
+                    mask_traces('volumes') = hdng.experiments.Value.from({});
+                    mask_traces('images') = hdng.experiments.Value.from([paired_trace_paths; trace_paths]);
+                    mask_traces('descriptions') = hdng.experiments.Value.from({});
+    
+                    image_record('mask_traces') = hdng.experiments.Value.from(mask_traces);
+
+                    mask_summary_path = fullfile(threshold_output_directory, 'summary.csv');
+                    
+                    summaries = obj.volume_renderer.summaries;
+                    
+                    rows = cell(size(summaries, 1) - 1, 1);
+
+                    for row=2:size(summaries, 1)
+                        slice_summaries = summaries(row, :);
+                        rows{row - 1} = slice_summaries;
+                    end
+                    
+                    image_record('mask_summaries') = ...
+                        hdng.experiments.Value.from(rows, 'Per Contrast Summaries');
+                    image_record('mask_summary_path') = ...
+                        hdng.experiments.Value.from(mask_summary_path, 'Summary'); %#ok<NASGU>
                 end
-                
-                mask_traces = hdng.utilities.Dictionary();
-                mask_traces('volumes') = hdng.experiments.Value.from({});
-                mask_traces('images') = hdng.experiments.Value.from([paired_trace_paths; trace_paths]);
-                mask_traces('descriptions') = hdng.experiments.Value.from({});
-
-                image_record('mask_traces') = hdng.experiments.Value.from(mask_traces); %#ok<NASGU> 
             end
-
+            
             image_record = obj.image_record_for_threshold(arguments, []);
-
+            
             if ~isempty(image_record)
                 image_record('mask_traces') = hdng.experiments.Value.empty_with_label('No mask traces.'); %#ok<NASGU> 
             end
@@ -179,6 +222,28 @@
             end
 
             result = image_records.unsorted_records{1};
+        end
+
+        function result = count_samples_per_cell(~, grid_data)
+            resolution = grid_data.grid.resolution(1:2);
+            result = zeros(resolution);
+
+            for index=1:grid_data.N
+                uv = grid_data.uvw(index, 1:2);
+                result(uv(1), uv(2)) = result(uv(1), uv(2)) + 1;
+            end
+        end
+        
+        function [labels, label_list] = label_cells(obj, grid_data)
+
+            function order = order_by_name(entity)
+                [~, order] = sortrows(entity.name);
+            end
+
+            [labels, result] = geospm.utilities.query_map_grid_cells(grid_data.crs, ...
+                grid_data.grid, 'labels', @order_by_name, obj.map_service_identifier);
+            
+            label_list = result.name;
         end
     end
 end
