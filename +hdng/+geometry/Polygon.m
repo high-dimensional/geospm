@@ -105,6 +105,20 @@ classdef Polygon < hdng.geometry.Surface
             
             result = obj.collect_rings(false, true, as_polylines);
         end
+
+        function result = collect_nan_delimited_ring_vertices(obj)
+            
+            result = NaN([obj.vertices.N_vertices + obj.N_rings - 1, 2]);
+            offset = 0;
+
+            for i=1:obj.N_rings
+                ring = obj.nth_ring(i);
+                result(offset + 1:offset + ring.vertices.N_vertices, :) = ...
+                    ring.vertices.coordinates(:, 1:2);
+
+                offset = offset + ring.vertices.N_vertices + 1;
+            end
+        end
         
     end
     

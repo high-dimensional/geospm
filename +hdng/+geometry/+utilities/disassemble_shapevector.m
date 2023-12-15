@@ -39,6 +39,8 @@ function [shapes, parts, coordinates] = disassemble_shapevector(shapevector, off
 
         [shape_x, shape_y, shape_parts] = hdng.geometry.utilities.disassemble_shape(shapevector(i), offset_type);
         
+        shape_parts = shape_parts + N_coordinates;
+
         shapes(N_result_shapes + 1) = N_parts + 1;
         parts(N_parts + 1:N_parts + numel(shape_parts)) = shape_parts;
         coordinates(N_coordinates + 1:N_coordinates + numel(shape_x), :) = [shape_x, shape_y];
