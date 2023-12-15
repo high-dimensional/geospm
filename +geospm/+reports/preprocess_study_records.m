@@ -28,13 +28,13 @@ function preprocess_study_records(directory, identifier, grid_options)
         
         group = groups{index};
 
-        grid_cells = group.grid_cells(group.row_value_selector, group.column_value_selector);
+        group.grid_cells = group.grid_cells(group.row_value_selector, group.column_value_selector);
         
         group.row_values = row_values(group.row_value_selector);
         group.column_values = column_values(group.column_value_selector);
         
-        grid_cells = geospm.reports.match_cell_records(grid_cells, grid_options.cell_selector);
-        group.grid_cell_values = geospm.reports.select_cell_values(grid_cells, grid_options.cell_fields);
+        grid_cell_values = geospm.reports.match_cell_records(group.grid_cells, grid_options.cell_selector);
+        group.grid_cell_values = geospm.reports.select_cell_values(grid_cell_values, grid_options.cell_fields);
 
         groups{index} = group;
     end
