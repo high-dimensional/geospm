@@ -33,12 +33,18 @@ classdef SPMSession < handle
         regression_mask_file
         regression_y_files
         regression_x_names
+        regression_x_values
         regression_beta_files
         regression_residual_sum_of_squares_file
         resels_per_voxel_file
         
         contrast_statistics % A cell array of statistic names such as 'T' or 'F'.
         
+        N_covariates
+
+        covariate_names
+        covariate_values
+
         N_contrasts % The total number of contrasts. This corresponds to
                     % all contrast records in xCon with a unique Vcon file.
                     % If F and t statistics were computed, then each
@@ -64,6 +70,7 @@ classdef SPMSession < handle
     
     properties (GetAccess=protected, SetAccess=protected, Transient, Dependent)
         contrast_records
+        covariate_records
     end
     
     properties (GetAccess=private, SetAccess=private)
@@ -147,6 +154,21 @@ classdef SPMSession < handle
             end
         end
         
+        function result = get.regression_x_values(obj)
+            
+            result = [];
+            
+            if ~isfield(obj.variables, 'xX') || ~isstruct(obj.variables.xX)
+                return
+            end
+            
+            if ~isfield(obj.variables.xX, 'X') || ~isnumeric(obj.variables.xX.X)
+                return
+            end
+
+            result = obj.variables.xX.X;
+        end
+        
         function result = get.regression_y_files(obj)
             
             result = {};
@@ -219,6 +241,30 @@ classdef SPMSession < handle
             result = obj.make_absolute_path(obj.variables.xVol.VRpv.fname);
         end
         
+        function result = get.covariate_records(obj)
+            
+            result = [];
+            
+            if ~isfield(obj.variables, 'xC') || ~isstruct(obj.variables.xC)
+                return
+            end
+            
+            result = obj.variables.xC;
+        end
+
+        function result = get.N_covariates(obj)
+            result = numel(obj.covariate_names);
+        end
+        
+        function result = get.covariate_names(obj)
+            expected_fields = {'cname'};
+            result = obj.select_and_map_covariate_records(@(record, ~) true, @(record, ~) record.cname, expected_fields);
+        end
+
+        function result = get.covariate_values(obj)
+            expected_fields = {'c'};
+            result = obj.select_and_map_covariate_records(@(record, ~) true, @(record, ~) record.c, expected_fields);
+        end
         
         function result = get.contrast_records(obj)
             
@@ -312,15 +358,55 @@ classdef SPMSession < handle
             
             hdng.utilities.delete(true, spm_path_old);
         end
+
+        function result = select_and_map_covariate_records(obj, select_function, mapping_function, expected_record_fields)
+            
+            if ~isa(select_function, 'function_handle')
+                error('SPMSession.select_and_map_covariate_records(): Argument ''select_function'' must be a function handle.');
+            end
+            
+            if ~isa(mapping_function, 'function_handle')
+                error('SPMSession.select_and_map_covariate_records(): Argument ''mapping_function'' must be a function handle.');
+            end
+            
+            if ~exist('expected_record_fields', 'var')
+                expected_record_fields = {};
+            end
+            
+            records = obj.covariate_records;
+            
+            for i=1:numel(expected_record_fields)
+                name = expected_record_fields{i};
+                
+                if ~isfield(records, name)
+                    error(['SPMSession.select_and_map_covariate_records(): Covariate records are missing field ''' name '''.']);
+                end
+            end
+            
+            result = cell(numel(records), 1);
+            N_results = 0;
+            
+            for i=1:numel(records)
+                
+                record = records(i);
+                
+                if select_function(record, i)
+                    N_results = N_results + 1;
+                    result{N_results} = mapping_function(record, i);
+                end
+            end
+            
+            result = result(1:N_results);
+        end
         
         function result = select_and_map_contrast_records(obj, select_function, mapping_function, expected_record_fields)
             
             if ~isa(select_function, 'function_handle')
-                error('SPMSession.select_contrast_records(): Argument ''select_function'' must be a function handle.');
+                error('SPMSession.select_and_map_contrast_records(): Argument ''select_function'' must be a function handle.');
             end
             
             if ~isa(mapping_function, 'function_handle')
-                error('SPMSession.select_contrast_records(): Argument ''mapping_function'' must be a function handle.');
+                error('SPMSession.select_and_map_contrast_records(): Argument ''mapping_function'' must be a function handle.');
             end
             
             if ~exist('expected_record_fields', 'var')
@@ -333,7 +419,7 @@ classdef SPMSession < handle
                 name = expected_record_fields{i};
                 
                 if ~isfield(records, name)
-                    error(['SPMSession.select_contrast_records(): Contrast records are missing field ''' name '''.']);
+                    error(['SPMSession.select_and_map_contrast_records(): Contrast records are missing field ''' name '''.']);
                 end
             end
             
