@@ -29,6 +29,34 @@ function extended_grid_summary_svg(base_directory, output_name, render_options, 
         options.adjust_colour_mapping = true;
     end
 
+    if ~isfield(options, 'colour_mapping')
+        options.colour_mapping = hdng.one_struct('batch', 'per_column');
+        options.colour_mapping.selected_column_values = {...
+        'Pair Matching Completion Time 1', ...
+        'Reaction Time', ...
+        'Nitrogen Dioxide Pollution', ...
+        'Nitrogen Oxide Pollution', ...
+        'PM < 2.5µm Absorb.', ...
+        'PM < 2.5µm', ...
+        'PM < 10µm', ...
+        'PM 2.5µm – 10µm', ...
+        ...
+        'Nitrogen Dioxide Pollution x Reaction Time', ...
+        'Nitrogen Oxide Pollution x Reaction Time', ...
+        'PM < 2.5µm Absorb. x Reaction Time', ...
+        'PM < 2.5µm x Reaction Time', ...
+        'PM < 10µm x Reaction Time', ...
+        'PM 2.5µm – 10µm x Reaction Time', ...
+        ...
+        'Nitrogen Dioxide Pollution x Pair Matching Completion Time 1', ...
+        'Nitrogen Oxide Pollution x Pair Matching Completion Time 1', ...
+        'PM < 2.5µm Absorb. x Pair Matching Completion Time 1', ...
+        'PM < 2.5µm x Pair Matching Completion Time 1', ...
+        'PM < 10µm x Pair Matching Completion Time 1', ...
+        'PM 2.5µm – 10µm x Pair Matching Completion Time 1' ...
+        };
+    end
+
     if ~isfield(options, 'skip_preprocessing')
         options.skip_preprocessing = false;
     end
@@ -42,9 +70,10 @@ function extended_grid_summary_svg(base_directory, output_name, render_options, 
     host_name = options.host_name;
     clear_source_refs = options.clear_source_refs;
     adjust_colour_mapping = options.adjust_colour_mapping;
+    colour_mapping = options.colour_mapping;
     skip_preprocessing = options.skip_preprocessing;
 
-    %skip_preprocessing = true;
+    skip_preprocessing = true;
 
     renderer.host_name = host_name;
     renderer.resource_identifier_expr = sprintf('.*(?<identifier>%spresentation%s(map_background.png|map_foreground.png))$', filesep);
@@ -52,8 +81,9 @@ function extended_grid_summary_svg(base_directory, output_name, render_options, 
     options = rmfield(options, 'host_name');
     options = rmfield(options, 'clear_source_refs');
     options = rmfield(options, 'adjust_colour_mapping');
+    options = rmfield(options, 'colour_mapping');
     options = rmfield(options, 'skip_preprocessing');
-
+    
     selected_layer_categories = {'underlay', 'content', 'overlay'};
     
     label_attributes = hdng.utilities.Dictionary();
@@ -119,6 +149,7 @@ function extended_grid_summary_svg(base_directory, output_name, render_options, 
 
     grid_cell_contexts = cell([sum(group_heights), max(group_widths)]);
     grid_volume_file_paths = cell(size(grid_cell_contexts));
+    grid_column_values = cell(size(grid_cell_contexts));
     
     group_index = 1;
     pos = 1;
@@ -132,16 +163,24 @@ function extended_grid_summary_svg(base_directory, output_name, render_options, 
 
             grid_cell_contexts(pos:pos + group_heights(group_index) - 1, 1:group_widths(group_index)) = group.grid_cell_contexts;
             grid_volume_file_paths(pos:pos + group_heights(group_index) - 1, 1:group_widths(group_index)) = group.grid_volume_file_paths;
-            
+            grid_column_values(pos:pos + group_heights(group_index) - 1, 1:group_widths(group_index)) = group.column_values;
+
             pos = pos + group_heights(group_index);
             group_index = group_index + 1;
             
         end
     end
     
-    if adjust_colour_mapping
-        apply_column_wise_colour_maps(grid_cell_contexts, grid_volume_file_paths, tmp_dir, host_name, resources, render_options);
+    %if adjust_colour_mapping
+    %    apply_column_wise_colour_maps(grid_cell_contexts, grid_volume_file_paths, tmp_dir, host_name, resources, render_options);
+    %end
+    
+    if ~isempty('colour_mapping')
+        batch_fn = str2func(['batch_' colour_mapping.batch]);
+        batches = batch_fn(grid_cell_contexts, grid_volume_file_paths, grid_column_values, tmp_dir, colour_mapping);
+        apply_colour_maps(batches, host_name, resources, render_options);
     end
+
 
     grid_rows = struct.empty;
     grid_row_index = 1;
@@ -205,6 +244,7 @@ function [result_cell_contexts, result_column_values] = ...
     available_columns = ~all(empty_cell_selector, 1);
 
     result_cell_contexts = result_cell_contexts(:, available_columns);
+    result_column_values = result_column_values(:, available_columns);
 end
 
 
@@ -301,6 +341,7 @@ function apply_column_wise_colour_maps(grid_cell_contexts, grid_volume_file_path
 
     if ~isfield(render_options, 'colour_map')
         render_options.colour_map = hdng.colour_mapping.GenericColourMap.twilight_27();
+        render_options.colour_map.colour_map_mode = hdng.colour_mapping.ColourMap.LAYER_MODE;
     end
 
     renderer = geospm.volumes.ColourMapping();
@@ -359,5 +400,132 @@ function apply_column_wise_colour_maps(grid_cell_contexts, grid_volume_file_path
         end
         
         update_resource_paths(col_contexts, image_paths, resources, render_options.host_name);
+    end
+end
+
+
+function result = batch_per_column(grid_cell_contexts, grid_volume_file_paths, grid_column_values, tmp_dir, options)
+
+    result = cell(size(grid_cell_contexts, 2), 1);
+
+    for col_index=1:size(grid_cell_contexts, 2)
+
+        col_dir = fullfile(tmp_dir, sprintf('column_%d_images', col_index));
+        [status,msg] = mkdir(col_dir);
+
+        if ~status
+            error(msg);
+        end
+
+        volume_set = geospm.volumes.VolumeSet();
+        volume_set.file_paths = grid_volume_file_paths(:, col_index);
+        volume_set.optional_output_names = geospm.reports.derive_unique_output_names(volume_set.file_paths);
+
+        volume_set.addprop('output_directory');
+        volume_set.output_directory = col_dir;
+        
+        volume_set.addprop('cell_contexts');
+        volume_set.cell_contexts = grid_cell_contexts(:, col_index);
+        
+        result{col_index} = volume_set;
+    end
+end
+
+
+
+function result = batch_bipartite(grid_cell_contexts, grid_volume_file_paths, grid_column_values, tmp_dir, options)
+
+    %selector = zeros(size(grid_cell_contexts), 'logical');
+    
+    selector = cellfun(@(x) any(strcmp(x.label, options.selected_column_values)), grid_column_values);
+    selectors = {selector, ~selector};
+    result = {[], []};
+    
+    for index=1:numel(result)
+
+        selector = selectors{index};
+
+        batch_dir = fullfile(tmp_dir, sprintf('batch_%d_images', index));
+        [status,msg] = mkdir(batch_dir);
+
+        if ~status
+            error(msg);
+        end
+
+        volume_set = geospm.volumes.VolumeSet();
+        volume_set.file_paths = grid_volume_file_paths(selector(:));
+        volume_set.optional_output_names = geospm.reports.derive_unique_output_names(volume_set.file_paths);
+
+        volume_set.addprop('output_directory');
+        volume_set.output_directory = batch_dir;
+        
+        volume_set.addprop('cell_contexts');
+        volume_set.cell_contexts = grid_cell_contexts(selector(:));
+        
+        result{index} = volume_set;
+    end
+end
+
+
+
+function apply_colour_maps(batches, host_name, resources, render_options)
+    
+    render_options.host_name = host_name;
+
+    if startsWith(host_name, 'file:')
+        host_name = host_name(numel('file:') + 1:end);
+    end
+
+    if ~isfield(render_options, 'colour_map')
+        render_options.colour_map = hdng.colour_mapping.GenericColourMap.twilight_27();
+    end
+
+    renderer = geospm.volumes.ColourMapping();
+    renderer.colour_map = render_options.colour_map;
+    renderer.colour_map_mode = hdng.colour_mapping.ColourMap.LAYER_MODE;
+
+    settings = geospm.volumes.RenderSettings();
+    
+    settings.formats = {'tif'};
+    %settings.grid = grid;
+    %settings.crs = hdng.SpatialCRS.empty;
+    settings.centre_pixels = true;
+    
+    %for col_index=1:size(grid_cell_contexts, 2)
+    for batch_index=1:numel(batches)
+        
+        volume_set = batches{batch_index};
+
+        context = geospm.volumes.RenderContext();
+        context.render_settings = settings;
+
+        context.image_volumes = volume_set;
+        context.alpha_volumes = [];
+        context.output_directory = volume_set.output_directory;
+
+        [image_paths, metadata] = renderer.render(context);
+        image_paths = cellfun(@(x) x{1}, image_paths, 'UniformOutput', false);
+        
+        for index=1:numel(image_paths)
+            path = image_paths{index};
+
+            if startsWith(path, host_name)
+                path = path(numel(host_name) + 1:end);
+            end
+
+            image_paths{index} = path;
+        end
+
+        slice_legends = metadata{1}.slice_legends;
+
+        for index=1:numel(slice_legends)
+            legend = slice_legends{index};
+            %legend.render_and_save_as(300, fullfile(volume_set.output_directory, sprintf('legend_z%04d.png', index)), 'Effects');
+            legend_file_name = fullfile(volume_set.output_directory, sprintf('legend_z%04d.svg', index));
+            legend_svg = legend.as_svg(300, 20);
+            hdng.utilities.save_text(legend_svg, legend_file_name);
+        end
+        
+        update_resource_paths(volume_set.cell_contexts, image_paths, resources, render_options.host_name);
     end
 end

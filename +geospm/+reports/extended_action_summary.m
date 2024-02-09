@@ -44,7 +44,7 @@ function extended_action_summary(base_directory, output_name, render_options, gr
     
     studies = scan_regional_directories(base_directory, options.suffix);
 
-    %studies = studies(1);
+    studies = studies(1);
     
     tmp_dir = hdng.utilities.make_timestamped_directory(base_directory);
     
@@ -64,14 +64,14 @@ function extended_action_summary(base_directory, output_name, render_options, gr
     options = rmfield(options, 'action_fn');
     options = rmfield(options, 'action_options');
     
-    %options.do_debug = true;
+    options.do_debug = true;
     
     if ~skip_preprocessing
 
         arguments = hdng.utilities.struct_to_name_value_sequence(options);
         
         cmds = cell(size(studies));
-       
+        
         for index=1:numel(studies)
             
             study = studies(index);
@@ -87,6 +87,8 @@ function extended_action_summary(base_directory, output_name, render_options, gr
     end
 
     dataset_cache = hdng.utilities.Dictionary();
+
+    volume_generators = hdng.utilities.Dictionary();
 
     group_widths = [];
     group_heights = [];
@@ -108,7 +110,7 @@ function extended_action_summary(base_directory, output_name, render_options, gr
             group = groups{index};
             % group_value = group_values{index};
             
-            cell_datasets = select_data_per_mask_polygon(group.grid_cells, group.grid_cell_values, render_options.slice_name, study_directory, dataset_cache, dataset_aliases);
+            cell_datasets = select_data_per_mask_polygon(group.grid_cells, group.grid_cell_values, render_options.slice_name, study_directory, dataset_cache, dataset_aliases, volume_generators);
         
             [group.grid_cell_contexts, group.column_values] = collapse_columns(cell_datasets, group.column_values);
             
@@ -121,7 +123,7 @@ function extended_action_summary(base_directory, output_name, render_options, gr
         study.groups = groups;
         studies(study_index) = study;
     end
-
+    
     grid_cell_contexts = cell([sum(group_heights), max(group_widths)]);
     
     group_index = 1;
@@ -156,6 +158,8 @@ function extended_action_summary(base_directory, output_name, render_options, gr
                 
                 cmd_options = hdng.one_struct(...
                     'study_index', index, ...
+                    'study_directory', study.directory, ...
+                    'volume_generators', volume_generators, ...
                     'grid_row_index', grid_row_index, ...
                     'row_datasets', group.grid_cell_contexts(row_index, :), ...
                     'row_value', group.row_values{row_index}, ...
@@ -183,9 +187,12 @@ function extended_action_summary(base_directory, output_name, render_options, gr
     
     row_cmd_selector = cellfun(@(x) ~isempty(x), row_cmds, 'UniformOutput', true);
 
-    geospm.schedules.run_parallel_cmds(tmp_dir, row_cmds(row_cmd_selector)); %, 'do_debug', true);
+    geospm.schedules.run_parallel_cmds(tmp_dir, row_cmds(row_cmd_selector), 'do_debug', options.do_debug);
     
     grid_row_index = 1;
+    
+    all_study_betas = [];
+    all_study_beta_data = [];
 
     for study_index=1:numel(studies)
             
@@ -204,6 +211,8 @@ function extended_action_summary(base_directory, output_name, render_options, gr
         end
 
         all_results = '';
+        all_betas = [];
+        all_beta_data = [];
 
         for response_index=1:numel(action_options.response_names)
 
@@ -220,12 +229,93 @@ function extended_action_summary(base_directory, output_name, render_options, gr
                 results_file = fullfile(file_directory, 'dataset_all_results.txt');
                 results = hdng.utilities.load_text(results_file);
                 all_results = [all_results, newline, newline, results]; %#ok<AGROW>
+
+                betas_file = fullfile(file_directory, 'betas.csv');
+                betas = readcell(betas_file);
+                
+                betas = [cell(size(betas, 1), 1), betas]; %#ok<AGROW>
+                
+                for row_index=1:size(betas, 1)
+                    betas{row_index, 1} = interaction_name;
+                end
+                
+                betas{1, 1} = 'interaction';
+
+                if ~isempty(all_betas)
+                    betas = betas(2:end, :);
+                end
+                
+                all_betas = [all_betas; betas]; %#ok<AGROW>
+
+
+                beta_data_file = fullfile(file_directory, 'beta_data.csv');
+                beta_data = readcell(beta_data_file);
+
+                beta_data = [cell(size(beta_data, 1), 1), beta_data]; %#ok<AGROW>
+                
+                for row_index=1:size(beta_data, 1)
+                    beta_data{row_index, 1} = interaction_name;
+                end
+                
+                beta_data{1, 1} = 'interaction';
+
+                if ~isempty(all_beta_data)
+                    beta_data = beta_data(2:end, :);
+                end
+                
+                all_beta_data = [all_beta_data; beta_data]; %#ok<AGROW>
             end
         end
         
         results_file = fullfile(tmp_dir, study.identifier, 'all_results.txt');
         hdng.utilities.save_text(all_results, results_file);
+
+
+        betas_file = fullfile(tmp_dir, study.identifier, 'all_betas.csv');
+        writecell(all_betas, betas_file);
+
+        all_betas = [cell(size(all_betas, 1), 1), all_betas]; %#ok<AGROW>
+        
+        for row_index=1:size(all_betas, 1)
+            region = split(study.identifier, '_');
+            all_betas{row_index, 1} = region{1};
+        end
+        
+         all_betas{1, 1} = 'study';
+
+        if ~isempty(all_study_betas)
+            all_betas = all_betas(2:end, :);
+        end
+
+        all_study_betas = [all_study_betas; all_betas]; %#ok<AGROW>
+        
+        %#######
+
+        beta_data_file = fullfile(tmp_dir, study.identifier, 'all_beta_data.csv');
+        writecell(all_beta_data, beta_data_file);
+
+        
+        all_beta_data = [cell(size(all_beta_data, 1), 1), all_beta_data]; %#ok<AGROW>
+        
+        for row_index=1:size(all_beta_data, 1)
+            region = split(study.identifier, '_');
+            all_beta_data{row_index, 1} = region{1};
+        end
+        
+         all_beta_data{1, 1} = 'study';
+
+        if ~isempty(all_study_beta_data)
+            all_beta_data = all_beta_data(2:end, :);
+        end
+
+        all_study_beta_data = [all_study_beta_data; all_beta_data]; %#ok<AGROW>
     end
+    
+    betas_file = fullfile(tmp_dir, 'all_study_betas.csv');
+    writecell(all_study_betas, betas_file);
+
+    betas_file = fullfile(tmp_dir, 'all_study_beta_data.csv');
+    writecell(all_study_beta_data, betas_file);
     
     %{
     [status, msg] = rmdir(tmp_dir, 's');
@@ -259,7 +349,7 @@ function [result_cell_contexts, result_column_values] = ...
     result_column_values = result_column_values(:, available_columns);
 end
 
-function grid_cell_values = select_data_per_mask_polygon(grid_cells, grid_cell_values, slice_name, base_directory, dataset_cache, dataset_aliases)
+function grid_cell_values = select_data_per_mask_polygon(grid_cells, grid_cell_values, slice_name, base_directory, dataset_cache, dataset_aliases, volume_generators)
     
     for index=1:numel(grid_cell_values)
         values = grid_cell_values{index};
@@ -320,6 +410,25 @@ function grid_cell_values = select_data_per_mask_polygon(grid_cells, grid_cell_v
         %}
 
         record = grid_cell.unsorted_records{1};
+
+
+        spm_output_path = record('result.spm_output_directory').content.path;
+        [session_directory, ~, ~] = fileparts(spm_output_path);
+        spm_input_path = fullfile(base_directory, session_directory, 'spm_input');
+
+        
+        if ~volume_generators.holds_key(spm_input_path)
+            
+            specifier = struct();
+            
+            specifier.smoothing_levels = record('configuration.smoothing_levels').content;
+            specifier.smoothing_levels = cell2mat(specifier.smoothing_levels);
+            specifier.smoothing_levels_p_value = record('configuration.smoothing_levels_p_value').content;
+            specifier.smoothing_method = record('configuration.smoothing_method').content;
+
+            volume_generators(spm_input_path) = specifier;
+        end
+        
         spatial_data_specifier = record('configuration.spatial_data_specifier');
         spatial_data_specifier = spatial_data_specifier.content;
 
@@ -338,23 +447,23 @@ function grid_cell_values = select_data_per_mask_polygon(grid_cells, grid_cell_v
             selection = query_dataset_per_polygon(dataset, polygons);
             
             polygon_datasets = [];
-            
+
             for p=1:polygons.N_elements
-               
+                
                 polygon_dataset = dataset;
                 polygon_dataset.data = polygon_dataset.data(selection(p, :), :);
                 polygon_dataset.polygon = polygons.nth_element(p);
                 polygon_dataset.min_location = min_location;
                 polygon_dataset.max_location = max_location;
+                polygon_dataset.cell_size = cell_size;
+                polygon_dataset.slice_index = slice_index;
+                polygon_dataset.record = record;
 
                 coordinates = [polygon_dataset.polygon.vertices.x';
                                polygon_dataset.polygon.vertices.y'];
 
-                coordinates = (coordinates - min_location) ./ cell_size;
-               
-                %min_coords = min(coordinates, [], 2);
-                %max_coords = max(coordinates, [], 2);
-
+                coordinates = (coordinates - min_location) ./ cell_size + 1;
+                
                 vertices = hdng.geometry.Vertices.define(coordinates');
                 polygon = polygon_dataset.polygon.substitute_vertices(vertices);
                 
