@@ -44,7 +44,7 @@ function extended_action_summary(base_directory, output_name, render_options, gr
     
     studies = scan_regional_directories(base_directory, options.suffix);
 
-    studies = studies(1);
+    %studies = studies(1);
     
     tmp_dir = hdng.utilities.make_timestamped_directory(base_directory);
     
@@ -64,7 +64,7 @@ function extended_action_summary(base_directory, output_name, render_options, gr
     options = rmfield(options, 'action_fn');
     options = rmfield(options, 'action_options');
     
-    options.do_debug = true;
+    %options.do_debug = false;
     
     if ~skip_preprocessing
 
@@ -87,13 +87,39 @@ function extended_action_summary(base_directory, output_name, render_options, gr
     end
 
     dataset_cache = hdng.utilities.Dictionary();
-
     volume_generators = hdng.utilities.Dictionary();
+    
+    [studies, group_widths, group_heights] = ...
+        build_polygon_datasets(studies, dataset_aliases, dataset_cache, volume_generators, render_options);
+    
+    grid_cell_contexts = gather_grid_cell_contexts(studies, group_widths, group_heights);
 
+    row_cmds = build_row_cmds_for_cells(studies, size(grid_cell_contexts, 1), action_fn, action_options, tmp_dir, volume_generators);
+    row_cmd_selector = cellfun(@(x) ~isempty(x), row_cmds, 'UniformOutput', true);
+
+    geospm.schedules.run_parallel_cmds(tmp_dir, row_cmds(row_cmd_selector), 'do_debug', options.do_debug);
+    aggregate(studies, tmp_dir, action_options);
+
+    %{
+    [status, msg] = rmdir(tmp_dir, 's');
+    
+    if ~status
+        error(msg);
+    end
+    %}
+    
+end
+
+function [studies, group_widths, group_heights] = ...
+    build_polygon_datasets(studies, dataset_aliases, dataset_cache, volume_generators, render_options)
+    
     group_widths = [];
     group_heights = [];
 
     studies(1).groups = struct.empty;
+
+    % Each study group is a cell grid of values selected by specific 
+    % combination of group, row and column selector values.
     
     for study_index=1:numel(studies)
         
@@ -123,7 +149,10 @@ function extended_action_summary(base_directory, output_name, render_options, gr
         study.groups = groups;
         studies(study_index) = study;
     end
-    
+end
+
+function grid_cell_contexts = gather_grid_cell_contexts(studies, group_widths, group_heights)
+
     grid_cell_contexts = cell([sum(group_heights), max(group_widths)]);
     
     group_index = 1;
@@ -142,8 +171,11 @@ function extended_action_summary(base_directory, output_name, render_options, gr
             group_index = group_index + 1;
         end
     end
-    
-    row_cmds = cell(size(grid_cell_contexts, 1), 1);
+end
+
+function row_cmds = build_row_cmds_for_cells(studies, expected_row_number, action_fn, action_options, tmp_dir, volume_generators)
+
+    row_cmds = cell(expected_row_number, 1);
     
     grid_row_index = 1;
 
@@ -184,11 +216,10 @@ function extended_action_summary(base_directory, output_name, render_options, gr
             end
         end
     end
-    
-    row_cmd_selector = cellfun(@(x) ~isempty(x), row_cmds, 'UniformOutput', true);
+end
 
-    geospm.schedules.run_parallel_cmds(tmp_dir, row_cmds(row_cmd_selector), 'do_debug', options.do_debug);
-    
+function aggregate(studies, tmp_dir, action_options)
+
     grid_row_index = 1;
     
     all_study_betas = [];
@@ -316,13 +347,5 @@ function extended_action_summary(base_directory, output_name, render_options, gr
 
     betas_file = fullfile(tmp_dir, 'all_study_beta_data.csv');
     writecell(all_study_beta_data, betas_file);
-    
-    %{
-    [status, msg] = rmdir(tmp_dir, 's');
-    
-    if ~status
-        error(msg);
-    end
-    %}
-    
 end
+
