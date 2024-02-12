@@ -44,7 +44,7 @@ function extended_action_summary(base_directory, output_name, render_options, gr
     
     studies = scan_regional_directories(base_directory, options.suffix);
 
-    %studies = studies(1);
+    studies = studies(1);
     
     tmp_dir = hdng.utilities.make_timestamped_directory(base_directory);
     
@@ -55,7 +55,7 @@ function extended_action_summary(base_directory, output_name, render_options, gr
     action_fn = options.action_fn;
     action_options = options.action_options;
 
-    %skip_preprocessing = true;
+    skip_preprocessing = true;
 
     options = rmfield(options, 'host_name');
     options = rmfield(options, 'clear_source_refs');
@@ -64,7 +64,7 @@ function extended_action_summary(base_directory, output_name, render_options, gr
     options = rmfield(options, 'action_fn');
     options = rmfield(options, 'action_options');
     
-    %options.do_debug = false;
+    options.do_debug = true;
     
     if ~skip_preprocessing
 
@@ -130,13 +130,17 @@ function [studies, group_widths, group_heights] = ...
         %[~, study_directory_name, ~] = fileparts(study_directory);
 
         load(study_file, 'groups', 'group_values');
+
+        grid_env = geospm.reports.create_grid_environment(render_options.slice_name, study_directory, dataset_cache, dataset_aliases, volume_generators);
         
         for index=1:numel(groups)
     
             group = groups{index};
             group_value = group_values{index}; %#ok<NASGU>
             
-            cell_datasets = geospm.reports.select_data_per_mask_polygon(group.grid_cells, group.grid_cell_values, render_options.slice_name, study_directory, dataset_cache, dataset_aliases, volume_generators);
+            %cell_datasets = geospm.reports.select_data_per_polygon(group.grid_cells, group.grid_cell_values, render_options.slice_name, study_directory, dataset_cache, dataset_aliases, volume_generators);
+            
+            cell_datasets = geospm.reports.select_data_per_polygon(group, grid_env);
             
             [group.grid_cell_contexts, group.column_values] = geospm.reports.collapse_columns(cell_datasets, group.column_values);
             
