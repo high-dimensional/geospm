@@ -40,6 +40,10 @@ function extended_action_summary(base_directory, output_name, render_options, gr
     if ~isfield(options, 'action_options')
         options.action_options = struct();
     end
+
+    if ~isfield(options, 'cell_value_fn')
+        options.cell_value_fn = @get_cell_values;
+    end
     
     
     studies = scan_regional_directories(base_directory, options.suffix);
@@ -54,6 +58,7 @@ function extended_action_summary(base_directory, output_name, render_options, gr
     skip_preprocessing = options.skip_preprocessing;
     action_fn = options.action_fn;
     action_options = options.action_options;
+    cell_value_fn = options.cell_value_fn;
 
     skip_preprocessing = true;
 
@@ -63,6 +68,7 @@ function extended_action_summary(base_directory, output_name, render_options, gr
     options = rmfield(options, 'skip_preprocessing');
     options = rmfield(options, 'action_fn');
     options = rmfield(options, 'action_options');
+    options = rmfield(options, 'cell_value_fn');
     
     options.do_debug = true;
     
@@ -90,7 +96,7 @@ function extended_action_summary(base_directory, output_name, render_options, gr
     volume_generators = hdng.utilities.Dictionary();
     
     [studies, group_widths, group_heights] = ...
-        build_polygon_datasets(studies, dataset_aliases, dataset_cache, volume_generators, render_options);
+        build_polygon_datasets(studies, dataset_aliases, dataset_cache, volume_generators, render_options, cell_value_fn);
     
     grid_cell_contexts = gather_grid_cell_contexts(studies, group_widths, group_heights);
 
@@ -111,7 +117,7 @@ function extended_action_summary(base_directory, output_name, render_options, gr
 end
 
 function [studies, group_widths, group_heights] = ...
-    build_polygon_datasets(studies, dataset_aliases, dataset_cache, volume_generators, render_options)
+    build_polygon_datasets(studies, dataset_aliases, dataset_cache, volume_generators, render_options, cell_value_fn)
     
     group_widths = [];
     group_heights = [];
@@ -138,9 +144,7 @@ function [studies, group_widths, group_heights] = ...
             group = groups{index};
             group_value = group_values{index}; %#ok<NASGU>
             
-            %cell_datasets = geospm.reports.select_data_per_polygon(group.grid_cells, group.grid_cell_values, render_options.slice_name, study_directory, dataset_cache, dataset_aliases, volume_generators);
-            
-            cell_datasets = geospm.reports.select_data_per_polygon(group, grid_env);
+            cell_datasets = geospm.reports.select_data_per_polygon(group, grid_env, cell_value_fn);
             
             [group.grid_cell_contexts, group.column_values] = geospm.reports.collapse_columns(cell_datasets, group.column_values);
             
@@ -352,4 +356,10 @@ function aggregate(studies, tmp_dir, action_options)
     betas_file = fullfile(tmp_dir, 'all_study_beta_data.csv');
     writecell(all_study_beta_data, betas_file);
 end
+
+
+function [values, state] = get_cell_values(cell_values, row_index, col_index, row_values, column_values, state)
+    values = cell_values{row_index, col_index};
+end
+
 

@@ -73,7 +73,7 @@ function [spm_input_path, spm_output_path] = spm_paths_from_record(record, base_
 end
 
 function [polygons, slice_index] = load_polygons_for_slice_name(mask_traces, slice_name, base_directory)
-
+    
     slice_map = hdng.experiments.SliceMap(mask_traces.slice_names);
     slice_index = slice_map.index_for_name(slice_name, 0);
     

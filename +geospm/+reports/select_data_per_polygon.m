@@ -13,23 +13,35 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function grid_cell_values = select_data_per_polygon(group, grid_env)
+function grid_cell_values = select_coordinated_data_per_polygon(group, grid_env, cell_value_fn)
     
 
     grid_cells = group.grid_cells;
     grid_cell_values = group.grid_cell_values;
+    column_values = group.column_values;
+    row_values = group.row_values;
 
-    for index=1:numel(grid_cell_values)
-        values = grid_cell_values{index};
+    fn_state = [];
+    
+    for row_index=1:size(grid_cell_values, 1)
 
-        if isempty(values)
-            continue;
+        for col_index=1:size(grid_cell_values, 2)
+            
+            grid_cell = grid_cells{row_index, col_index};
+            
+            if isempty(grid_cell)
+                continue;
+            end
+            
+            [values, fn_state] = cell_value_fn(grid_cell_values, row_index, col_index, row_values, column_values, fn_state);
+
+            if isempty(values)
+                continue;
+            end
+            
+            polygon_datasets = geospm.reports.extract_polygon_datasets(values, grid_cell, grid_env);
+
+            grid_cell_values{row_index, col_index} = polygon_datasets;
         end
-        
-        grid_cell = grid_cells{index};
-        
-        polygon_datasets = geospm.reports.extract_polygon_datasets(values, grid_cell, grid_env);
-
-        grid_cell_values{index} = polygon_datasets;
     end
 end
