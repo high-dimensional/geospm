@@ -17,16 +17,23 @@ function result = render_labels(labels, step_sizes, coord_key, coords, spacing, 
     
     result = '';
     origin = coords.(coord_key);
-
-    attributes = geospm.reports.render_markup_attributes(attributes);
+    
+    if ~ischar(attributes)
+        attributes = geospm.reports.render_markup_attributes(attributes);
+    end
 
     for index=1:numel(labels)
-        label = geospm.reports.html_escape(labels{index});
         
         coords.(coord_key) = origin + step_sizes(index) / 2;
+
+        label = labels{index};
         
-        result = [result sprintf('<text text-anchor="middle" x="%d" y="%d" %s>%s</text>', coords.x, coords.y, attributes, label) newline]; %#ok<AGROW>
-    
+        if ~isempty(label)
+            label = geospm.reports.html_escape(label);
+            
+            result = [result sprintf('<text text-anchor="middle" x="%d" y="%d" %s>%s</text>', coords.x, coords.y, attributes, label) newline]; %#ok<AGROW>
+        end
+        
         origin = origin + step_sizes(index) + spacing;
     end
 end
