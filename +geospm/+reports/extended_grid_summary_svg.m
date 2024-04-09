@@ -57,8 +57,8 @@ function extended_grid_summary_svg(base_directory, output_name, render_options, 
         };
     end
 
-    if ~isfield(options, 'skip_preprocessing')
-        options.skip_preprocessing = false;
+    if ~isfield(options, 'force_preprocessing')
+        options.force_preprocessing = false;
     end
     
     studies = scan_regional_directories(base_directory, options.suffix);
@@ -71,9 +71,7 @@ function extended_grid_summary_svg(base_directory, output_name, render_options, 
     clear_source_refs = options.clear_source_refs;
     adjust_colour_mapping = options.adjust_colour_mapping;
     colour_mapping = options.colour_mapping;
-    skip_preprocessing = options.skip_preprocessing;
-
-    skip_preprocessing = true;
+    force_preprocessing = options.force_preprocessing;
 
     renderer.host_name = host_name;
     renderer.resource_identifier_expr = sprintf('.*(?<identifier>%spresentation%s(map_background.png|map_foreground.png))$', filesep);
@@ -82,7 +80,9 @@ function extended_grid_summary_svg(base_directory, output_name, render_options, 
     options = rmfield(options, 'clear_source_refs');
     options = rmfield(options, 'adjust_colour_mapping');
     options = rmfield(options, 'colour_mapping');
-    options = rmfield(options, 'skip_preprocessing');
+    options = rmfield(options, 'force_preprocessing');
+
+    options.do_debug = false;
     
     selected_layer_categories = {'underlay', 'content', 'overlay'};
     
@@ -91,25 +91,36 @@ function extended_grid_summary_svg(base_directory, output_name, render_options, 
     label_attributes('font-weight') = '600';
     
 
-    if ~skip_preprocessing
+    arguments = hdng.utilities.struct_to_name_value_sequence(options);
+    
+    cmds = cell(size(studies));
+    cmd_index = 0;
 
-        arguments = hdng.utilities.struct_to_name_value_sequence(options);
+    for index=1:numel(studies)
         
-        cmds = cell(size(studies));
-       
-        for index=1:numel(studies)
-            
-            study = studies(index);
-            cmds{index} = geospm.schedules.create_cmd(...
+        study = studies(index);
+
+        filename = fullfile(study.directory, [study.identifier '_svg_preprocessed.mat']);
+
+        if ~exist(filename, 'file') || force_preprocessing
+
+            cmd_index = cmd_index + 1;
+
+            cmds{cmd_index} = geospm.schedules.create_cmd(...
                 @geospm.reports.preprocess_study_records, ...
                 study.identifier, study.directory, ...
-                {study.directory, study.identifier, grid_options}, ...
+                {study.directory, [study.identifier '_svg'], grid_options}, ...
                 struct());
+
         end
-        
+    end
+    
+    cmds = cmds(1:cmd_index);
+    
+    if ~isempty(cmds)
         geospm.schedules.run_parallel_cmds(tmp_dir, cmds, arguments{:});
     end
-
+    
     group_widths = [];
     group_heights = [];
 
@@ -120,7 +131,7 @@ function extended_grid_summary_svg(base_directory, output_name, render_options, 
         
         study = studies(study_index);
         study_directory = study.directory;
-        study_file = fullfile(study_directory, [study.identifier '_preprocessed.mat']);
+        study_file = fullfile(study_directory, [study.identifier '_svg_preprocessed.mat']);
 
         [~, study_directory_name, ~] = fileparts(study_directory);
 
@@ -221,7 +232,7 @@ function extended_grid_summary_svg(base_directory, output_name, render_options, 
     %end
     
     grid_svg = geospm.reports.render_combined_grid(grid_rows, renderer, resources, render_options);
-    hdng.utilities.save_text(grid_svg, fullfile(base_directory, [output_name '.svg']));
+    hdng.utilities.save_text(grid_svg, fullfile(tmp_dir, [output_name '.svg']));
 
 end
 

@@ -59,9 +59,11 @@ classdef SpatialExperiment < handle
         expression_data_name
         
         model_data
+
         spatial_data_expression
         spatial_data
-        
+        spatial_index
+
         do_write_spatial_data
         write_z_coordinate
         
@@ -154,6 +156,7 @@ classdef SpatialExperiment < handle
             
             obj.model_data = [];
             obj.spatial_data = [];
+            obj.spatial_index = [];
             
             obj.N_probe_samples = 500;
             obj.probe_data = [];
@@ -253,7 +256,7 @@ classdef SpatialExperiment < handle
             
             file_records = hdng.utilities.Dictionary();
             
-            obj.model_data = obj.sampling_strategy.observe(obj.model, obj.N_samples, obj.model_seed);
+            [obj.model_data, obj.spatial_index] = obj.sampling_strategy.observe(obj.model, obj.N_samples, obj.model_seed);
             obj.write_model_files(file_records);
             
             if obj.add_probes
@@ -261,7 +264,6 @@ classdef SpatialExperiment < handle
             end
             
             obj.compute_spatial_data();
-            %obj.spatial_data.show_variogram();
             obj.write_spatial_data(file_records, ~obj.write_z_coordinate);
             
             terms = hdng.experiments.RecordArray();
@@ -571,7 +573,7 @@ classdef SpatialExperiment < handle
         
         function mask = compute_geographic_mask(obj)
 
-            if isempty(obj.spatial_data) || ~obj.spatial_data.has_crs
+            if isempty(obj.spatial_index) || ~obj.spatial_index.has_crs
                 mask = ones(obj.model_grid.resolution([2,1]), 'logical');
                 return;
             end
@@ -580,7 +582,7 @@ classdef SpatialExperiment < handle
             max_location = obj.model_grid.origin(1:2) + obj.model_grid.resolution(1:2) .* obj.model_grid.cell_size(1:2);
 
             mask = geospm.utilities.generate_map_image(...
-                obj.spatial_data.crs, ...
+                obj.spatial_index.crs, ...
                 min_location, ...
                 max_location, ...
                 obj.model_grid.resolution(1:2), ...
@@ -634,6 +636,17 @@ classdef SpatialExperiment < handle
             file.source_ref = obj.source_ref;
             file_records('model_data.json') = hdng.experiments.Value.from(file);
             
+            spatial_index_path = fullfile(obj.directory, 'model_spatial_index.json');
+            
+            if obj.should_write_files()
+                obj.spatial_index.write_as_json(spatial_index_path);
+            end
+            
+            file = hdng.experiments.FileReference();
+            file.path = obj.canonical_path(spatial_index_path);
+            file.source_ref = obj.source_ref;
+            file_records('model_spatial_index.json') = hdng.experiments.Value.from(file);
+            
             model_data_path = fullfile(obj.directory, [model_data_name '.csv']);
             
             if obj.should_write_files()
@@ -657,7 +670,7 @@ classdef SpatialExperiment < handle
                 };
 
             if obj.should_write_files()
-                obj.model_data.write_as_eps(scatter_plot_path, [1, 1], obj.model.spatial_resolution + 1, arguments{:});
+                obj.spatial_index.write_as_eps(scatter_plot_path, [1, 1], obj.model.spatial_resolution + 1, arguments{:});
             end
             
             file = hdng.experiments.FileReference();
@@ -668,7 +681,7 @@ classdef SpatialExperiment < handle
             scatter_plot_path = fullfile(obj.directory, [model_data_name '.png']);
             
             if obj.should_write_files()
-                obj.model_data.write_as_png(scatter_plot_path, [1, 1], obj.model.spatial_resolution + 1, arguments{:});
+                obj.spatial_index.write_as_png(scatter_plot_path, [1, 1], obj.model.spatial_resolution + 1, arguments{:});
             end
             
             file = hdng.experiments.ImageReference();

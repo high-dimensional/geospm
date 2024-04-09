@@ -25,7 +25,7 @@ classdef SamplingStrategy < handle
         function obj = SamplingStrategy()
         end
         
-        function result = observe(obj, model, N_samples, seed) %#ok<INUSD,STOUT>
+        function [result, spatial_index] = observe(obj, model, N_samples, seed) %#ok<INUSD,STOUT>
         	error('SamplingStrategy.observe() must be implemented by a subclass.');
         end
     end

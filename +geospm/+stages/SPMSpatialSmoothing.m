@@ -18,7 +18,10 @@
     %   Detailed explanation goes here
     
     properties
-        data_requirement
+        grid_spatial_index_requirement
+        
+        volume_generator_class_name
+
         write_density
     end
     
@@ -72,21 +75,26 @@
                 options.smoothing_levels_as_z_dimension = true;
             end
             
-            if ~isfield(options, 'data_requirement')
-                options.data_requirement = 'grid_data';
+            if ~isfield(options, 'volume_generator_class_name')
+                options.volume_generator_class_name = 'geospm.spm.SpatialIndexRenderer';
+            end
+            
+            if ~isfield(options, 'grid_spatial_index_requirement')
+                options.grid_spatial_index_requirement = 'grid_spatial_index';
             end
             
             if ~isfield(options, 'write_density')
                 options.write_density = true;
             end
             
-            obj.data_requirement = options.data_requirement;
+            obj.volume_generator_class_name = options.volume_generator_class_name;
+            obj.grid_spatial_index_requirement = options.grid_spatial_index_requirement;
             obj.write_density = options.write_density;
             
             obj.precision = options.precision;
             
             obj.define_requirement('directory');
-            obj.define_requirement(obj.data_requirement);
+            obj.define_requirement(obj.grid_spatial_index_requirement);
             
             obj.define_requirement('smoothing_method', ...
                 struct(), 'is_optional', true, ...
@@ -127,11 +135,11 @@
             % Either render all samples as on-disk volumes, or generate synthetic
             % file paths which can be used to render volumes on the fly.
             
-            grid_data = arguments.(obj.data_requirement);
+            grid_spatial_index = arguments.(obj.grid_spatial_index_requirement);
             
             volume_generator = obj.create_volume_generator(...
                 arguments.directory, ...
-                grid_data, ...
+                grid_spatial_index, ...
                 obj.precision, ...
                 arguments.smoothing_method, ...
                 arguments.smoothing_levels, ...
@@ -139,11 +147,7 @@
                 arguments.smoothing_levels_as_z_dimension);
             
             [volume_paths, density, volume_mask_path] = ...
-                volume_generator.smooth_samples(...
-                    1:grid_data.N, ...
-                    grid_data.u, ...
-                    grid_data.v, ...
-                    grid_data.w);
+                volume_generator.smooth_spatial_index(grid_spatial_index);
             
             if obj.write_density
                 density_path = fullfile(arguments.directory, 'density.nii');
@@ -161,9 +165,9 @@
     
     methods (Access=protected)
         
-        function result = create_volume_generator(~, ...
+        function result = create_volume_generator(obj, ...
                 directory, ...
-                grid_data, ...
+                grid_spatial_index, ...
                 precision, ...
                 smoothing_method, ...
                 smoothing_levels, ...
@@ -185,7 +189,7 @@
             geospm.spm.SPMJobList.access_spm_interface();
             
             %smoothing_levels are specified in data units
-            smoothing_scale = grid_data.grid.cell_size(1:2);
+            smoothing_scale = grid_spatial_index.grid.cell_size(1:2);
             
             if smoothing_scale(1) ~= smoothing_scale(2)
                 warning('Grid axes are scaled differently: Taking the maximim value as smoothing scale.');
@@ -193,9 +197,11 @@
             
             smoothing_levels = smoothing_levels ./ max(smoothing_scale);
             
-            result = geospm.spm.KernelVolumeGenerator( ...
+            volume_generator_class = str2func(obj.volume_generator_class_name);
+
+            result = volume_generator_class( ...
                     volume_directory, ...
-                    grid_data.resolution, ...
+                    grid_spatial_index.resolution, ...
                     precision, ...
                     smoothing_method, ...
                     smoothing_levels, ...

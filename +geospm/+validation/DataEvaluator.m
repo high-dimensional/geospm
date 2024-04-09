@@ -139,7 +139,7 @@ classdef DataEvaluator < geospm.validation.Evaluator
         function path = render_map_presentation_layer(~, directory, layer, context)
             
             [image, alpha] = geospm.utilities.generate_map_image(...
-                context.spatial_data.crs, ...
+                context.spatial_index.crs, ...
                 context.grid_min_location, ...
                 context.grid_max_location, ...
                 context.grid_spatial_resolution(1:2) * layer.pixel_density, ...
@@ -280,17 +280,13 @@ classdef DataEvaluator < geospm.validation.Evaluator
                     spatial_data_specifier = rmfield(spatial_data_specifier, 'max_location');
                 end
                 
-                spatial_data = obj.load_spatial_data(spatial_data_specifier);
-            
-            elseif isa(spatial_data_specifier, 'geospm.NumericData')
-                
-                spatial_data = spatial_data_specifier;
+                [spatial_data, spatial_index] = obj.load_spatial_data(spatial_data_specifier);
             else
-                error('Invalid value for ''spatial_data_specifier''. Expected struct or geospm.NumericData.');
+                error('Invalid value for ''spatial_data_specifier''. Expected struct.');
             end
             
             if ~isfield(grid_options_copy, 'grid')
-                grid_options_copy = geospm.auxiliary.parse_spatial_resolution(spatial_data, grid_options_copy);
+                grid_options_copy = geospm.auxiliary.parse_spatial_resolution(spatial_index, grid_options_copy);
 
                 if ~isfield(grid_options_copy, 'cell_marker_alignment')
                     grid_options_copy.cell_marker_alignment = [0.5, 0.5];
@@ -329,7 +325,7 @@ classdef DataEvaluator < geospm.validation.Evaluator
             	spm_arguments_copy.spm_add_intercept = true;
             end
             
-            [spatial_model, domain_expr] = obj.create_dummy_model(spatial_data, grid_options_copy.grid.resolution(1:2), 'direct', false);
+            [spatial_model, domain_expr] = obj.create_dummy_model(spatial_data, spatial_index, grid_options_copy.grid.resolution(1:2), 'direct', false);
             
             sampling_strategy = geospm.models.sampling.Subsampling(grid_options_copy.grid);
             
@@ -433,6 +429,7 @@ classdef DataEvaluator < geospm.validation.Evaluator
 
                 context = hdng.one_struct( ...
                     'spatial_data', spatial_data, ...
+                    'spatial_index', spatial_index, ...
                     'grid_min_location', grid_min_location, ...
                     'grid_max_location', grid_max_location, ...
                     'grid_spatial_resolution', grid_spatial_resolution, ...
@@ -459,7 +456,7 @@ classdef DataEvaluator < geospm.validation.Evaluator
     
     methods (Access=protected)
         
-        function spatial_data = load_spatial_data(obj, specifier)
+        function [spatial_data, spatial_index] = load_spatial_data(obj, specifier)
 
             file_path = specifier.file_path;
             
@@ -515,10 +512,10 @@ classdef DataEvaluator < geospm.validation.Evaluator
             arguments = hdng.utilities.struct_to_name_value_sequence(tmp);
             
             if ~obj.spatial_data_cache_.holds_key(file_path)
-                spatial_data = geospm.load_data(file_path, arguments{:}, 'mask_columns_with_missing_values', false, 'mask_rows_with_missing_values', false);
-                obj.spatial_data_cache_(file_path) = spatial_data;
+                [spatial_data, spatial_index] = geospm.load_data(file_path, arguments{:}, 'mask_columns_with_missing_values', false, 'mask_rows_with_missing_values', false);
+                obj.spatial_data_cache_(file_path) = {spatial_data, spatial_index};
             else
-                spatial_data = obj.spatial_data_cache_(file_path);
+                [spatial_data, spatial_index] = obj.spatial_data_cache_(file_path);
             end
             
             columns = [];
@@ -534,8 +531,11 @@ classdef DataEvaluator < geospm.validation.Evaluator
             end
             
             rows = ~any(isnan(spatial_data.observations(:, columns)), 2);
+            
             spatial_data = spatial_data.select(rows, columns, ...
                 @(args) obj.transform_spatial_data(args, specifier.standardise));
+            
+            spatial_index = spatial_index.select(rows, []);
             
             if ~isempty(specifier.interactions)
                 
@@ -566,7 +566,7 @@ classdef DataEvaluator < geospm.validation.Evaluator
             end
         end
         
-        function [result, domain_expr] = create_dummy_model(obj, spatial_data, resolution, encoding, ignore_constant)
+        function [result, domain_expr] = create_dummy_model(obj, spatial_data, spatial_index, resolution, encoding, ignore_constant)
             
             result = struct();
             result.model = [];
@@ -576,6 +576,7 @@ classdef DataEvaluator < geospm.validation.Evaluator
             
             result.model = geospm.models.SpatialModel(domain, resolution);
             result.model.attachments.spatial_data = spatial_data;
+            result.model.attachments.spatial_index = spatial_index;
             
             encodings = geospm.models.DomainEncodings();
             encoding_method = encodings.resolve_encoding_method(encoding);

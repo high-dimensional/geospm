@@ -29,8 +29,8 @@ function extended_action_summary(base_directory, output_name, render_options, gr
         options.dataset_aliases = hdng.utilities.Dictionary();
     end
 
-    if ~isfield(options, 'skip_preprocessing')
-        options.skip_preprocessing = false;
+    if ~isfield(options, 'force_preprocessing')
+        options.force_preprocessing = false;
     end
 
     if ~isfield(options, 'action_fn')
@@ -55,40 +55,48 @@ function extended_action_summary(base_directory, output_name, render_options, gr
     %host_name = options.host_name;
     %clear_source_refs = options.clear_source_refs;
     dataset_aliases = options.dataset_aliases;
-    skip_preprocessing = options.skip_preprocessing;
+    force_preprocessing = options.force_preprocessing;
     action_fn = options.action_fn;
     action_options = options.action_options;
     cell_value_fn = options.cell_value_fn;
 
-    skip_preprocessing = true;
-
     options = rmfield(options, 'host_name');
     options = rmfield(options, 'clear_source_refs');
     options = rmfield(options, 'dataset_aliases');
-    options = rmfield(options, 'skip_preprocessing');
+    options = rmfield(options, 'force_preprocessing');
     options = rmfield(options, 'action_fn');
     options = rmfield(options, 'action_options');
     options = rmfield(options, 'cell_value_fn');
     
-    options.do_debug = true;
+    options.do_debug = false;
     
-    if ~skip_preprocessing
+    arguments = hdng.utilities.struct_to_name_value_sequence(options);
+    
+    cmds = cell(size(studies));
+    cmd_index = 0;
 
-        arguments = hdng.utilities.struct_to_name_value_sequence(options);
+    for index=1:numel(studies)
         
-        cmds = cell(size(studies));
-        
-        for index=1:numel(studies)
-            
-            study = studies(index);
+        study = studies(index);
 
-            cmds{index} = geospm.schedules.create_cmd(...
+        filename = fullfile(study.directory, [study.identifier '_act_preprocessed.mat']);
+
+        if ~exist(filename, 'file') || force_preprocessing
+
+            cmd_index = cmd_index + 1;
+
+            cmds{cmd_index} = geospm.schedules.create_cmd(...
                 @geospm.reports.preprocess_study_records, ...
                 study.identifier, study.directory, ...
-                {study.directory, study.identifier, grid_options}, ...
+                {study.directory, [study.identifier '_act'], grid_options}, ...
                 struct());
+
         end
-        
+    end
+    
+    cmds = cmds(1:cmd_index);
+    
+    if ~isempty(cmds)
         geospm.schedules.run_parallel_cmds(tmp_dir, cmds, arguments{:});
     end
 
@@ -131,7 +139,7 @@ function [studies, group_widths, group_heights] = ...
         
         study = studies(study_index);
         study_directory = study.directory;
-        study_file = fullfile(study_directory, [study.identifier '_preprocessed.mat']);
+        study_file = fullfile(study_directory, [study.identifier '_act_preprocessed.mat']);
 
         %[~, study_directory_name, ~] = fileparts(study_directory);
 

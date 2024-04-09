@@ -76,7 +76,7 @@
 
             obj.define_requirement('volume_precision');
             
-            obj.define_requirement('grid_data', ...
+            obj.define_requirement('grid_spatial_index', ...
                 struct(), 'is_optional', true, 'default_value', []);
             
             obj.define_product('threshold_directories');
@@ -88,9 +88,9 @@
             grid = geospm.Grid();
             crs = hdng.SpatialCRS.empty;
             
-            if ~isempty(arguments.grid_data)
-                grid = arguments.grid_data.grid;
-                crs = arguments.grid_data.crs;
+            if ~isempty(arguments.grid_spatial_index)
+                grid = arguments.grid_spatial_index.grid;
+                crs = arguments.grid_spatial_index.crs;
             end
             
             spm_output_directory = arguments.spm_output_directory;

@@ -13,9 +13,10 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function result = load_data(file_path, varargin)
+function [result, spatial_index] = load_data(file_path, varargin)
     %{
-        Creates a geospm.SpatialData object from a CSV file.
+        Creates geospm.NumericData and geospm.SpatialIndex objects 
+        from a CSV file.
 
         Rows in the CSV file without coordinates are ignored.
 
@@ -47,6 +48,12 @@ function result = load_data(file_path, varargin)
         
         row_identifier_index – The index of the column whose values
         uniquely identify rows. Defaults to 1.
+         
+        segment_label – The name of the column whose values uniquely
+        identify the segment number an observation belongs to. If defined, takes precedence over segment_index.
+
+        segment_index – The index of the column whose values
+        identify the segment number an observation belongs to.
         
         If neither 'row_identifier_label' nor 'row_identifier_index' are
         specified, the first column retrieved from the file will be used
@@ -109,6 +116,8 @@ function result = load_data(file_path, varargin)
                  ' auxiliary ''' basename '.prj'' file.']); 
     end
     
+    variable_columns = ones(size(additional_columns), 'logical');
+
     if isfield(options, 'row_identifier_label' )
 
         for i=1:numel(additional_columns)
@@ -128,8 +137,10 @@ function result = load_data(file_path, varargin)
            options.row_identifier_index <= numel(additional_columns)
 
             eid = additional_columns{options.row_identifier_index};
-            variable_columns = [additional_columns(1:options.row_identifier_index - 1);
-                                additional_columns(options.row_identifier_index + 1:end)];
+            variable_columns(options.row_identifier_index) = 0;
+
+            %variable_columns = [additional_columns(1:options.row_identifier_index - 1);
+            %                    additional_columns(options.row_identifier_index + 1:end)];
         else
             options = rmfield(options, 'row_identifier_index');
         end
@@ -137,14 +148,53 @@ function result = load_data(file_path, varargin)
     
     if ~isfield(options, 'row_identifier_index') && ~isfield(options, 'row_identifier_label')
         warning(['geospm.load_data(): No row_identifier_index or ' ...
-                 ' row_identifier_label was explicitly specified. ' ...
+                 'row_identifier_label was explicitly specified. ' ...
                  newline 'Using row number as identifier.']); 
              
         eid = struct();
         eid.data = (1:N_rows)';
-        variable_columns = additional_columns;
+        %variable_columns = additional_columns;
     end
     
+    if isfield(options, 'segment_label' )
+
+        for i=1:numel(additional_columns)
+            column = additional_columns{i};
+
+            if strcmp(column.label, options.segment_label)
+                options.segment_index = i;
+                break;
+            end
+        end
+    end
+
+    if isfield(options, 'segment_index' )
+        
+        if ~isempty(options.segment_index) && ...
+           options.segment_index >= 1 && ...
+           options.segment_index <= numel(additional_columns)
+
+            segment_index = additional_columns{options.segment_index};
+            variable_columns(options.segment_index) = 0;
+            
+            %variable_columns = [additional_columns(1:options.segment_index - 1);
+            %                    additional_columns(options.segment_index + 1:end)];
+        else
+            options = rmfield(options, 'segment_index');
+        end
+    end
+    
+    if ~isfield(options, 'segment_index') && ~isfield(options, 'segment_label')
+        warning(['geospm.load_data(): No segment_index or ' ...
+                 'segment_label was explicitly specified. ' ...
+                 newline 'Each observation is mapped to its own segment.']); 
+             
+        segment_index = struct();
+        segment_index.data = (1:N_rows)';
+        %variable_columns = additional_columns;
+    end
+    
+    variable_columns = additional_columns(variable_columns);
     variable_names = cell(numel(variable_columns), 1);
     variable_types = cell(numel(variable_columns), 1);
     
@@ -267,10 +317,16 @@ function result = load_data(file_path, varargin)
         end
     end
 
+    %{
     result = geospm.SpatialData(x, y, [], variable_matrix, crs_or_crs_identifier, ...
                options.mask_columns_with_missing_values || ...
                options.mask_rows_with_missing_values);
+    %}
     
+    check_nans = options.mask_columns_with_missing_values || ...
+                 options.mask_rows_with_missing_values;
+
+    result = geospm.NumericData(variable_matrix, size(variable_matrix, 1), check_nans);
     result.set_variable_names(variable_names');
     
     label_chars = num2str(eid.data(selected_rows), '%d');
@@ -283,4 +339,13 @@ function result = load_data(file_path, varargin)
     result.set_labels(labels);
     result.attachments.missing_values = missing_values_matrix;
     result.attachments.variable_types = variable_types;
+
+    segment_index = segment_index.data(selected_rows);
+
+    % make sure the segments are arranged in ascending order
+    [segment_index, order] = sort(segment_index);
+    result = result.select(order, []);
+
+    segments = geospm.SpatialIndex.segment_indices_to_segment_sizes(segment_index);
+    spatial_index = geospm.SpatialIndex(x, y, [], segments, crs_or_crs_identifier);
 end

@@ -89,7 +89,7 @@ classdef StandardSampling2 < geospm.models.SamplingStrategy
             X = cast(X, 'double');
         end
         
-        function result = observe(obj, model, N_samples, seed)
+        function [result, spatial_index] = observe(obj, model, N_samples, seed)
             
             rng = RandStream.create('mt19937ar', 'Seed', seed);
             
@@ -136,26 +136,39 @@ classdef StandardSampling2 < geospm.models.SamplingStrategy
             
             sample_indices = randperm(rng, N_samples, N_samples);
             
-            spatial_data = geospm.SpatialData(x, y, zeros(N_samples, 1), observations);
+            %spatial_data = geospm.SpatialData(x, y, zeros(N_samples, 1), observations);
+            spatial_data = geospm.NumericData(observations);
+            spatial_index = geospm.SpatialIndex(x, y, [], []);
+            
             spatial_data.set_variable_names(model.domain.variable_names');
             spatial_data.set_categories(categories);
-            
-            if strcmp(obj.coincident_observations_mode, geospm.models.sampling.StandardSampling2.IDENTITY_MODE)
-                result = spatial_data.select([], []);
-            elseif strcmp(obj.coincident_observations_mode, geospm.models.sampling.StandardSampling2.JITTER_MODE)
-                result = spatial_data.select([], [], @(arguments) obj.add_jitter(arguments, jitter_x, jitter_y));
-            elseif strcmp(obj.coincident_observations_mode, geospm.models.sampling.StandardSampling2.AVERAGE_MODE)
-                result = spatial_data.select([], [], @(arguments) obj.average_coincident_observations(arguments));
-                sample_indices = sample_indices(sample_indices <= result.N);
-                result = result.select(sample_indices, []);
-            elseif strcmp(obj.coincident_observations_mode, geospm.models.sampling.StandardSampling2.REMOVE_MODE)
-                result = spatial_data.select([], [], @(arguments) obj.pick_one_coincident_observation(arguments));
-                sample_indices = sample_indices(sample_indices <= result.N);
-                result = result.select(sample_indices, []);
-            else
-                error('geospm.models.sampling.StandardSampling2.observe(): Unknown observation mode: %s', obj.coincident_observations_mode);
+
+            switch obj.coincident_observations_mode
+
+                case geospm.models.sampling.StandardSampling2.IDENTITY_MODE
+                    result = spatial_data.select([], []);
+
+                case geospm.models.sampling.StandardSampling2.JITTER_MODE
+                    result = spatial_data.select([], []);
+                    spatial_index = spatial_index.select_by_segment([], @(arguments) obj.add_jitter(arguments, jitter_x, jitter_y));
+                
+                %{
+                case geospm.models.sampling.StandardSampling2.AVERAGE_MODE
+                    result = spatial_data.select([], [], @(arguments) obj.average_coincident_observations(arguments));
+                    sample_indices = sample_indices(sample_indices <= result.N);
+                    result = result.select(sample_indices, []);
+                
+                case geospm.models.sampling.StandardSampling2.REMOVE_MODE
+                    result = spatial_data.select([], [], @(arguments) obj.pick_one_coincident_observation(arguments));
+                    sample_indices = sample_indices(sample_indices <= result.N);
+                    result = result.select(sample_indices, []);
+                %}
+                    
+                otherwise
+                
+                    error('geospm.models.sampling.StandardSampling2.observe(): Unknown observation mode: %s', obj.coincident_observations_mode);
             end
-            
+
             result.attachments.spatial_resolution = model.spatial_resolution;
         end
         

@@ -63,6 +63,9 @@ classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
             obj.define_requirement('directory');
             obj.define_requirement('grid_data');
             
+            obj.define_requirement('grid_spatial_index', ...
+                struct(), 'is_optional', true, 'default_value', []);
+            
             obj.define_requirement('volume_generator');
             obj.define_requirement('volume_paths');
             obj.define_requirement('volume_mask_path');
@@ -228,6 +231,11 @@ classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
                 
                 global_mask_path = fullfile(arguments.directory, 'global_mask.nii');
                 geospm.utilities.write_nifti(global_mask, global_mask_path);
+            end
+            
+            if ~isempty(arguments.grid_spatial_index)
+                grid_spatial_index = arguments.grid_spatial_index;
+                grid_spatial_index.write_as_matlab(fullfile(output_directory, 'grid_spatial_index.mat'));
             end
             
             result = struct();

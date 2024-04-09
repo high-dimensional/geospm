@@ -210,6 +210,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
 
             analysis.define_requirement('directory');
             analysis.define_requirement('spatial_data');
+            analysis.define_requirement('spatial_index');
             
             analysis.define_requirement('observation_transform');
             
@@ -248,11 +249,13 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
             grid = geospm.Grid();
             grid.span_frame([1, 1, 0], [obj.model.spatial_resolution + 1 0], obj.model.spatial_resolution);
 
-            grid_stage = geospm.stages.GridTransform(analysis, 'grid', grid, 'assigned_grid', obj.model_grid, 'data_product', 'untransformed_grid_data');
+            grid_stage = geospm.stages.GridTransform(analysis, 'grid', grid, 'assigned_grid', obj.model_grid, 'data_product', 'untransformed_grid_data', 'spatial_index_product', 'untransformed_grid_index');
             
             geospm.stages.ObservationTransform(analysis, ...
                 'data_requirement', 'untransformed_grid_data', ...
+                'spatial_index_requirement', 'untransformed_grid_index', ...
                 'data_product', 'grid_data', ...
+                'spatial_index_product', 'grid_spatial_index', ...
                 'transform_requirement', 'observation_transform');
             
             geospm.stages.SPMSpatialSmoothing(analysis);
@@ -307,6 +310,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
             arguments = struct();
             arguments.directory = obj.directory;
             arguments.spatial_data = obj.spatial_data;
+            arguments.spatial_index = obj.spatial_index;
             
             arguments.observation_transform = obj.observation_transform;
             

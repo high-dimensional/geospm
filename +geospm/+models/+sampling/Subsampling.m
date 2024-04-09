@@ -54,16 +54,22 @@ classdef Subsampling < geospm.models.SamplingStrategy
             obj.coincident_observations_mode = geospm.models.sampling.Subsampling.JITTER_MODE;
         end
         
-        function result = observe(obj, model, N_samples, seed)
+        function [result, spatial_index] = observe(obj, model, N_samples, seed)
             
             rng = RandStream.create('mt19937ar', 'Seed', seed);
             
             spatial_data = model.attachments.spatial_data;
+            spatial_index = model.attachments.spatial_index;
+            
             attachments = spatial_data.attachments;
-
-            [row_indices, u, v, w] = obj.grid.select_data(spatial_data);
+            
+            [row_indices, uvw] = obj.grid.select_xyz(spatial_index.xyz);
+            u = uvw(:, 1);
+            v = uvw(:, 2);
+            w = uvw(:, 3);
 
             spatial_data = spatial_data.select(row_indices, []);
+            spatial_index = spatial_index.select_by_segment(row_indices);
 
             if ischar(N_samples)
                 if strcmp(N_samples, 'data')
@@ -86,18 +92,28 @@ classdef Subsampling < geospm.models.SamplingStrategy
             v = v(sample_indices, 1);
             w = w(sample_indices, 1);
             
-            if strcmp(obj.coincident_observations_mode, geospm.models.sampling.Subsampling.IDENTITY_MODE)
-                result = spatial_data.select(sample_indices, [], @(arguments) obj.update_coordinates(arguments, u, v, w));
-            elseif strcmp(obj.coincident_observations_mode, geospm.models.sampling.Subsampling.JITTER_MODE)
-                result = spatial_data.select(sample_indices, [], @(arguments) obj.add_jitter(arguments, jitter_x, jitter_y, u, v, w));
-            elseif strcmp(obj.coincident_observations_mode, geospm.models.sampling.Subsampling.AVERAGE_MODE)
-                result = spatial_data.select(sample_indices, [], @(arguments) obj.average_coincident_observations(arguments, u, v, w));
-            elseif strcmp(obj.coincident_observations_mode, geospm.models.sampling.Subsampling.REMOVE_MODE)
-                result = spatial_data.select(sample_indices, [], @(arguments) obj.pick_one_coincident_observation(arguments, u, v, w));
-            else
-                error('geospm.models.sampling.Subsampling.observe(): Unknown observation mode: %s', obj.coincident_observations_mode);
+            switch obj.coincident_observations_mode
+
+                case geospm.models.sampling.Subsampling.IDENTITY_MODE
+                    result = spatial_data.select(sample_indices, []);
+                    spatial_index = spatial_index.select_by_segment(sample_indices, @(arguments) obj.update_coordinates(arguments, u, v, w));
+                
+                case geospm.models.sampling.Subsampling.JITTER_MODE
+                    result = spatial_data.select(sample_indices, []);
+                    spatial_index = spatial_index.select_by_segment(sample_indices, @(arguments) obj.add_jitter(arguments, jitter_x, jitter_y, u, v, w));
+                
+                %{
+                case geospm.models.sampling.Subsampling.AVERAGE_MODE
+                    result = spatial_data.select(sample_indices, [], @(arguments) obj.average_coincident_observations(arguments, u, v, w));
+                
+                case geospm.models.sampling.Subsampling.REMOVE_MODE
+                    result = spatial_data.select(sample_indices, [], @(arguments) obj.pick_one_coincident_observation(arguments, u, v, w));
+                %}
+
+                otherwise
+                    error('geospm.models.sampling.Subsampling.observe(): Unknown observation mode: %s', obj.coincident_observations_mode);
             end
-            
+
             result.attachments = attachments;
             result.attachments.spatial_resolution = model.spatial_resolution;
         end

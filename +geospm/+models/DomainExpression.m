@@ -138,11 +138,28 @@ classdef DomainExpression < handle
         function result = compute_spatial_data(obj, domain, spatial_data)
             
             observations = obj.compute_matrix(domain, spatial_data.observations);
+
+            function args = swap_observations(args)
+                
+                column_map = [];
+
+                for index=1:numel(obj.term_names)
+                    name = obj.term_names{index};
+                    indices = find(strcmp(name, args.variable_names));
+                    column_map = [column_map, indices]; %#ok<AGROW>
+                end
+                
+                args.observations = observations;
+                args.variable_names = obj.term_names;
+                args.column_map = column_map;
+            end
+
+            result = spatial_data.clone([], [], @(arguments) swap_observations(arguments));
             
-            result = geospm.SpatialData(spatial_data.x, spatial_data.y, spatial_data.z, observations, spatial_data.crs);
-            result.set_labels(spatial_data.labels);
-            result.set_categories(spatial_data.categories);
-            result.set_variable_names(obj.term_names);
+            %result = geospm.SpatialData(spatial_data.x, spatial_data.y, spatial_data.z, observations, spatial_data.crs);
+            %result.set_labels(spatial_data.labels);
+            %result.set_categories(spatial_data.categories);
+            %result.set_variable_names(obj.term_names);
         end
         
         function result = char(obj)

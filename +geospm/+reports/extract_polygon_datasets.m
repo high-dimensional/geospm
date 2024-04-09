@@ -195,6 +195,8 @@ function result = load_dataset(file_path, cache, aliases)
     
     if ~cache.holds_key(file_path)
         
+        actual_file_path = file_path;
+
         if aliases.holds_key(file_path)
             actual_file_path = aliases(file_path);
         end

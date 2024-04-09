@@ -82,6 +82,7 @@ function run_parallel_data_schedule(study_random_seed, study_directory, ...
     PROCESS_ID_FILE = fullfile(study_directory, 'running_pids.txt');
     PROCESS_LOG_FILE = fullfile(study_directory, 'completed.txt');
 
+    WAIT_INTERVAL = 10;
     INTERVAL = 0;
     
     if ~options.do_debug

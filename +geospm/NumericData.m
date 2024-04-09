@@ -13,7 +13,7 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-classdef NumericData < handle
+classdef NumericData < geospm.TabularData
     %NumericData Holds observations originating from a set of quantative variables.
     %
     %   The N numeric observations of P variables are stored in a N by P matrix.
@@ -28,7 +28,7 @@ classdef NumericData < handle
         did_check_for_nans
     end
     
-    properties (SetAccess = private)
+    properties (SetAccess = protected)
         
         labels % a column vector of length N (a N by 1 matrix) of labels
         categories % a column vector of length N (a N by 1 matrix) of categories
@@ -42,8 +42,7 @@ classdef NumericData < handle
     
     properties (Dependent, Transient)
         
-        N % number of observations
-        P % number of variables
+        P % number of variables == number of columns
         
         mean % row vector ? mean of the data
         median
@@ -51,7 +50,6 @@ classdef NumericData < handle
     end
     
     properties (GetAccess = private, SetAccess = private)
-        N_
         mean_
         median_
         covariance_
@@ -59,13 +57,9 @@ classdef NumericData < handle
     end
     
     methods
-        
-        function value = get.N(obj)
-            value = obj.N_;
-        end
-        
+
         function value = get.P(obj)
-            value = size(obj.observations, 2);
+            value = obj.C;
         end
         
         
@@ -98,7 +92,6 @@ classdef NumericData < handle
             result = obj.covariance_;
         end
         
-        
         function obj = NumericData(observations, N, check_nans)
             %Construct a NumericData object from a matrix of observations.
             % observations ? A matrix which is checked for NaN values, which will cause an error to be thrown. 
@@ -119,11 +112,11 @@ classdef NumericData < handle
                 end
             end
             
-            if ~exist('N', 'var')
+            if ~exist('N', 'var') || isempty(N)
                 N = size(observations, 1);
             end
             
-            obj.N_ = N;
+            obj = obj@geospm.TabularData(N, size(observations, 2));
             
             obj.observations = observations;
             obj.did_check_for_nans = check_nans;
@@ -135,10 +128,6 @@ classdef NumericData < handle
             obj.define_default_labels();
             obj.define_default_categories();
             obj.define_default_variable_names();
-        end
-        
-        function result = count_observations(obj)
-            result = size(obj.observations, 1);
         end
         
         function index_or_zero = index_for_variable_name(obj, name)
@@ -192,146 +181,6 @@ classdef NumericData < handle
             obj.categories = new_categories;
         end
         
-        function result = row_attachments(obj, row_selection)
-            
-            if ~exist('row_selection', 'var')
-                row_selection = ones(obj.N, 1, 'logical');
-            end
-            
-            result = struct();
-            result.labels = obj.labels(row_selection);
-            result.categories = obj.categories(row_selection);
-        end
-        
-        function result = column_attachments(obj, column_selection)
-            
-            if ~exist('column_selection', 'var')
-                column_selection = ones(1, obj.P, 'logical');
-            end
-            
-            result = struct();
-            result.variable_names = obj.variable_names(column_selection);
-        end
-        
-        function assign_row_attachment_impl(obj, name, from, row_map)
-            
-            
-            K = numel(row_map);
-            M = size(obj.(name), 1);
-            
-            if M < K
-                to_values = obj.(name);
-                obj.(name) = [to_values(1:M); cell(K - M, 1)];
-            end
-            
-            assign_rows = find(row_map ~= 0);
-            from_rows = row_map(assign_rows);
-            
-            from_values = from.(name);
-            from_values = from_values(from_rows, :);
-            
-            to_values = obj.(name);
-            to_values(assign_rows, :) = from_values;
-            obj.(name) = to_values;
-        end
-        
-        function assign_row_attachments(obj, from, row_selection, row_map)
-            
-            % assign_row_attachments  Assign selected row attachments of from to this object using the row map
-            %   from - a data object from which row attachments are to be assigned
-            %   row_selection - a logical vector of rows or a numeric vector of row indices in from
-            %   row_map - a vector of row indices: each entry maps a row in this object to a position in the row selection of from
-            
-            if ~exist('row_selection', 'var')
-                row_selection = ones(from.N, 1, 'logical');
-            end
-            
-            if ~exist('row_map', 'var') || isempty(row_map)
-                row_indices = 1:from.N;
-                %row_indices = row_indices(row_selection);
-                %row_map = 1:numel(row_indices);
-                row_map = row_indices(row_selection);
-            end
-            
-            %row_attachments = from.row_attachments(row_selection);
-            row_attachments = from.row_attachments;
-            
-            if isfield(row_attachments, 'labels')
-                obj.assign_row_attachment_impl('labels', row_attachments, row_map);
-            end
-            
-            if isfield(row_attachments, 'categories')
-                obj.assign_row_attachment_impl('categories', row_attachments, row_map);
-            end
-        end
-        
-        function assign_column_attachment_impl(obj, name, from, column_map)
-            
-            K = numel(column_map);
-            M = size(obj.(name), 2);
-            
-            if M < K
-                to_values = obj.(name);
-                obj.(name) = [to_values(1:M), cell(1, K - M)];
-            end
-            
-            assign_columns = find(column_map ~= 0);
-            from_columns = column_map(assign_columns);
-            
-            from_values = from.(name);
-            from_values = from_values(:, from_columns);
-            
-            to_values = obj.(name);
-            to_values(:, assign_columns) = from_values;
-            obj.(name) = to_values;
-        end
-        
-        
-        function assign_column_attachments(obj, from, column_selection, column_map)
-            % assign_column_attachments  Assign selected column attachments of from to this object using the column map
-            %   from - a data object from which column attachments are to be assigned
-            %   column_selection - a logical vector of columns or a numeric vector of column indices in from
-            %   column_map - a vector of column indices: each entry maps a column in this object to a position in the column selection of from
-            
-            if ~exist('column_selection', 'var')
-                column_selection = ones(1, obj.P, 'logical');
-            end
-            
-            if ~exist('column_map', 'var') || isempty(column_map)
-                column_indices = 1:obj.P;
-                column_indices = column_indices(column_selection);
-                column_map = 1:numel(column_indices);
-            end
-            
-            column_attachments = from.column_attachments(column_selection);
-            
-            if isfield(column_attachments, 'variable_names')
-                obj.assign_column_attachment_impl('variable_names', column_attachments, column_map);
-            end
-        end
-        
-        function assign_attachments(obj, from, row_selection, column_selection, row_map, column_map)
-            
-            if ~exist('row_selection', 'var') || isempty(row_selection)
-                row_selection = ones(obj.N, 1, 'logical');
-            end
-            
-            if ~exist('column_selection', 'var') || isempty(column_selection)
-                column_selection = ones(1, obj.P, 'logical');
-            end
-            
-            if ~exist('row_map', 'var')
-                row_map = 1:numel(row_selection);
-            end
-            
-            if ~exist('column_map', 'var')
-                column_map = 1:numel(column_selection);
-            end
-            
-            obj.assign_row_attachments(from, row_selection, row_map);
-            obj.assign_column_attachments(from, column_selection, column_map);
-        end
-        
         function result = concat_variables(obj, variables, variable_names, index)
             
             if ~exist('variable_names', 'var') || isempty(variable_names)
@@ -349,45 +198,11 @@ classdef NumericData < handle
             row_selection = 1:obj.N;
             column_selection = 1:obj.P;
             
-            [result, row_map, column_map] = obj.clone_impl(row_selection, ...
+            result = obj.clone(row_selection, ...
                 column_selection, ...
                 @(args) obj.add_variables(args, index, variables, variable_names));
-            
-            result.assign_row_attachments(obj, row_selection, row_map);
-            result.assign_column_attachments(obj, column_selection, column_map);
         end
         
-        function result = select(obj, row_selection, column_selection, transform)
-        
-            if ~exist('row_selection', 'var')
-                row_selection = [];
-            end
-            
-            if isempty(row_selection)
-                row_selection = 1:obj.N;
-            end
-            
-            if ~exist('column_selection', 'var')
-                column_selection = [];
-            end
-            
-            if isempty(column_selection)
-                column_selection = 1:obj.P;
-            end
-            
-            if ~exist('transform', 'var')
-                transform = @(arguments) arguments;
-            end
-            
-            [row_selection, column_selection] = obj.normalise_selection(row_selection, column_selection);
-            
-            [result, row_map, column_map] = obj.clone_impl(row_selection, column_selection, transform);
-            
-            result.assign_row_attachments(obj, row_selection, row_map);
-            result.assign_column_attachments(obj, column_selection, column_map);
-        end
-        
-
         function result = identify_constant_variables(obj, minimum_stddev)
             
             if ~exist('minimum_stddev', 'var')
@@ -609,141 +424,50 @@ classdef NumericData < handle
         end
     end
     
-    methods (Access = protected)
-        
-        
-        function [row_selection, column_selection] = normalise_selection(obj, row_selection, column_selection)
-        
-            if ~exist('column_selection', 'var') || isempty(column_selection)
-                column_selection = 1:obj.P;
-            end
-            
-            if ~exist('row_selection', 'var') || isempty(row_selection)
-                row_selection = 1:obj.N;
-            end
-            
-            if ~isnumeric(row_selection)
-                
-                if islogical(row_selection)
-                    if numel(row_selection) ~= obj.N
-                        error('NumericData.normalise_selection(): The length of a logical row selection vector must be equal to the number of observations.');
-                    end
-                else
-                    error('NumericData.normalise_selection(): row selection vector must be a numeric or logical array.');
-                end
-            else
-                row_selection = row_selection(:);
-
-                try
-                    tmp = (1:obj.N)';
-                    tmp = tmp(row_selection); %#ok<NASGU>
-                    clear('tmp');
-                catch
-                    error('NumericData.normalise_selection(): One or more row selection indices are out of bounds.');
-                end
-            end
-            
-            
-            if ~isnumeric(column_selection)
-                
-                if islogical(column_selection)
-                    if numel(column_selection) ~= obj.P
-                        error('NumericData.normalise_selection(): The length of a logical column selection vector must be equal to the number of variables.');
-                    end
-                else
-                    error('NumericData.normalise_selection(): column selection vector must be a numeric or logical array.');
-                end
-            else
-                column_selection = column_selection(:)';
-
-                try
-                    tmp = 1:obj.P;
-                    tmp = tmp(column_selection); %#ok<NASGU>
-                    clear('tmp');
-                catch
-                    error('NumericData.select(): One or more column selection indices are out of bounds.');
-                end
-            end
-        end
-    end
-    
     methods (Access=protected)
         
-        function result = apply_transform(~, arguments, transform)
+
+        function result = access_row_attachment_names(~)
+            result = {'labels', 'categories'};
+        end
+
+        function result = access_column_attachment_names(~)
+            result = {'variable_names'};
+        end
+
+        function assign_property(obj, name, values)
+            obj.(name) = values;
+        end
+
+        function result = define_clone_arguments(obj, row_selection, column_selection)
             
-            result = transform(arguments);
+            result = define_clone_arguments@geospm.TabularData(obj, row_selection, column_selection);
             
-            names = fieldnames(arguments);
+            result.observations = obj.observations(row_selection, column_selection);
             
-            for i=1:numel(names)
-                
-                name = names{i};
-                
-                if isfield(result, name)
-                    continue;
-                end
-                
-                result.(name) = arguments.(name);
-            end
+            result.variable_names = obj.variable_names(column_selection);
+            result.labels = obj.labels(row_selection);
+            result.categories = obj.categories(row_selection);
+
+            result.check_for_nans = obj.did_check_for_nans;
+            
+            %[result.row_map, result.column_map] = obj.clone_maps_from_selection(row_selection, column_selection);
             
         end
-        
-        function [row_map, column_map] = clone_maps_from_selection(obj, row_selection, column_selection)
-            
-            row_indices = 1:obj.N;
-            column_indices = 1:obj.P;
-            
-            row_indices = row_indices(row_selection);
-            column_indices = column_indices(column_selection);
-            
-            row_map = 1:numel(row_indices);
-            column_map = 1:numel(column_indices);
-        end
-        
-        function [result, row_map, column_map] = clone_impl(obj, row_selection, column_selection, transform)
-            % clone_impl  Clone this data object using the selected rows, columns and transform.
-            %   row_selection - a logical vector of rows or a numeric vector of row indices
-            %   column_selection - a logical vector of columns or a numeric vector of column indices
-            %   transform - a function handle that expects an argument struct and returns a result struct
-            %
-            %   The transform function is passed a struct with the
-            %   following fields:
-            %
-            %   observations - a numeric matrix of the selected observations
-            %   variable_names - a cell array of variable names
-            %   check_for_nans - a logical value that indicates if a nan check should be applied when creating the cloned object.
-            %   row_map - a vector of row indices: each entry maps a row in the cloned object to a position in the row selection
-            %   column_map - a vector of column indices: each entry maps a column in the cloned object to a position in the column selection
-            %
-            %   A zero index in either the row or column map specified that
-            %   the corresponding row or column in the cloned object keeps
-            %   its previous attachment
-            
-            selected_observations = [];
-            
-            if ~isempty(row_selection) && ~isempty(column_selection)
-                selected_observations = obj.observations(row_selection, column_selection);
-            end
-            
-            arguments = struct();
-            arguments.observations = selected_observations;
-            arguments.variable_names = obj.variable_names(column_selection);
-            arguments.check_for_nans = obj.did_check_for_nans;
-            
-            [arguments.row_map, arguments.column_map] = obj.clone_maps_from_selection(row_selection, column_selection);
-            
-            arguments = obj.apply_transform(arguments, transform);
+
+        function result = create_clone_from_arguments(obj, arguments)
             
             result = geospm.NumericData(arguments.observations, ...
-                                      size(arguments.observations, 1), ...
-                                      arguments.check_for_nans);
+                                        [], ...
+                                        arguments.check_for_nans);
             
-            result.description = obj.description;
+            result.set_labels(arguments.labels);
+            result.set_categories(arguments.categories);
             result.set_variable_names(arguments.variable_names);
-            
-            row_map = arguments.row_map;
-            column_map = arguments.column_map;
+
+            result.description = obj.description;
         end
+
     end
     
     methods (Access = private)

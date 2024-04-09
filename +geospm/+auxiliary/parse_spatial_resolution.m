@@ -13,7 +13,7 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function [options] = parse_spatial_resolution(spatial_data, options)
+function [options] = parse_spatial_resolution(spatial_index, options)
     
     %{
     
@@ -21,10 +21,10 @@ function [options] = parse_spatial_resolution(spatial_data, options)
     following fields:
 
     min_location - min spatial coordinates of data
-    default: floor(spatial_data.min_xyz)
+    default: floor(spatial_index.min_xyz)
 
     max_location - max spatial coordinates of data
-    default: ceil(spatial_data.max_xyz)
+    default: ceil(spatial_index.max_xyz)
 	
 	spatial_resolution - number of raster cells in the x, y and z
 	directions for spatial data points inside the box
@@ -67,11 +67,11 @@ function [options] = parse_spatial_resolution(spatial_data, options)
     %}
 
     if ~isfield(options, 'min_location')
-        options.min_location = floor(spatial_data.min_xyz);
+        options.min_location = floor(spatial_index.min_xyz);
     end
     
     if ~isfield(options, 'max_location')
-        options.max_location = ceil(spatial_data.max_xyz);
+        options.max_location = ceil(spatial_index.max_xyz);
     end
     
     if ~isequal(size(options.min_location), [1, 2]) && ...

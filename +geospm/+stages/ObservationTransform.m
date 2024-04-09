@@ -25,8 +25,11 @@ classdef ObservationTransform < geospm.stages.SpatialAnalysisStage
     
     properties
         data_requirement
+        spatial_index_requirement
         transform_requirement
+
         data_product
+        spatial_index_product
     end
     
     methods
@@ -40,8 +43,16 @@ classdef ObservationTransform < geospm.stages.SpatialAnalysisStage
                 options.data_requirement = 'spatial_data';
             end
             
+            if ~isfield(options, 'spatial_index_requirement')
+                options.spatial_index_requirement = 'spatial_index';
+            end
+            
             if ~isfield(options, 'data_product')
                 options.data_product = 'spatial_data';
+            end
+            
+            if ~isfield(options, 'spatial_index_product')
+                options.spatial_index_product = 'spatial_index';
             end
             
             if ~isfield(options, 'transform_requirement')
@@ -49,16 +60,20 @@ classdef ObservationTransform < geospm.stages.SpatialAnalysisStage
             end
             
             obj.data_requirement = options.data_requirement;
+            obj.spatial_index_requirement = options.spatial_index_requirement;
             obj.transform_requirement = options.transform_requirement;
             obj.data_product = options.data_product;
+            obj.spatial_index_product = options.spatial_index_product;
             
             obj.define_requirement(obj.data_requirement);
+            obj.define_requirement(obj.spatial_index_requirement);
             
             obj.define_requirement(obj.transform_requirement, ...
                 struct(), 'is_optional', true, 'default_value', ...
                 geospm.stages.ObservationTransform.IDENTITY);
             
             obj.define_product(obj.data_product);
+            obj.define_product(obj.spatial_index_product);
         end
         
         function result = run(obj, arguments)
@@ -66,7 +81,7 @@ classdef ObservationTransform < geospm.stages.SpatialAnalysisStage
             result = struct();
             
             transform = obj.resolve_transform(arguments.(obj.transform_requirement));
-            result.(obj.data_product) = transform(obj, arguments.(obj.data_requirement), arguments);
+            [result.(obj.data_product), result.(obj.spatial_index_product)] = transform(obj, arguments.(obj.data_requirement), arguments.(obj.spatial_index_requirement), arguments);
         end
     end
     
@@ -76,26 +91,26 @@ classdef ObservationTransform < geospm.stages.SpatialAnalysisStage
             
             switch transform
                 case geospm.stages.ObservationTransform.IDENTITY
-                    method = @(object, spatial_data, arguments) object.identity(spatial_data, arguments);
+                    method = @(object, spatial_data, spatial_index, arguments) object.identity(spatial_data, spatial_index, arguments);
                 case geospm.stages.ObservationTransform.CENTER_AT_MEAN
-                    method = @(object, spatial_data, arguments) object.center_at_mean(spatial_data, arguments);
+                    method = @(object, spatial_data, spatial_index, arguments) object.center_at_mean(spatial_data, spatial_index, arguments);
                 case geospm.stages.ObservationTransform.STANDARDIZE
-                    method = @(object, spatial_data, arguments) object.standardize(spatial_data, arguments);
+                    method = @(object, spatial_data, spatial_index, arguments) object.standardize(spatial_data, spatial_index, arguments);
                 
                 otherwise
-                    method = @(object, spatial_data, arguments) object.report_unknown_transform(transform, spatial_data, arguments);
+                    method = @(object, spatial_data, spatial_index, arguments) object.report_unknown_transform(transform, spatial_data, spatial_index, arguments);
             end
         end
         
-        function result = identity(~, spatial_data, ~)
+        function [result, spatial_index] = identity(~, spatial_data, spatial_index, ~)
             result = spatial_data.select([], []);
         end
         
-        function result = center_at_mean(obj, spatial_data, ~)
+        function [result, spatial_index] = center_at_mean(obj, spatial_data, spatial_index, ~)
             result = spatial_data.select([], [], @(args) obj.center_at_mean_impl(args));
         end
         
-        function result = standardize(obj, spatial_data, ~)
+        function [result, spatial_index] = standardize(obj, spatial_data, spatial_index, ~)
             result = spatial_data.select([], [], @(args) obj.standardize_impl(args));
         end
         
@@ -126,7 +141,7 @@ classdef ObservationTransform < geospm.stages.SpatialAnalysisStage
         end
         
         
-        function report_unknown_transform(~, transform, ~, ~)
+        function report_unknown_transform(~, transform, ~, ~, ~)
             error('geospm.stages.ObservationTransform: Unknown transform ''%s''', transform);
         end
         

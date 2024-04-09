@@ -17,7 +17,11 @@ classdef GridTransform < geospm.stages.SpatialAnalysisStage
     
     properties
         data_requirement
+        spatial_index_requirement
+
         data_product
+        spatial_index_product
+
         data_selection
         
         assigned_grid
@@ -39,8 +43,16 @@ classdef GridTransform < geospm.stages.SpatialAnalysisStage
                 options.data_requirement = 'spatial_data';
             end
             
+            if ~isfield(options, 'spatial_index_requirement')
+                options.spatial_index_requirement = 'spatial_index';
+            end
+            
             if ~isfield(options, 'data_product')
                 options.data_product = 'grid_data';
+            end
+            
+            if ~isfield(options, 'spatial_index_product')
+                options.spatial_index_product = 'grid_spatial_index';
             end
             
             if ~isfield(options, 'data_selection')
@@ -60,20 +72,30 @@ classdef GridTransform < geospm.stages.SpatialAnalysisStage
             obj.assigned_grid = options.assigned_grid;
             
             obj.data_requirement = options.data_requirement;
+            obj.spatial_index_requirement = options.spatial_index_requirement;
+
             obj.data_product = options.data_product;
+            obj.spatial_index_product = options.spatial_index_product;
+
             obj.data_selection = options.data_selection;
             
             obj.define_requirement(obj.data_requirement);
+            obj.define_requirement(obj.spatial_index_requirement);
             obj.define_product(obj.data_product);
+            obj.define_product(obj.spatial_index_product);
             obj.define_product(obj.data_selection);
         end
         
         function result = run(obj, arguments)
             
-            [grid_data, selection] = obj.grid.grid_data(arguments.(obj.data_requirement), obj.assigned_grid);
+            spatial_data = arguments.(obj.data_requirement);
+            spatial_index = arguments.(obj.spatial_index_requirement);
+
+            [grid_spatial_index, ~, selection] = obj.grid.transform_spatial_index(spatial_index, obj.assigned_grid);
             
             result = struct();
-            result.(obj.data_product) = grid_data;
+            result.(obj.data_product) = spatial_data;
+            result.(obj.spatial_index_product) = grid_spatial_index;
             result.(obj.data_selection) = selection;
         end
     end

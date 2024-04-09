@@ -56,6 +56,16 @@ function [load_options, other_options] = parse_load_options(varargin)
         other_options = rmfield(other_options, 'row_identifier_label');
     end
     
+    if isfield(other_options, 'segment_index')
+        load_options.segment_index = other_options.segment_index;
+        other_options = rmfield(other_options, 'segment_index');
+    end
+    
+    if isfield(other_options, 'segment_label')
+        load_options.segment_label = other_options.segment_label;
+        other_options = rmfield(other_options, 'segment_label');
+    end
+    
     if ~isfield(other_options, 'mask_columns_with_missing_values')
         load_options.mask_columns_with_missing_values = true;
     else

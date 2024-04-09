@@ -44,7 +44,7 @@
             obj.define_requirement('thresholds');
             obj.define_requirement('threshold_directories');
             
-            obj.define_requirement('grid_data', ...
+            obj.define_requirement('grid_spatial_index', ...
                 struct(), 'is_optional', true, 'default_value', []);
             
             obj.define_requirement('volume_mask_file', ...
@@ -63,15 +63,17 @@
             grid = geospm.Grid();
             crs = hdng.SpatialCRS.empty;
             
-            if ~isempty(arguments.grid_data)
-                grid_data = arguments.grid_data;
-                grid = arguments.grid_data.grid;
-                crs = arguments.grid_data.crs;
+            if ~isempty(arguments.grid_spatial_index)
                 
-                obj.volume_renderer.cell_sample_counts = obj.count_samples_per_cell(grid_data);
+                grid_spatial_index = arguments.grid_spatial_index;
+
+                grid = grid_spatial_index.grid;
+                crs = grid_spatial_index.crs;
+                
+                obj.volume_renderer.cell_sample_counts = obj.count_samples_per_cell(grid_spatial_index);
                 
                 [obj.volume_renderer.cell_labels, ...
-                    obj.volume_renderer.cell_label_list] = obj.label_cells(grid_data);
+                    obj.volume_renderer.cell_label_list] = obj.label_cells(grid_spatial_index);
             else
                 obj.volume_renderer.cell_sample_counts = [];
                 obj.volume_renderer.cell_labels = [];
@@ -224,24 +226,28 @@
             result = image_records.unsorted_records{1};
         end
 
-        function result = count_samples_per_cell(~, grid_data)
-            resolution = grid_data.grid.resolution(1:2);
+        function result = count_samples_per_cell(~, grid_spatial_index)
+            resolution = grid_spatial_index.grid.resolution(1:2);
             result = zeros(resolution);
 
-            for index=1:grid_data.N
-                uv = grid_data.uvw(index, 1:2);
-                result(uv(1), uv(2)) = result(uv(1), uv(2)) + 1;
+            for s=1:grid_spatial_index.S
+                [u, v, ~] = grid_spatial_index.uvw_coordinates_for_segment(s);
+                fraction = 1 / size(u, 1);
+                
+                for index=1:size(u, 1)
+                    result(u(index), v(index)) = result(u(index), v(index)) + fraction;
+                end
             end
         end
         
-        function [labels, label_list] = label_cells(obj, grid_data)
+        function [labels, label_list] = label_cells(obj, grid_spatial_index)
 
             function order = order_by_name(entity)
                 [~, order] = sortrows(entity.name);
             end
 
-            [labels, result] = geospm.utilities.query_map_grid_cells(grid_data.crs, ...
-                grid_data.grid, 'labels', @order_by_name, obj.map_service_identifier);
+            [labels, result] = geospm.utilities.query_map_grid_cells(grid_spatial_index.crs, ...
+                grid_spatial_index.grid, 'labels', @order_by_name, obj.map_service_identifier);
             
             label_list = result.name;
         end

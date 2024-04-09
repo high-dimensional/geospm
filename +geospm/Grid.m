@@ -470,25 +470,25 @@ classdef Grid < handle
                        'origin', frame_origin, ...
                        'cell_size', frame_cell_size);
         end
-        
-        function [row_indices, u, v, w] = select_data(obj, spatial_data)
+
+        function [row_indices, uvw] = select_xyz(obj, xyz)
             
-            [u, v, w] = obj.space_to_grid(spatial_data.x, spatial_data.y, spatial_data.z);
+            N = size(xyz, 1);
+
+            [u, v, w] = obj.space_to_grid(xyz(:, 1), xyz(:, 2), xyz(:, 3));
             
             indicators = ...
                 u >= 1 & u <= obj.resolution(1) & ...
                 v >= 1 & v <= obj.resolution(2) & ...
                 w >= 1 & w <= obj.resolution(3);
             
-            row_numbers = cast((1:spatial_data.N)', 'int64');
+            row_numbers = cast((1:N)', 'int64');
             row_indices = row_numbers(indicators);
             
-            u = u(row_indices);
-            v = v(row_indices);
-            w = w(row_indices);
+            uvw = [u(row_indices), v(row_indices), w(row_indices)];
         end
         
-        function [grid_data, row_indices] = grid_data(obj, spatial_data, assigned_grid)
+        function [grid_spatial_index, row_indices, segment_indices] = transform_spatial_index(obj, spatial_index, assigned_grid)
             
             if ~exist('assigned_grid', 'var')
                 assigned_grid = obj;
@@ -496,28 +496,103 @@ classdef Grid < handle
             
             % Select the subset of observations within the grid:
             
-            [row_indices, u, v, w] = obj.select_data(spatial_data);
+            [row_indices, uvw] = obj.select_xyz(spatial_index.xyz);
             
-            x = spatial_data.x(row_indices);
-            y = spatial_data.y(row_indices);
-            z = spatial_data.z(row_indices);
+            x = spatial_index.x(row_indices);
+            y = spatial_index.y(row_indices);
+            z = spatial_index.z(row_indices);
+
+            segment_indices = spatial_index.segment_indices_from_row_indices(row_indices);
+            segment_sizes = spatial_index.segment_indices_to_segment_sizes(spatial_index.segment_index(row_indices));
+
+            grid_spatial_index = geospm.GridSpatialIndex(uvw(:, 1), uvw(:, 2), uvw(:, 3), x, y, z, segment_sizes, obj.resolution, assigned_grid.clone(), spatial_index.crs);
             
-            if spatial_data.P > 0
-                observations = spatial_data.observations(row_indices, :);
-            else
-                observations = [];
-            end
+            grid_spatial_index.assign_row_attachments(spatial_index, row_indices);
+            grid_spatial_index.assign_column_attachments(spatial_index);
+        end
+
+        function result = as_json_struct(obj, varargin)
+            %Creates a JSON representation of this Grid object.
+            % The following fields can be provided in the options
+            % argument:
+            % None so far.
             
-            grid_data = geospm.GridData(u, v, w, x, y, z, observations, obj.resolution, assigned_grid.clone(), spatial_data.crs);
+            [~] = hdng.utilities.parse_struct_from_varargin(varargin{:});
             
-            grid_data.assign_row_attachments(spatial_data, row_indices);
-            grid_data.assign_column_attachments(spatial_data);
+            specifier = struct();
             
-            grid_data.attachments.selection = row_indices;
-            grid_data.attachments.derived_from = spatial_data;
+            specifier.ctor = 'geospm.Grid';
+            
+            specifier.resolution = obj.resolution;
+            specifier.origin = obj.origin;
+            specifier.cell_size = obj.cell_size;
+            specifier.rotation_z = obj.rotation_z;
+            specifier.flip_u = obj.flip_u;
+            specifier.flip_v = obj.flip_v;
+            specifier.cell_marker_alignment = obj.cell_marker_alignment;
+            specifier.cell_marker_scale = obj.cell_marker_scale;
+            
+            result = specifier;
         end
     end
     
+    methods (Static)
+
+        function result = from_json_struct(specifier)
+            
+            if ~isfield(specifier, 'resolution') || ~isnumeric(specifier.resolution)
+                error('Missing ''resolution'' field in json struct or ''resolution'' field is not numeric.');
+            end
+            
+            if ~isfield(specifier, 'origin') || ~isnumeric(specifier.origin)
+                error('Missing ''origin'' field in json struct or ''origin'' field is not numeric.');
+            end
+            
+            if ~isfield(specifier, 'cell_size') || ~isnumeric(specifier.cell_size)
+                error('Missing ''cell_size'' field in json struct or ''cell_size'' field is not numeric.');
+            end
+            
+            if ~isfield(specifier, 'rotation_z') || ~isnumeric(specifier.rotation_z)
+                error('Missing ''rotation_z'' field in json struct or ''rotation_z'' field is not numeric.');
+            end
+            
+            if ~isfield(specifier, 'flip_u') || ~islogical(specifier.flip_u)
+                error('Missing ''flip_u'' field in json struct or ''flip_u'' field is not logical.');
+            end
+            
+            if ~isfield(specifier, 'flip_v') || ~islogical(specifier.flip_v)
+                error('Missing ''flip_v'' field in json struct or ''flip_v'' field is not logical.');
+            end
+            
+            if ~isfield(specifier, 'cell_marker_alignment') || ~isnumeric(specifier.cell_marker_alignment)
+                error('Missing ''cell_marker_alignment'' field in json struct or ''cell_marker_alignment'' field is not numeric.');
+            end
+            
+            if ~isfield(specifier, 'cell_marker_scale') || ~isnumeric(specifier.cell_marker_scale)
+                error('Missing ''cell_marker_scale'' field in json struct or ''cell_marker_scale'' field is not numeric.');
+            end
+            
+
+            result = geospm.Grid();
+            
+            result.define('resolution', specifier.resolution, ...
+                          'origin', specifier.origin, ...
+                          'cell_size', specifier.cell_size, ...
+                          'rotation_z', specifier.rotation_z, ...
+                          'flip_u', specifier.flip_u, ...
+                          'flip_v', specifier.flip_v, ...
+                          'cell_marker_alignment', specifier.cell_marker_alignment, ...
+                          'cell_marker_scale', specifier.cell_marker_scale);
+        end
+
+        function result = load_from_matlab(filepath)
+            
+            specifier = load(filepath);
+            ctor = str2func([specifier.ctor '.from_json_struct']);
+            result = ctor(specifier);
+        end
+    end
+
     methods (Access=private)
         
         function result = clone(obj)
