@@ -316,12 +316,6 @@ function [result, spatial_index] = load_data(file_path, varargin)
             variable_matrix(:, column_index) = handler(variable_name, column_index, variable_matrix, variable_name_map);
         end
     end
-
-    %{
-    result = geospm.SpatialData(x, y, [], variable_matrix, crs_or_crs_identifier, ...
-               options.mask_columns_with_missing_values || ...
-               options.mask_rows_with_missing_values);
-    %}
     
     check_nans = options.mask_columns_with_missing_values || ...
                  options.mask_rows_with_missing_values;

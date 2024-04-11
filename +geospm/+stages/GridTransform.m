@@ -93,8 +93,10 @@ classdef GridTransform < geospm.stages.SpatialAnalysisStage
 
             [grid_spatial_index, ~, selection] = obj.grid.transform_spatial_index(spatial_index, obj.assigned_grid);
             
+            grid_data = spatial_data.select(selection, []);
+
             result = struct();
-            result.(obj.data_product) = spatial_data;
+            result.(obj.data_product) = grid_data;
             result.(obj.spatial_index_product) = grid_spatial_index;
             result.(obj.data_selection) = selection;
         end

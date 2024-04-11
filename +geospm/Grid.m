@@ -471,44 +471,48 @@ classdef Grid < handle
                        'cell_size', frame_cell_size);
         end
 
-        function [row_indices, uvw] = select_xyz(obj, xyz)
-            
-            N = size(xyz, 1);
+        function [row_indices, u, v, w] = clip_uvw(obj, u, v, w)
 
-            [u, v, w] = obj.space_to_grid(xyz(:, 1), xyz(:, 2), xyz(:, 3));
-            
             indicators = ...
                 u >= 1 & u <= obj.resolution(1) & ...
                 v >= 1 & v <= obj.resolution(2) & ...
                 w >= 1 & w <= obj.resolution(3);
             
+            N = numel(u);
+
             row_numbers = cast((1:N)', 'int64');
             row_indices = row_numbers(indicators);
-            
-            uvw = [u(row_indices), v(row_indices), w(row_indices)];
+
+            u = u(row_indices);
+            v = v(row_indices);
+            w = w(row_indices);
         end
-        
+
         function [grid_spatial_index, row_indices, segment_indices] = transform_spatial_index(obj, spatial_index, assigned_grid)
             
             if ~exist('assigned_grid', 'var')
                 assigned_grid = obj;
             end
-            
-            % Select the subset of observations within the grid:
-            
-            [row_indices, uvw] = obj.select_xyz(spatial_index.xyz);
-            
-            x = spatial_index.x(row_indices);
-            y = spatial_index.y(row_indices);
-            z = spatial_index.z(row_indices);
 
+            % Select the subset of observations within the grid:
+
+            xyz = spatial_index.xyz;
+
+            [u, v, w] = obj.space_to_grid(xyz(:, 1), xyz(:, 2), xyz(:, 3));
+            
+            row_indices = obj.clip_uvw(u, v, w);
+
+            u = u(row_indices);
+            v = v(row_indices);
+            w = w(row_indices);
+            x = xyz(row_indices, 1);
+            y = xyz(row_indices, 2);
+            z = xyz(row_indices, 3);
+            
             segment_indices = spatial_index.segment_indices_from_row_indices(row_indices);
             segment_sizes = spatial_index.segment_indices_to_segment_sizes(spatial_index.segment_index(row_indices));
 
-            grid_spatial_index = geospm.GridSpatialIndex(uvw(:, 1), uvw(:, 2), uvw(:, 3), x, y, z, segment_sizes, obj.resolution, assigned_grid.clone(), spatial_index.crs);
-            
-            grid_spatial_index.assign_row_attachments(spatial_index, row_indices);
-            grid_spatial_index.assign_column_attachments(spatial_index);
+            grid_spatial_index = geospm.GridSpatialIndex(u, v, w, x, y, z, segment_sizes, obj.resolution, assigned_grid.clone(), spatial_index.crs);
         end
 
         function result = as_json_struct(obj, varargin)

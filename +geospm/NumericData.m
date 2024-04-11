@@ -195,12 +195,8 @@ classdef NumericData < geospm.TabularData
                 error('NumericData.concat_variables(): Invalid index: %d.', index);
             end
             
-            row_selection = 1:obj.N;
-            column_selection = 1:obj.P;
-            
-            result = obj.clone(row_selection, ...
-                column_selection, ...
-                @(args) obj.add_variables(args, index, variables, variable_names));
+            result = obj.select([], [], ...
+               @(specifier, modifier) obj.add_variables(specifier, modifier, index, variables, variable_names));
         end
         
         function result = identify_constant_variables(obj, minimum_stddev)
@@ -426,44 +422,33 @@ classdef NumericData < geospm.TabularData
     
     methods (Access=protected)
         
-
-        function result = access_row_attachment_names(~)
-            result = {'labels', 'categories'};
-        end
-
-        function result = access_column_attachment_names(~)
-            result = {'variable_names'};
-        end
-
         function assign_property(obj, name, values)
             obj.(name) = values;
         end
 
-        function result = define_clone_arguments(obj, row_selection, column_selection)
+        function [specifier, modifier] = define_clone_specifier(obj)
             
-            result = define_clone_arguments@geospm.TabularData(obj, row_selection, column_selection);
+            [specifier, modifier] = define_clone_specifier@geospm.TabularData(obj);
             
-            result.observations = obj.observations(row_selection, column_selection);
+            specifier.data = obj.observations;
             
-            result.variable_names = obj.variable_names(column_selection);
-            result.labels = obj.labels(row_selection);
-            result.categories = obj.categories(row_selection);
+            specifier.per_column.variable_names = obj.variable_names;
+            specifier.per_row.labels = obj.labels;
+            specifier.per_row.categories = obj.categories;
 
-            result.check_for_nans = obj.did_check_for_nans;
-            
-            %[result.row_map, result.column_map] = obj.clone_maps_from_selection(row_selection, column_selection);
+            specifier.check_for_nans = obj.did_check_for_nans;
             
         end
 
-        function result = create_clone_from_arguments(obj, arguments)
+        function result = create_clone_from_specifier(obj, specifier)
             
-            result = geospm.NumericData(arguments.observations, ...
+            result = geospm.NumericData(specifier.data, ...
                                         [], ...
-                                        arguments.check_for_nans);
+                                        specifier.check_for_nans);
             
-            result.set_labels(arguments.labels);
-            result.set_categories(arguments.categories);
-            result.set_variable_names(arguments.variable_names);
+            result.set_variable_names(specifier.per_column.variable_names);
+            result.set_labels(specifier.per_row.labels);
+            result.set_categories(specifier.per_row.categories);
 
             result.description = obj.description;
         end
@@ -472,19 +457,12 @@ classdef NumericData < geospm.TabularData
     
     methods (Access = private)
         
-        function args = add_variables(~, args, index, variables, variable_names)
+        function specifier = add_variables(~, specifier, modifier, index, variables, variable_names)
             
-            args.observations = [args.observations(:, 1:index - 1), ...
-                                 variables, ...
-                                 args.observations(:, index:end)];
-             
-            args.variable_names = [args.variable_names(1:index - 1), ...
-                                   variable_names, ...
-                                   args.variable_names(index:end)];
+            extra = struct();
+            extra.variable_names = variable_names;
             
-            args.column_map = [args.column_map(1:index - 1), ...
-                               0, ...
-                               args.column_map(index:end)];
+            specifier = modifier.insert_columns_op(specifier, index, variables, extra);
         end
         
         function define_default_categories(obj)

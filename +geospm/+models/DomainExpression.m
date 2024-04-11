@@ -139,27 +139,16 @@ classdef DomainExpression < handle
             
             observations = obj.compute_matrix(domain, spatial_data.observations);
 
-            function args = swap_observations(args)
+            function specifier = swap_observations(specifier, modifier)
                 
-                column_map = [];
+                old_column_indices = 1:specifier.C;
 
-                for index=1:numel(obj.term_names)
-                    name = obj.term_names{index};
-                    indices = find(strcmp(name, args.variable_names));
-                    column_map = [column_map, indices]; %#ok<AGROW>
-                end
-                
-                args.observations = observations;
-                args.variable_names = obj.term_names;
-                args.column_map = column_map;
+                per_column.variable_names = obj.term_names;
+                specifier = modifier.insert_columns_op(specifier, specifier.C + 1, observations, per_column);
+                specifier = modifier.delete_op(specifier, [], old_column_indices);
             end
 
-            result = spatial_data.clone([], [], @(arguments) swap_observations(arguments));
-            
-            %result = geospm.SpatialData(spatial_data.x, spatial_data.y, spatial_data.z, observations, spatial_data.crs);
-            %result.set_labels(spatial_data.labels);
-            %result.set_categories(spatial_data.categories);
-            %result.set_variable_names(obj.term_names);
+            result = spatial_data.select([], [], @swap_observations);
         end
         
         function result = char(obj)

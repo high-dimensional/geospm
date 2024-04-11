@@ -456,48 +456,48 @@ classdef DataEvaluator < geospm.validation.Evaluator
     
     methods (Access=protected)
         
-        function [spatial_data, spatial_index] = load_spatial_data(obj, specifier)
+        function [spatial_data, spatial_index] = load_spatial_data(obj, load_specifier)
 
-            file_path = specifier.file_path;
+            file_path = load_specifier.file_path;
             
-            if ~isfield(specifier, 'include')
-                specifier.include = [];
+            if ~isfield(load_specifier, 'include')
+                load_specifier.include = [];
             end
             
-            if ~isfield(specifier, 'bool_variables')
-                specifier.bool_variables = [];
+            if ~isfield(load_specifier, 'bool_variables')
+                load_specifier.bool_variables = [];
             end
             
-            if ~isfield(specifier, 'standardise')
-                specifier.standardise = [];
+            if ~isfield(load_specifier, 'standardise')
+                load_specifier.standardise = [];
             end
             
-            if ~isfield(specifier, 'interactions')
-                specifier.interactions = [];
+            if ~isfield(load_specifier, 'interactions')
+                load_specifier.interactions = [];
             end
             
-            if ~isfield(specifier, 'identifier')
-                specifier.identifier = '';
+            if ~isfield(load_specifier, 'identifier')
+                load_specifier.identifier = '';
             end
             
-            if ~isfield(specifier, 'label')
-                specifier.label = specifier.identifier;
+            if ~isfield(load_specifier, 'label')
+                load_specifier.label = load_specifier.identifier;
             end
             
-            if ~isfield(specifier, 'group_identifier')
-                specifier.group_identifier = '';
+            if ~isfield(load_specifier, 'group_identifier')
+                load_specifier.group_identifier = '';
             end
             
-            if ~isfield(specifier, 'group_label')
-                specifier.group_label = specifier.group_identifier;
+            if ~isfield(load_specifier, 'group_label')
+                load_specifier.group_label = load_specifier.group_identifier;
             end
             
-            if ~isfield(specifier, 'variable_labels')
-                specifier.variable_labels = struct();
+            if ~isfield(load_specifier, 'variable_labels')
+                load_specifier.variable_labels = struct();
             end
             
             
-            tmp = specifier;
+            tmp = load_specifier;
             tmp = rmfield(tmp, 'file_path');
             tmp = rmfield(tmp, 'include');
             tmp = rmfield(tmp, 'bool_variables');
@@ -520,9 +520,9 @@ classdef DataEvaluator < geospm.validation.Evaluator
             
             columns = [];
             
-            if ~isempty(specifier.include)
-                for i=1:numel(specifier.include)
-                    name = specifier.include{i};
+            if ~isempty(load_specifier.include)
+                for i=1:numel(load_specifier.include)
+                    name = load_specifier.include{i};
                     index = find(strcmp(name, spatial_data.variable_names));
                     columns = [columns, index]; %#ok<AGROW>
                 end
@@ -533,26 +533,26 @@ classdef DataEvaluator < geospm.validation.Evaluator
             rows = ~any(isnan(spatial_data.observations(:, columns)), 2);
             
             spatial_data = spatial_data.select(rows, columns, ...
-                @(args) obj.transform_spatial_data(args, specifier.standardise));
+                @(specifier, modifier) obj.transform_spatial_data(specifier, modifier, load_specifier.standardise));
             
             spatial_index = spatial_index.select(rows, []);
             
-            if ~isempty(specifier.interactions)
+            if ~isempty(load_specifier.interactions)
                 
                 spatial_data = spatial_data.select(...
                     [], ...
                     [], ...
-                    @(args) geospm.validation.DataEvaluator.add_interactions(...
-                        args, specifier.interactions));
+                    @(specifier, modifier) geospm.validation.DataEvaluator.add_interactions(...
+                        specifier, modifier, load_specifier.interactions));
                 
-                specifier.variable_labels = ...
+                load_specifier.variable_labels = ...
                     geospm.validation.DataEvaluator.add_interaction_labels(...
-                        specifier.variable_labels, specifier.interactions);
+                        load_specifier.variable_labels, load_specifier.interactions);
             end
             
-            spatial_data.attachments.group_identifier = specifier.group_identifier;
-            spatial_data.attachments.group_label = specifier.group_label;
-            spatial_data.attachments.variable_labels = specifier.variable_labels;
+            spatial_data.attachments.group_identifier = load_specifier.group_identifier;
+            spatial_data.attachments.group_label = load_specifier.group_label;
+            spatial_data.attachments.variable_labels = load_specifier.variable_labels;
         end
         
         function domain = build_data_domain(~, spatial_data)
@@ -587,19 +587,19 @@ classdef DataEvaluator < geospm.validation.Evaluator
             end
         end
         
-        function args = transform_spatial_data(~, args, standardise)
-            args.check_for_nans = true;
+        function specifier = transform_spatial_data(~, specifier, modifier, standardise) %#ok<INUSD>
+            specifier.check_for_nans = true;
             
             for i=1:numel(standardise)
                 name = standardise{i};
-                index = find(strcmp(name, args.variable_names), 1);
+                index = find(strcmp(name, specifier.per_column.variable_names), 1);
                 
                 if isempty(index)
                     continue;
                 end
                 
-                values = args.observations(:, index);
-                args.observations(:, index) = (values - mean(values, 'omitnan')) ./ std(values, 'omitnan');
+                values = specifier.data(:, index);
+                specifier.data(:, index) = (values - mean(values, 'omitnan')) ./ std(values, 'omitnan');
             end
         end
         
@@ -687,29 +687,58 @@ classdef DataEvaluator < geospm.validation.Evaluator
             result.max_location = options.max_location;
         end
 
-        function args = add_interactions(args, pairs)
+        function specifier = add_interactions(specifier, modifier, pairs)
 
+            %{
             N = size(pairs, 1);
-            P = size(args.observations, 2);
+            P = size(specifier.data, 2);
 
-            observations = [args.observations, zeros(size(args.observations, 1), N)];
+            observations = [specifier.data, zeros(size(specifier.data, 1), N)];
 
             for i=1:N
                 var1 = pairs{i, 1};
                 var2 = pairs{i, 2};
 
-                index1 = find(strcmp(var1, args.variable_names), 1);
-                index2 = find(strcmp(var2, args.variable_names), 1);
+                index1 = find(strcmp(var1, specifier.per_column.variable_names), 1);
+                index2 = find(strcmp(var2, specifier.per_column.variable_names), 1);
 
                 if isempty(index1) || isempty(index2)
                     error('Couldn''t define interaction.');
                 end
 
-                observations(:, P + i) = args.observations(:, index1) .* args.observations(:, index2);
-                args.variable_names = [args.variable_names, {[var1 '_x_' var2]}];
+                observations(:, P + i) = specifier.data(:, index1) .* specifier.data(:, index2);
+                specifier.per_column.variable_names = [specifier.per_column.variable_names, {[var1 '_x_' var2]}];
             end
 
-            args.observations = observations;
+            specifier.data = observations;
+            %}
+
+
+            N = size(pairs, 1);
+            P = size(specifier.data, 2);
+
+            interactions = zeros(size(specifier.data, 1), N);
+            interaction_labels = cell(1, N);
+
+            for i=1:N
+                var1 = pairs{i, 1};
+                var2 = pairs{i, 2};
+
+                index1 = find(strcmp(var1, specifier.per_column.variable_names), 1);
+                index2 = find(strcmp(var2, specifier.per_column.variable_names), 1);
+
+                if isempty(index1) || isempty(index2)
+                    error('Couldn''t define interaction.');
+                end
+                
+                interactions(:, i) = specifier.data(:, index1) .* specifier.data(:, index2);
+                interaction_labels{i} = [var1 '_x_' var2];
+            end
+            
+            per_column = struct();
+            per_column.variable_names = interaction_labels;
+
+            specifier = modifier.insert_columns_op(specifier, P + 1, interactions, per_column);
         end
 
         function labels = add_interaction_labels(labels, pairs)

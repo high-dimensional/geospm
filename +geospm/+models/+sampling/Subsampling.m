@@ -62,11 +62,14 @@ classdef Subsampling < geospm.models.SamplingStrategy
             spatial_index = model.attachments.spatial_index;
             
             attachments = spatial_data.attachments;
+
+            [u, v, w] = obj.grid.space_to_grid(spatial_index.x, spatial_index.y, spatial_index.z);
             
-            [row_indices, uvw] = obj.grid.select_xyz(spatial_index.xyz);
-            u = uvw(:, 1);
-            v = uvw(:, 2);
-            w = uvw(:, 3);
+            row_indices = obj.grid.clip_uvw(u, v, w);
+
+            u = u(row_indices);
+            v = v(row_indices);
+            w = w(row_indices);
 
             spatial_data = spatial_data.select(row_indices, []);
             spatial_index = spatial_index.select_by_segment(row_indices);
@@ -96,11 +99,11 @@ classdef Subsampling < geospm.models.SamplingStrategy
 
                 case geospm.models.sampling.Subsampling.IDENTITY_MODE
                     result = spatial_data.select(sample_indices, []);
-                    spatial_index = spatial_index.select_by_segment(sample_indices, @(arguments) obj.update_coordinates(arguments, u, v, w));
+                    spatial_index = spatial_index.select_by_segment(sample_indices, @(specifier, modifier) obj.update_coordinates(specifier, modifier, u, v, w));
                 
                 case geospm.models.sampling.Subsampling.JITTER_MODE
                     result = spatial_data.select(sample_indices, []);
-                    spatial_index = spatial_index.select_by_segment(sample_indices, @(arguments) obj.add_jitter(arguments, jitter_x, jitter_y, u, v, w));
+                    spatial_index = spatial_index.select_by_segment(sample_indices, @(specifier, modifier) obj.add_jitter(specifier, modifier, jitter_x, jitter_y, u, v, w));
                 
                 %{
                 case geospm.models.sampling.Subsampling.AVERAGE_MODE
@@ -125,26 +128,26 @@ classdef Subsampling < geospm.models.SamplingStrategy
     
     methods (Access=private)
         
-        function args = update_coordinates(obj, args, u, v, w)
+        function specifier = update_coordinates(obj, specifier, modifier, u, v, w) %#ok<INUSD>
             
             if ~obj.backtransform_coordinates
-                args.x = cast(u, 'double');
-                args.y = cast(v, 'double');
-                args.z = cast(w, 'double');
+                specifier.per_row.x = cast(u, 'double');
+                specifier.per_row.y = cast(v, 'double');
+                specifier.per_row.z = cast(w, 'double');
             end
         end
 
-        function args = add_jitter(obj, args, jitter_x, jitter_y, u, v, w)
+        function specifier = add_jitter(obj, specifier, modifier, jitter_x, jitter_y, u, v, w) %#ok<INUSD>
             
             u = cast(u, 'double') + jitter_x;
             v = cast(v, 'double') + jitter_y;
             
             if obj.backtransform_coordinates
-                [args.x, args.y, args.z] = obj.grid.grid_to_space(u, v, w);
+                [specifier.per_row.x, specifier.per_row.y, specifier.per_row.z] = obj.grid.grid_to_space(u, v, w);
             else
-                args.x = cast(u, 'double');
-                args.y = cast(v, 'double');
-                args.z = cast(w, 'double');
+                specifier.per_row.x = cast(u, 'double');
+                specifier.per_row.y = cast(v, 'double');
+                specifier.per_row.z = cast(w, 'double');
             end
         end
         

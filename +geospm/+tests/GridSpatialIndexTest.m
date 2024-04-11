@@ -39,12 +39,9 @@ classdef GridSpatialIndexTest < geospm.tests.SpatialIndexTest
                             resolution);
 
 
-            [~, uvw] = grid.select_xyz([obj.x, obj.y, obj.z]);
+            [tmp_u, tmp_v, tmp_w] = grid.space_to_grid(obj.x, obj.y, obj.z);
+            [~, obj.u, obj.v, obj.w] = grid.clip_uvw(tmp_u, tmp_v, tmp_w);
             
-            obj.u = uvw(:, 1);
-            obj.v = uvw(:, 2);
-            obj.w = uvw(:, 3);
-
             obj.spatial_index = geospm.GridSpatialIndex(obj.u, obj.v, obj.w, obj.x, obj.y, obj.z, obj.segments, resolution, grid); 
         end
         

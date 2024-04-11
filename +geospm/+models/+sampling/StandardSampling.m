@@ -127,14 +127,6 @@ classdef StandardSampling < geospm.models.SamplingStrategy
                 categories(i) = category;
             end
             
-            %{
-            result = geospm.SpatialData(x, y, zeros(N_samples, 1), observations);
-
-            result.set_variable_names(model.domain.variable_names');
-            result.set_categories(categories);
-            result.attachments.spatial_resolution = model.spatial_resolution;
-            %}
-
             result = geospm.NumericData(observations);
             result.set_variable_names(model.domain.variable_names');
             result.set_categories(categories);

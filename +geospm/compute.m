@@ -13,7 +13,7 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function [result, record] = compute(directory, spatial_data, ...
+function [result, record] = compute(directory, data, spatial_index, ...
                                             save_record, varargin)
     
     %{
@@ -21,8 +21,11 @@ function [result, record] = compute(directory, spatial_data, ...
         If empty, a timestamped directory is created in the current working
         directory.
         
-        spatial_data - a geospm.SpatialData object that holds the data to
+        data - a geospm.NumericData object that holds the data to
         be analysed
+
+        spatial_index - a geospm.SpatialIndex object that holds the point
+        locations corresponding to data
         
         save_record - If true, the returned metadata record variable will
         be saved to a JSON file.
@@ -42,10 +45,10 @@ function [result, record] = compute(directory, spatial_data, ...
         as indicated by the following parameters:
 
             min_location - min geographic coordinates of rectangle
-            default: floor(spatial_data.min_xyz)
+            default: floor(data.min_xyz)
 
             max_location - max geographic coordinates of rectangle
-            default: ceil(spatial_data.max_xyz)
+            default: ceil(data.max_xyz)
 
         spatial_resolution - number of raster cells in the x and y 
         directions for spatial data points inside the rectangle (or
@@ -157,14 +160,15 @@ function [result, record] = compute(directory, spatial_data, ...
         options = hdng.utilities.parse_struct_from_varargin(varargin{:});
     end
     
-    smoothing_levels_as_z_dimension = all(spatial_data.z == spatial_data.z(1));
+    smoothing_levels_as_z_dimension = all(spatial_index.z == spatial_index.z(1));
     
     if ~isfield(options, 'run_mode')
         options.run_mode = 'regular';
     end
     
     if ~isfield(options, 'grid') || isempty(options.grid)
-        options = geospm.auxiliary.parse_spatial_resolution(spatial_data, options);
+        options = geospm.auxiliary.parse_spatial_resolution( ...
+            spatial_index, options);
         
         options.grid = geospm.Grid();
         
@@ -235,12 +239,12 @@ function [result, record] = compute(directory, spatial_data, ...
     end
     
     if options.regression_add_intercept
-    	spatial_data = spatial_data.concat_variables(ones(spatial_data.N, 1), {'intercept'}, spatial_data.P + 1);
+    	data = data.concat_variables(ones(data.N, 1), {'intercept'}, data.P + 1);
     end
     
     record = geospm.auxiliary.metadata_from_options('geospm.', options);
     
-    record('geospm.description') = spatial_data.description;
+    record('geospm.description') = data.description;
     
     source_version = hdng.utilities.SourceVersion(fileparts(mfilename('fullpath')));
     record('geospm.source_version') = source_version.string;
@@ -255,7 +259,7 @@ function [result, record] = compute(directory, spatial_data, ...
 
     [contrasts, contrasts_per_threshold] = ...
         geospm.utilities.define_simple_contrasts(...
-            options.thresholds, spatial_data.variable_names);
+            options.thresholds, data.variable_names);
     
     [contrasts, contrast_groups] = ...
         geospm.utilities.order_domain_contrasts(...
@@ -265,6 +269,7 @@ function [result, record] = compute(directory, spatial_data, ...
 
     analysis.define_requirement('directory');
     analysis.define_requirement('spatial_data');
+    analysis.define_requirement('spatial_index');
 
     analysis.define_requirement('smoothing_levels');
     analysis.define_requirement('smoothing_levels_p_value');
@@ -298,6 +303,7 @@ function [result, record] = compute(directory, spatial_data, ...
     geospm.stages.GridTransform(analysis, 'grid', options.grid);
     
     geospm.stages.SPMSpatialSmoothing(analysis);
+
     regression_stage = geospm.stages.SPMDistanceRegression(analysis);
     regression_stage.apply_density_mask = options.apply_density_mask;
     regression_stage.write_applied_mask = options.write_applied_mask;
@@ -320,7 +326,8 @@ function [result, record] = compute(directory, spatial_data, ...
 
     arguments = struct();
     arguments.directory = directory;
-    arguments.spatial_data = spatial_data;
+    arguments.spatial_data = data;
+    arguments.spatial_index = spatial_index;
     
     arguments.smoothing_levels = options.smoothing_levels;
     arguments.smoothing_levels_p_value = options.smoothing_levels_p_value;
@@ -335,21 +342,27 @@ function [result, record] = compute(directory, spatial_data, ...
 
     %Specify thresholds to be used by SPMApplyThresholds
 
-    contrasts_per_threshold_arg = contrasts_per_threshold;
-
-    for index=1:numel(contrasts_per_threshold_arg)
-        threshold_contrasts = contrasts_per_threshold_arg{index};
-
+    contrasts_per_threshold_tmp = contrasts_per_threshold;
+    
+    for index=1:numel(contrasts_per_threshold_tmp)
+        threshold_contrasts = contrasts_per_threshold_tmp{index};
+        threshold_contrast_indices = zeros(size(threshold_contrasts));
+        
         for c=1:numel(threshold_contrasts)
             contrast = threshold_contrasts{c};
-            threshold_contrasts{c} = contrast.order;
+            threshold_contrast_indices(c) = contrast.order;
         end
+        
 
-        contrasts_per_threshold_arg{index} = threshold_contrasts;
+        threshold_contrast_indices = sortrows(threshold_contrast_indices, 1);
+
+        contrasts_per_threshold_tmp{index} = threshold_contrast_indices;
     end
-    
+
+    contrasts_per_threshold = contrasts_per_threshold_tmp;
+
     arguments.thresholds = options.thresholds;
-    arguments.threshold_contrasts = contrasts_per_threshold_arg;
+    arguments.threshold_contrasts = contrasts_per_threshold;
 
     arguments.run_spm_distance_regression = ...
       strcmp(options.run_mode, REGULAR_RUN_MODE);

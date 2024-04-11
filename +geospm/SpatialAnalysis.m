@@ -19,8 +19,7 @@ classdef SpatialAnalysis < hdng.pipeline.Pipeline
     methods
         
         function obj = SpatialAnalysis(options, varargin)
-            %Creates a new SpatialAnalysis object for a SpatialData
-            %object.
+            %Creates a new SpatialAnalysis object.
             %
             % options - A structure of options. 
             % varargin - An arbitrary number of Name, Value pairs specifying
@@ -28,18 +27,17 @@ classdef SpatialAnalysis < hdng.pipeline.Pipeline
             %
             % Example (1)
             %
-            % spatial_data = geospm.SpatialData(...);
             % options = struct('precision', 'single');
-            % computation = geospm.SpatialAnalysis(spatial_data, options);
+            % computation = geospm.SpatialAnalysis(options);
             %
             % Example (2)
             %
-            % computation = geospm.SpatialAnalysis(spatial_data, [],
+            % computation = geospm.SpatialAnalysis([],
             % 'precision', 'single');
             %
             % Example (3)
             %
-            % computation = geospm.SpatialAnalysis(spatial_data, default_options,
+            % computation = geospm.SpatialAnalysis(default_options,
             % 'precision', 'single');
             %
             % The following options are currently defined:

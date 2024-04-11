@@ -107,35 +107,35 @@ classdef ObservationTransform < geospm.stages.SpatialAnalysisStage
         end
         
         function [result, spatial_index] = center_at_mean(obj, spatial_data, spatial_index, ~)
-            result = spatial_data.select([], [], @(args) obj.center_at_mean_impl(args));
+            result = spatial_data.select([], [], @(specifier, modifier) obj.center_at_mean_impl(specifier, modifier));
         end
         
         function [result, spatial_index] = standardize(obj, spatial_data, spatial_index, ~)
-            result = spatial_data.select([], [], @(args) obj.standardize_impl(args));
+            result = spatial_data.select([], [], @(specifier, modifier) obj.standardize_impl(specifier, modifier));
         end
         
         
-        function args = center_at_mean_impl(~, args)
+        function specifier = center_at_mean_impl(~, specifier, modifier) %#ok<INUSD>
             
-            P = size(args.observations, 2);
+            P = size(specifier.data, 2);
             
             S = 1;
             
             for index=S:P
-                variable = args.observations(:, index);
-                args.observations(:, index) = variable - mean(variable);
+                variable = specifier.data(:, index);
+                specifier.data(:, index) = variable - mean(variable);
             end
         end
         
-        function args = standardize_impl(~, args)
+        function specifier = standardize_impl(~, specifier, modifier) %#ok<INUSD>
             
-            P = size(args.observations, 2);
+            P = size(specifier.data, 2);
             
             S = 1;
             
             for index=S:P
-                variable = args.observations(:, index);
-                args.observations(:, index) = ...
+                variable = specifier.data(:, index);
+                specifier.data(:, index) = ...
                     (variable - mean(variable)) / std(variable);
             end
         end

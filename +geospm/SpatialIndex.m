@@ -323,11 +323,11 @@ classdef SpatialIndex < geospm.TabularData
             end
             
             if ~exist('transform', 'var')
-                transform = @(arguments) arguments;
+                transform = @(specifier, modifier) specifier;
             end
 
             row_selection = obj.row_indices_from_segment_indices(segment_selection);
-            result = obj.clone(row_selection, [], transform);
+            result = obj.select(row_selection, [], transform);
         end
 
         function result = render_in_figure(obj, origin, frame_size, variant, varargin)
@@ -596,33 +596,33 @@ classdef SpatialIndex < geospm.TabularData
             obj.(name) = values;
         end
 
-        function result = define_clone_arguments(obj, row_selection, column_selection)
+        function [specifier, modifier] = define_clone_specifier(obj)
             
-            result = define_clone_arguments@geospm.TabularData(obj, row_selection, column_selection);
+            [specifier, modifier] = define_clone_specifier@geospm.TabularData(obj);
             
-            result.x = obj.x(row_selection);
-            result.y = obj.y(row_selection);
-            result.z = obj.z(row_selection);
-            
-            tmp = obj.segment_index(row_selection);
+            specifier.per_row.x = obj.x;
+            specifier.per_row.y = obj.y;
+            specifier.per_row.z = obj.z;
+
+            tmp = obj.segment_index;
             tmp = [tmp - [0; tmp(1:end - 1)]; 1];
             offsets = find(tmp(2:end));
             
-            result.segment_sizes = offsets - [0; offsets(1:end - 1)];
+            specifier.segment_sizes = offsets - [0; offsets(1:end - 1)];
 
-            [result.segment_index, result.segment_offsets] = obj.update_segments(result.x, result.segment_sizes);
+            [specifier.per_row.segment_index, specifier.per_row.segment_offsets] = obj.update_segments(specifier.per_row.x, specifier.segment_sizes);
 
-            result.crs = obj.crs;
+            specifier.crs = obj.crs;
 
         end
 
-        function result = create_clone_from_arguments(~, arguments)
+        function result = create_clone_from_specifier(~, specifier)
             
-            result = geospm.SpatialIndex(arguments.x, ...
-                                         arguments.y, ...
-                                         arguments.z, ...
-                                         arguments.segment_sizes, ...
-                                         arguments.crs);
+            result = geospm.SpatialIndex(specifier.per_row.x, ...
+                                         specifier.per_row.y, ...
+                                         specifier.per_row.z, ...
+                                         specifier.segment_sizes, ...
+                                         specifier.crs);
         end
 
     end

@@ -136,7 +136,6 @@ classdef StandardSampling2 < geospm.models.SamplingStrategy
             
             sample_indices = randperm(rng, N_samples, N_samples);
             
-            %spatial_data = geospm.SpatialData(x, y, zeros(N_samples, 1), observations);
             spatial_data = geospm.NumericData(observations);
             spatial_index = geospm.SpatialIndex(x, y, [], []);
             
@@ -150,7 +149,7 @@ classdef StandardSampling2 < geospm.models.SamplingStrategy
 
                 case geospm.models.sampling.StandardSampling2.JITTER_MODE
                     result = spatial_data.select([], []);
-                    spatial_index = spatial_index.select_by_segment([], @(arguments) obj.add_jitter(arguments, jitter_x, jitter_y));
+                    spatial_index = spatial_index.select_by_segment([], @(specifier, modifier) obj.add_jitter(specifier, modifier, jitter_x, jitter_y));
                 
                 %{
                 case geospm.models.sampling.StandardSampling2.AVERAGE_MODE
@@ -180,15 +179,15 @@ classdef StandardSampling2 < geospm.models.SamplingStrategy
     methods (Access=private)
         
         
-        function args = add_jitter(~, args, jitter_x, jitter_y)
-            args.x = args.x + jitter_x;
-            args.y = args.y + jitter_y;
+        function specifier = add_jitter(~, specifier, modifier, jitter_x, jitter_y) %#ok<INUSD>
+            specifier.per_row.x = specifier.per_row.x + jitter_x;
+            specifier.per_row.y = specifier.per_row.y + jitter_y;
         end
         
-        function args = update_coordinates(~, args, x, y, z)
-            args.x = x;
-            args.y = y;
-            args.z = z;
+        function specifier = update_coordinates(~, specifier, modifier, x, y, z) %#ok<INUSD>
+            specifier.per_row.x = x;
+            specifier.per_row.y = y;
+            specifier.per_row.z = z;
         end
         
         function result = average_coincident_observations(~, args)

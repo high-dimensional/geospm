@@ -40,11 +40,12 @@ function compute_from_observations(directory, observations, x, y, z, ...
         options.crs = hdng.SpatialCRS.empty;
     end
     
-    data = geospm.SpatialData(x, y, z, observations, options.crs);
+    data = geospm.NumericData(observations);
+    spatial_index = geospm.SpatialIndex(x, y, z, [], options.crs);
     
     options = rmfield(options, 'crs');
     
     varargin = hdng.utilities.struct_to_name_value_sequence(options);
     
-    geospm.compute(directory, data, true, varargin{:});
+    geospm.compute(directory, data, spatial_index, true, varargin{:});
 end

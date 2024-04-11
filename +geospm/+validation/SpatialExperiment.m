@@ -309,11 +309,11 @@ classdef SpatialExperiment < handle
                 samples((j * K + 1):(i * K), :) = samples((j * K + 1):(i * K), :) .* probe_radius + probe_xy;
             end
             
-            result = geospm.SpatialData(samples(:, 1), samples(:, 2), zeros(K * N, 1), []);
+            result = geospm.SpatialIndex(samples(:, 1), samples(:, 2), zeros(K * N, 1), []);
             
             %Use the probe number as the category
-            categories = repelem((1:N)', K);
-            result.set_categories(categories);
+            %categories = repelem((1:N)', K);
+            %result.set_categories(categories);
             
             scatter_plot_path = fullfile(obj.directory, ['probes' '.eps']);
             result.write_as_eps(scatter_plot_path, [1, 1], obj.model.spatial_resolution + 1);

@@ -339,7 +339,7 @@ classdef Parameters < handle
             obj.report_generator_ = [];
         end
         
-        function define_grid(obj, spatial_data, varargin)
+        function define_grid(obj, spatial_index, varargin)
             
             %{
                 The grid is defined based on the extent of the data and 
@@ -353,7 +353,7 @@ classdef Parameters < handle
             
             obj.grid_ = geospm.Grid();
             
-            options = geospm.auxiliary.parse_spatial_resolution(spatial_data, options);
+            options = geospm.auxiliary.parse_spatial_resolution(spatial_index, options);
             
             obj.grid_.span_frame( ...
                 options.min_location, ...

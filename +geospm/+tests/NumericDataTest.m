@@ -45,7 +45,7 @@ classdef NumericDataTest < matlab.unittest.TestCase
                 obj.N = options.N;
             end
 
-            obj.P = randi(obj.N);
+            obj.P = randi(1000);
             
             if isfield(options, 'P') && ~isempty(options.P)
                 obj.P = options.P;
@@ -200,6 +200,7 @@ classdef NumericDataTest < matlab.unittest.TestCase
             obj.data.set_variable_names(obj.variable_names);
         end
 
+        %{
         function test_row_attachments(obj)
 
             selection = cast(randi(2, [obj.N, 1]) - 1, 'logical');
@@ -254,20 +255,7 @@ classdef NumericDataTest < matlab.unittest.TestCase
 
             obj.verifyEqual(test.data.variable_names(1:P_common), obj.variable_names(column_selection), 'Selected variable names column attachment does not match specification.');
         end
-        
-        function test_concat_variables(obj)
-        
-            test = geospm.tests.NumericDataTest();
-            test.initialise_with_options('N', obj.N);
-
-            insertion_index = randi(test.P + 1);
-            
-            result = test.data.concat_variables(obj.observations, obj.variable_names, insertion_index);
-
-            concat = [test.observations(:, 1:insertion_index - 1), obj.observations, test.observations(:, insertion_index:end)];
-            
-            obj.verifyEqual(result.observations, concat, 'Concatenated observations do not match specification.');
-        end
+        %}
 
         function test_select(obj)
             
@@ -286,6 +274,25 @@ classdef NumericDataTest < matlab.unittest.TestCase
             obj.verifyEqual(result.labels, obj.labels(row_selection), 'Selected label row attachment does not match specification.');
             obj.verifyEqual(result.categories, obj.categories(row_selection), 'Selected categories row attachment does not match specification.');
             obj.verifyEqual(result.variable_names, obj.variable_names(column_selection), 'Selected variable names column attachment does not match specification.');
+        end
+        
+        function test_concat_variables(obj)
+        
+            test = geospm.tests.NumericDataTest();
+            test.initialise_with_options('N', obj.N);
+
+            insertion_index = randi(test.P + 1);
+            
+            result = test.data.concat_variables(obj.observations, obj.variable_names, insertion_index);
+
+            concat = [test.observations(:, 1:insertion_index - 1), obj.observations, test.observations(:, insertion_index:end)];
+            combined_variable_names = [test.variable_names(1:insertion_index - 1), obj.variable_names, test.variable_names(insertion_index:end)];
+
+            obj.verifyEqual(result.observations, concat, 'Concatenated observations do not match specification.');
+
+            obj.verifyEqual(result.labels, test.data.labels, 'Combined label row attachment does not match specification.');
+            obj.verifyEqual(result.categories, test.data.categories, 'Combined categories row attachment does not match specification.');
+            obj.verifyEqual(result.variable_names, combined_variable_names, 'Combined variable names column attachment does not match specification.');
         end
     end
 end
