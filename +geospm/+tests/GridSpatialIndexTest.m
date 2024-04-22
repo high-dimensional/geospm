@@ -114,5 +114,40 @@ classdef GridSpatialIndexTest < geospm.tests.SpatialIndexTest
         function test_uvw(obj)
             obj.verifyEqual(obj.spatial_index.uvw, [obj.u, obj.v, obj.w], 'uvw does not match actual concatenation uvw');
         end
+
+        function test_select(obj)
+            
+            n = randi(obj.N);
+            row_selection = randperm(obj.N, n);
+            
+            result = obj.spatial_index.select(row_selection, []);
+
+            segment_indices = obj.spatial_index.segment_index;
+            segment_indices = segment_indices(row_selection);
+
+            selected_segment_sizes = geospm.SpatialIndex.segment_indices_to_segment_sizes(segment_indices);
+            
+            x_selection = obj.x(row_selection);
+            y_selection = obj.y(row_selection);
+            z_selection = obj.z(row_selection);
+            
+            u_selection = obj.u(row_selection);
+            v_selection = obj.v(row_selection);
+            w_selection = obj.w(row_selection);
+
+            obj.verifyEqual(result.x, x_selection, 'Selected x coordinates do not match specification.');
+            obj.verifyEqual(result.y, y_selection, 'Selected y coordinates do not match specification.');
+            obj.verifyEqual(result.z, z_selection, 'Selected z coordinates do not match specification.');
+
+            obj.verifyEqual(result.u, u_selection, 'Selected u coordinates do not match specification.');
+            obj.verifyEqual(result.v, v_selection, 'Selected v coordinates do not match specification.');
+            obj.verifyEqual(result.w, w_selection, 'Selected w coordinates do not match specification.');
+
+            obj.verifyEqual(result.segment_sizes, selected_segment_sizes, 'Selected segment sizes do not match specification.');
+
+            obj.verifyEqual(result.N, n, 'Number of selected coordinates does not match specification.');
+            obj.verifyEqual(result.N, sum(result.segment_sizes), 'Number of selected coordinates does not match sum of segment sizes.');
+            obj.verifyEqual(result.S, numel(result.segment_sizes), 'Number of selected segments does not match number of segment sizes.');
+        end
     end
 end

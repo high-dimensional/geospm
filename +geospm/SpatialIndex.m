@@ -14,7 +14,8 @@
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
 classdef SpatialIndex < geospm.TabularData
-    %SpatialIndex Summary goes here.
+    %SpatialIndex A spatial index stores coordinates grouped
+    % into segments.
     %
     
     properties (GetAccess = public, SetAccess = immutable)
@@ -23,7 +24,6 @@ classdef SpatialIndex < geospm.TabularData
         y % a column vector of length N (a N by 1 matrix) of observation y locations
         z % a column vector of length N (a N by 1 matrix) of observation z locations
         
-        segment_index % a column vector of length N specifying the segment index for each coordinate
         segment_sizes % a column vector of length S listing the number of coordinates per segment
 
         crs % an optional SpatialCRS or empty
@@ -31,9 +31,9 @@ classdef SpatialIndex < geospm.TabularData
     
     properties (Dependent, Transient)
         
-        % N % number of locations
         S % number of segments
-
+        
+        segment_index % a column vector of length N specifying the segment index for each coordinate
         segment_offsets % a column vector of length S specifying the index of the first coordinate for each segment
 
         has_crs % is a crs defined?
@@ -64,6 +64,7 @@ classdef SpatialIndex < geospm.TabularData
     
     properties (GetAccess = private, SetAccess = private)
         
+        segment_index_
         segment_offsets_
 
         x_min_
@@ -86,7 +87,7 @@ classdef SpatialIndex < geospm.TabularData
             % x ? x locations
             % y ? y locations
             % z ? z locations or empty
-            % segments ? 
+            % segment_sizes ?  
             % crs ? coordinate reference system or empty
             
             if ~exist('crs', 'var')
@@ -136,7 +137,7 @@ classdef SpatialIndex < geospm.TabularData
             obj.z = z;
             
             obj.segment_sizes = segment_sizes;
-            [obj.segment_index, obj.segment_offsets_] = obj.update_segments(x, segment_sizes);
+            [obj.segment_index_, obj.segment_offsets_] = obj.segment_indices_from_segment_sizes(size(x, 1), segment_sizes);
 
             if isempty(crs)
                 crs = hdng.SpatialCRS.empty;
@@ -146,15 +147,13 @@ classdef SpatialIndex < geospm.TabularData
             
             obj.crs = crs;
         end
-
-        %{
-        function result = get.N(obj)
-            result = size(obj.x, 1);
-        end
-        %}
-
+        
         function result = get.S(obj)
             result = size(obj.segment_sizes, 1);
+        end
+        
+        function result = get.segment_index(obj)
+            result = obj.segment_index_;
         end
         
         function result = get.segment_offsets(obj)
@@ -603,14 +602,10 @@ classdef SpatialIndex < geospm.TabularData
             specifier.per_row.x = obj.x;
             specifier.per_row.y = obj.y;
             specifier.per_row.z = obj.z;
+            specifier.per_row.segment_index = obj.segment_index;
 
-            tmp = obj.segment_index;
-            tmp = [tmp - [0; tmp(1:end - 1)]; 1];
-            offsets = find(tmp(2:end));
-            
-            specifier.segment_sizes = offsets - [0; offsets(1:end - 1)];
-
-            [specifier.per_row.segment_index, specifier.per_row.segment_offsets] = obj.update_segments(specifier.per_row.x, specifier.segment_sizes);
+            specifier.segment_sizes = obj.segment_sizes;
+            specifier.segment_offsets = obj.segment_offsets_;
 
             specifier.crs = obj.crs;
 
@@ -618,10 +613,14 @@ classdef SpatialIndex < geospm.TabularData
 
         function result = create_clone_from_specifier(~, specifier)
             
+            specifier_segment_sizes = ...
+                geospm.SpatialIndex.segment_indices_to_segment_sizes(...
+                    specifier.per_row.segment_index);
+
             result = geospm.SpatialIndex(specifier.per_row.x, ...
                                          specifier.per_row.y, ...
                                          specifier.per_row.z, ...
-                                         specifier.segment_sizes, ...
+                                         specifier_segment_sizes, ...
                                          specifier.crs);
         end
 
@@ -673,7 +672,8 @@ classdef SpatialIndex < geospm.TabularData
             if any(segment_indices <= 0)
                 error('segment_index_to_segment_sizes(): Only positive segment indices allowed.');
             end
-
+            
+            %{
             unique_segments = unique(segment_indices);
             max_segment = max(unique_segments);
 
@@ -685,22 +685,28 @@ classdef SpatialIndex < geospm.TabularData
             end
 
             segment_sizes = segments(unique_segments);
+            %}
+            
+            segment_indices = sort(segment_indices);
+            tmp = [segment_indices - [0; segment_indices(1:end - 1)]; 1];
+            offsets = find(tmp(2:end));
+            segment_sizes = offsets - [0; offsets(1:end - 1)];
         end
 
-        function [segment_index, segment_offsets] = update_segments(x, segment_sizes)
+        function [segment_index, segment_offsets] = segment_indices_from_segment_sizes(N_coords, segment_sizes)
             
             segment_sum = sum(segment_sizes);
 
-            if size(x, 1) ~= segment_sum
-                error('The sum of segments (=%d) does not match the number of coordinates (=%d).', segment_sum, size(x, 1));
+            if N_coords ~= segment_sum
+                error('The sum of segments (=%d) does not match the number of coordinates (=%d).', segment_sum, N_coords);
             end
 
-            segment_index = zeros(size(x, 1), 1);
+            segment_index = zeros(N_coords, 1);
 
             current_segment_index = 1;
             segment_counts = segment_sizes;
 
-            for index=1:size(x, 1)
+            for index=1:N_coords
                 if segment_counts(current_segment_index) <= 0
                     error('Zero segments are not supported [%d].', current_segment_index);
                 end

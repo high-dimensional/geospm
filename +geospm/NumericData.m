@@ -247,6 +247,31 @@ classdef NumericData < geospm.TabularData
                 result = obj.select([], ~constant);
             end
         end
+
+        function [result, row_selection] = remove_outliers(obj, min_cutoff, max_cutoff, column_selection)
+
+            if ~exist('column_selection', 'var')
+                column_selection = [];
+            end
+            
+            if isempty(column_selection)
+                column_selection = 1:obj.C;
+            end
+            
+            row_selection = [];
+
+            function specifier = transform(specifier, modifier)
+
+                selected_data = specifier.data(:, column_selection);
+                cutoff_limits = quantile(selected_data, [min_cutoff, max_cutoff]);
+
+                row_selection = all(selected_data >= cutoff_limits(1, :) & selected_data <= cutoff_limits(2, :), 2);
+            
+                specifier = modifier.select_op(specifier, row_selection, []);
+            end
+
+            result = obj.select([], [], @transform);
+        end
         
         function result = as_json_struct(obj, options)
             %Creates a JSON representation of this NumericData object.
@@ -418,6 +443,59 @@ classdef NumericData < geospm.TabularData
             
             writetable(data, filepath);
         end
+
+        function n = numArgumentsFromSubscript(obj, s, indexingContext)
+           
+            switch s(1).type
+            
+                case {'{}', '()'}
+
+                    if indexingContext == matlab.mixin.util.IndexingContext.Expression
+                        n = 1;
+                    else
+                        n = builtin('numArgumentsFromSubscript', obj, s, indexingContext);
+                    end
+
+                otherwise
+                    n = builtin('numArgumentsFromSubscript', obj, s, indexingContext);
+            end
+        end
+
+        function varargout = subsref(obj, s)
+            
+           switch s(1).type
+               
+              case {'{}', '()'}
+                 
+                if numel(s(1).subs) > 1
+                    error('Only one subscript argument is supported.');
+                end
+
+                if nargout > 1
+                    error('Only one output argument is supported.');
+                end
+                  
+                variables_by_name = builtin('subsref', obj, substruct('.', 'variables_by_name_'));
+
+                key = s(1).subs{1};
+
+                if ~isKey(variables_by_name, key)
+                    error('Undefined variable ''%s''.', key);
+                end
+
+                index = variables_by_name(key);
+
+                if strcmp(s(1).type, '()')
+                    varargout = {index};
+                else
+                    variable_matrix = builtin('subsref', obj, substruct('.', 'observations'));
+                    varargout = {variable_matrix(:, index)};
+                end
+
+              otherwise
+              	 [varargout{1:nargout}] = builtin('subsref',obj,s);
+           end
+        end
     end
     
     methods (Access=protected)
@@ -452,7 +530,6 @@ classdef NumericData < geospm.TabularData
 
             result.description = obj.description;
         end
-
     end
     
     methods (Access = private)

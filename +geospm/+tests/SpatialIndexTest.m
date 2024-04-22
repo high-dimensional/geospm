@@ -31,15 +31,23 @@ classdef SpatialIndexTest < matlab.unittest.TestCase
             obj.spatial_index = geospm.SpatialIndex(obj.x, obj.y, obj.z, obj.segments); 
         end
 
-    end
- 
-    methods(TestMethodSetup)
         
-        function initialise1(obj)
+        function initialise_with_options(obj, varargin)
+            
+            options = hdng.utilities.parse_struct_from_varargin(varargin{:});
             
             obj.N = randi(1000);
-            obj.S = randi(obj.N);
+            
+            if isfield(options, 'N') && ~isempty(options.N)
+                obj.N = options.N;
+            end
 
+            obj.S = randi(obj.N);
+            
+            if isfield(options, 'S') && ~isempty(options.S)
+                obj.S = options.S;
+            end
+            
             obj.x = rand(obj.N, 1);
             obj.y = rand(obj.N, 1);
             obj.z = rand(obj.N, 1);
@@ -49,6 +57,13 @@ classdef SpatialIndexTest < matlab.unittest.TestCase
             obj.assign_instance();
         end
         
+    end
+ 
+    methods(TestMethodSetup)
+
+        function initialise1(obj)
+            obj.initialise_with_options();
+        end
     end
  
     methods(TestMethodTeardown)
@@ -179,6 +194,63 @@ classdef SpatialIndexTest < matlab.unittest.TestCase
         
         function test_xyz(obj)
             obj.verifyEqual(obj.spatial_index.xyz, [obj.x, obj.y, obj.z], 'xyz does not match actual concatenation xyz');
+        end
+
+
+        function test_select(obj)
+            
+            n = randi(obj.N);
+            row_selection = randperm(obj.N, n);
+            
+            result = obj.spatial_index.select(row_selection, []);
+            
+            segment_indices = obj.spatial_index.segment_index;
+            segment_indices = segment_indices(row_selection);
+
+            selected_segment_sizes = geospm.SpatialIndex.segment_indices_to_segment_sizes(segment_indices);
+
+            x_selection = obj.x(row_selection);
+            y_selection = obj.y(row_selection);
+            z_selection = obj.z(row_selection);
+
+            obj.verifyEqual(result.segment_sizes, selected_segment_sizes, 'Selected segment sizes do not match specification.');
+
+            obj.verifyEqual(result.x, x_selection, 'Selected x coordinates do not match specification.');
+            obj.verifyEqual(result.y, y_selection, 'Selected y coordinates do not match specification.');
+            obj.verifyEqual(result.z, z_selection, 'Selected z coordinates do not match specification.');
+
+            obj.verifyEqual(result.N, n, 'Number of selected coordinates does not match specification.');
+            obj.verifyEqual(result.N, sum(result.segment_sizes), 'Number of selected coordinates does not match sum of segment sizes.');
+            obj.verifyEqual(result.S, numel(result.segment_sizes), 'Number of selected segments does not match number of segment sizes.');
+        end
+
+        function test_select_by_segment(obj)
+        
+            s = randi(obj.S);
+            segment_selection = randperm(obj.S, s);
+            
+            result = obj.spatial_index.select_by_segment(segment_selection);
+            row_selection = obj.spatial_index.row_indices_from_segment_indices(segment_selection);
+            
+            segment_indices = obj.spatial_index.segment_index;
+            segment_indices = segment_indices(row_selection);
+
+            selected_segment_sizes = geospm.SpatialIndex.segment_indices_to_segment_sizes(segment_indices);
+
+            x_selection = obj.x(row_selection);
+            y_selection = obj.y(row_selection);
+            z_selection = obj.z(row_selection);
+
+            obj.verifyEqual(result.segment_sizes, selected_segment_sizes, 'Selected segment sizes do not match specification.');
+
+            obj.verifyEqual(result.x, x_selection, 'Selected x coordinates do not match specification.');
+            obj.verifyEqual(result.y, y_selection, 'Selected y coordinates do not match specification.');
+            obj.verifyEqual(result.z, z_selection, 'Selected z coordinates do not match specification.');
+
+            obj.verifyEqual(result.N, sum(result.segment_sizes), 'Number of selected coordinates does not match sum of segment sizes.');
+            obj.verifyEqual(result.S, s, 'Number of selected segments does not match specification.');
+            obj.verifyEqual(result.S, numel(result.segment_sizes), 'Number of selected segments does not match number of segment sizes.');
+
         end
     end
 end

@@ -58,7 +58,11 @@ classdef TabularData < handle
             % Clone this data object using the selected rows, columns and transform.
             %   row_selection - a numeric vector of row indices
             %   column_selection - a numeric vector of column indices
-            %   transform - a function handle that expects an argument struct and returns a result struct
+            %   transform - a function handle:
+            %   modified_specifier = fn(specifier, modifier)
+            %   specifier is a struct with the same fields as this object's
+            %   properties. modifier is a TabularDataModifier for
+            %   transforming the specifier.
             %
             %   The transform function is passed a struct with at least the
             %   following fields:
