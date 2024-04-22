@@ -87,6 +87,23 @@ classdef Dictionary < handle
             fields = builtin('subsref', obj, substruct('.', 'fields__'));
             remove(fields, key);
         end
+
+        function n = numArgumentsFromSubscript(obj, s, indexingContext)
+           
+            switch s(1).type
+            
+                case {'()'}
+
+                    if indexingContext == matlab.mixin.util.IndexingContext.Expression
+                        n = 1;
+                    else
+                        n = builtin('numArgumentsFromSubscript', obj, s, indexingContext);
+                    end
+
+                otherwise
+                    n = builtin('numArgumentsFromSubscript', obj, s, indexingContext);
+            end
+        end
         
         function varargout = subsref(obj,s)
             
