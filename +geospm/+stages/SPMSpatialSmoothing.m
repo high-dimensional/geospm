@@ -23,6 +23,7 @@
         volume_generator_class_name
 
         write_density
+        write_volumes
     end
     
     properties (SetAccess=immutable)
@@ -87,9 +88,14 @@
                 options.write_density = true;
             end
             
+            if ~isfield(options, 'write_volumes')
+                options.write_volumes = false;
+            end
+
             obj.volume_generator_class_name = options.volume_generator_class_name;
             obj.grid_spatial_index_requirement = options.grid_spatial_index_requirement;
             obj.write_density = options.write_density;
+            obj.write_volumes = options.write_volumes;
             
             obj.precision = options.precision;
             
@@ -179,7 +185,6 @@
             [dirstatus, dirmsg] = mkdir(volume_directory);
             if dirstatus ~= 1; error(dirmsg); end
             
-            do_write_volumes = false;
             overwrite_existing_volumes = false;
 
             %We need to make sure the SyntheticVolumeGenerator base class 
@@ -207,7 +212,7 @@
                     smoothing_levels, ...
                     smoothing_levels_p_value, ...
                     smoothing_levels_as_z_dimension, ...
-                    do_write_volumes, ...
+                    obj.write_volumes, ...
                     overwrite_existing_volumes);
         end
         
