@@ -57,16 +57,37 @@ classdef SpatialIndexRenderer < geospm.spm.BaseGenerator
             obj.spatial_indices = {};
         end
 
-        function [volume_paths, density, global_mask_path] = smooth_spatial_index(obj, spatial_index)
+        function index_number = register_spatial_index(obj, spatial_index)
 
             obj.spatial_indices = [obj.spatial_indices; {spatial_index}];
-            
             index_number = numel(obj.spatial_indices);
+        end
+
+        function volume_paths = generate_volume_paths(obj, index_number)
+
+            spatial_index = obj.spatial_indices{index_number};
 
             %One volume per segment
             N_volumes = spatial_index.S;
             
             volume_paths = cell(N_volumes, 1);
+            
+            for i=1:N_volumes
+                
+                %fprintf('Rendering volume %d\n', i);
+                
+                synthetic_path = obj.format_synthetic_volume_path(index_number, i);
+                volume_paths{i} = synthetic_path;
+            end
+        end
+
+        function [density, global_mask_path] = compute_volume_density(obj, index_number)
+
+            spatial_index = obj.spatial_indices{index_number};
+
+            %One volume per segment
+            N_volumes = spatial_index.S;
+            
             density = zeros(obj.volume_size);
             global_mask_path = obj.format_global_mask_path();
             
@@ -75,10 +96,8 @@ classdef SpatialIndexRenderer < geospm.spm.BaseGenerator
                 %fprintf('Rendering volume %d\n', i);
                 
                 synthetic_path = obj.format_synthetic_volume_path(index_number, i);
-                [file_path, density] = obj.smooth_synthetic_path(synthetic_path, density);
-                volume_paths{i} = file_path;
+                [~, density] = obj.smooth_synthetic_path(synthetic_path, density);
             end
-
         end
 
         function locations_or_directive = parse_specifier(obj, specifier)

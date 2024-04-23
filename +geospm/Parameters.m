@@ -52,6 +52,8 @@ classdef Parameters < handle
     %   smoothing_levels_p_value - a probability value specifying the
     %   mass of the Gaussian smoothing kernel inside the diameters given
     %   by the smoothing_levels option.
+    %
+    %   smoothing_levels_as_z_dimension -
     %                                       
     %   smoothing_method - the smoothing method to be used.
     %   Default value is 'default'.
@@ -78,6 +80,7 @@ classdef Parameters < handle
         
         smoothing_levels % default: [5 10 15]
         smoothing_levels_p_value % default: 0.95
+        smoothing_levels_as_z_dimension % default: true
         smoothing_method % default: 'default'
         
         regression_add_intercept % default: true
@@ -250,6 +253,23 @@ classdef Parameters < handle
             
             obj.smoothing_levels_p_value_ = cast(value, 'double');
         end
+
+        function result = get.smoothing_levels_as_z_dimension(obj)
+            result = obj.smoothing_levels_as_z_dimension_;
+        end
+        
+        function set.smoothing_levels_as_z_dimension(obj, value)
+            
+            if isempty(value)
+                error('Parameters.set.smoothing_levels_as_z_dimension(): argument cannot be empty.');
+            end
+            
+            if ~isa(value, 'logical')
+                error('Parameters.set.smoothing_levels_as_z_dimension_(): argument is not a logical value.');
+            end
+            
+            obj.smoothing_levels_as_z_dimension_ = cast(value, 'logical');
+        end
         
         function result = get.smoothing_method(obj)
             result = obj.smoothing_method_;
@@ -331,6 +351,7 @@ classdef Parameters < handle
 
             obj.smoothing_levels_ = [5, 10, 15];
             obj.smoothing_levels_p_value_ = 0.95;
+            obj.smoothing_levels_as_z_dimension_ = true;
             obj.smoothing_method_ = 'default';
 
             obj.regression_add_intercept_ = true;
@@ -379,6 +400,7 @@ classdef Parameters < handle
         
         smoothing_levels_
         smoothing_levels_p_value_
+        smoothing_levels_as_z_dimension_
         smoothing_method_
         
         regression_add_intercept_

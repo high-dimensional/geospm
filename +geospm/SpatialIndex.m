@@ -48,16 +48,26 @@ classdef SpatialIndex < geospm.TabularData
         z_max % maximum z value
         
         min_xy % [min_x, min_y]
-        max_xy % [max_x, max_y, ]
+        max_xy % [max_x, max_y]
+        span_xy % max_xy - min_xy
         
         min_xyz % [min_x, min_y, min_z]
         max_xyz % [max_x, max_y, max_z]
+        span_xyz % max_xyz - min_xyz
         
         centroid_x
         centroid_y
         centroid_z
         
         centroid_xyz
+        
+        square_min_xy
+        square_max_xy
+        square_xy % Centres a square around the rectangle spanned by min_xy and max_xy
+
+        cube_min_xyz
+        cube_max_xyz
+        cube_xyz % Centres a cube around the volume spanned by min_xyz and max_xyz
         
         xyz
     end
@@ -220,12 +230,20 @@ classdef SpatialIndex < geospm.TabularData
             result = [obj.x_max, obj.y_max];
         end
         
+        function result = get.span_xy(obj)
+            result = obj.max_xy - obj.min_xy;
+        end
+        
         function result = get.min_xyz(obj)
             result = [obj.x_min, obj.y_min, obj.z_min];
         end
         
         function result = get.max_xyz(obj)
             result = [obj.x_max, obj.y_max, obj.z_max];
+        end
+
+        function result = get.span_xyz(obj)
+            result = obj.max_xyz - obj.min_xyz;
         end
         
         function result = get.centroid_x(obj)
@@ -246,6 +264,53 @@ classdef SpatialIndex < geospm.TabularData
             end
             
             result = obj.centroid_xyz_;
+        end
+
+        function result = get.square_min_xy(obj)
+            span = obj.max_xy - obj.min_xy;
+            d = max(span);
+            offsets = (span - d) / 2;
+            result = obj.min_xy + offsets;
+        end
+
+        function result = get.square_max_xy(obj)
+            span = obj.max_xy - obj.min_xy;
+            d = max(span);
+            offsets = (span - d) / 2;
+            result = obj.max_xy - offsets;
+        end
+        
+        function result = get.square_xy(obj)
+            span = obj.max_xy - obj.min_xy;
+            d = max(span);
+            offsets = (span - d) / 2;
+            square_min = obj.min_xy + offsets;
+            square_max = obj.max_xy - offsets;
+            result = [square_min; square_max];
+        end
+
+        function result = get.cube_min_xyz(obj)
+            span = obj.max_xyz - obj.min_xyz;
+            d = max(span);
+            offsets = (span - d) / 2;
+            result = obj.min_xyz + offsets;
+        end
+
+        function result = get.cube_max_xyz(obj)
+            span = obj.max_xyz - obj.min_xyz;
+            d = max(span);
+            offsets = (span - d) / 2;
+            result = obj.max_xyz - offsets;
+        end
+        
+
+        function result = get.cube_xyz(obj)
+            span = obj.max_xyz - obj.min_xyz;
+            d = max(span);
+            offsets = (span - d) / 2;
+            cube_min = obj.min_xyz + offsets;
+            cube_max = obj.max_xyz - offsets;
+            result = [cube_min; cube_max];
         end
         
         function result = get.xyz(obj)

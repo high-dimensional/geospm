@@ -23,6 +23,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
         
         smoothing_levels
         smoothing_levels_p_value
+        smoothing_levels_as_z_dimension
         
         smoothing_method
         
@@ -67,6 +68,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 domain_expression, ...
                 smoothing_levels, ...
                 smoothing_levels_p_value, ...
+                smoothing_levels_as_z_dimension, ...
                 smoothing_method, ...
                 thresholds, ...
                 observation_transform, ...
@@ -99,6 +101,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
             end
             
             obj.smoothing_levels_p_value = smoothing_levels_p_value;
+            obj.smoothing_levels_as_z_dimension = smoothing_levels_as_z_dimension;
             
             obj.smoothing_method = smoothing_method;
             
@@ -205,7 +208,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
         end
         
         function [analysis, arguments] = setup_analysis(obj)
-            
+
             analysis = geospm.SpatialAnalysis();
 
             analysis.define_requirement('directory');
@@ -272,38 +275,46 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 obj.regression_stage.optional_mask = obj.compute_geographic_mask();
             end
             
-            if strcmp(obj.run_mode, geospm.validation.SpatialExperiment.REGULAR_MODE) || ...
-                 strcmp(obj.run_mode, geospm.validation.SpatialExperiment.RESUME_MODE)
-                
-                geospm.stages.SPMApplyThresholds(analysis, [], 'output_prefix', 'th_');
-                
-                render_image_stage = geospm.stages.SPMRenderImages(analysis);
-                render_image_stage.render_intercept_separately = obj.render_intercept_separately;
-                render_image_stage.volume_renderer.colour_map = obj.colour_map;
-                render_image_stage.volume_renderer.colour_map_mode = obj.colour_map_mode;
-                render_image_stage.ignore_crs = true;
-                render_image_stage.centre_pixels = obj.centre_pixels;
-                
-                if ~obj.render_images
-                    render_image_stage.gather_volumes_only = true;
-                end
-
-                if obj.add_georeference_to_images
-                    render_image_stage_2 = geospm.stages.SPMRenderImages(analysis, 'geo_');
-                    render_image_stage_2.render_intercept_separately = obj.render_intercept_separately;
-                    render_image_stage_2.volume_renderer.colour_map = obj.colour_map;
-                    render_image_stage_2.volume_renderer.colour_map_mode = obj.colour_map_mode;
-                    render_image_stage_2.ignore_crs = false;
-                    render_image_stage_2.centre_pixels = obj.centre_pixels;
-    
+            if obj.smoothing_levels_as_z_dimension
+                if strcmp(obj.run_mode, geospm.validation.SpatialExperiment.REGULAR_MODE) || ...
+                     strcmp(obj.run_mode, geospm.validation.SpatialExperiment.RESUME_MODE)
+                    
+                    geospm.stages.SPMApplyThresholds(analysis, [], 'output_prefix', 'th_');
+                    
+                    render_image_stage = geospm.stages.SPMRenderImages(analysis);
+                    render_image_stage.render_intercept_separately = obj.render_intercept_separately;
+                    render_image_stage.volume_renderer.colour_map = obj.colour_map;
+                    render_image_stage.volume_renderer.colour_map_mode = obj.colour_map_mode;
+                    render_image_stage.ignore_crs = true;
+                    render_image_stage.centre_pixels = obj.centre_pixels;
+                    
                     if ~obj.render_images
-                        render_image_stage_2.gather_volumes_only = true;
+                        render_image_stage.gather_volumes_only = true;
+                    end
+    
+                    if obj.add_georeference_to_images
+                        render_image_stage_2 = geospm.stages.SPMRenderImages(analysis, 'geo_');
+                        render_image_stage_2.render_intercept_separately = obj.render_intercept_separately;
+                        render_image_stage_2.volume_renderer.colour_map = obj.colour_map;
+                        render_image_stage_2.volume_renderer.colour_map_mode = obj.colour_map_mode;
+                        render_image_stage_2.ignore_crs = false;
+                        render_image_stage_2.centre_pixels = obj.centre_pixels;
+        
+                        if ~obj.render_images
+                            render_image_stage_2.gather_volumes_only = true;
+                        end
+                    end
+                    
+                    if obj.trace_thresholds
+                        threshold_stage = geospm.stages.SPMTraceThresholdRegions(analysis);
+                        threshold_stage.centre_pixels = obj.centre_pixels;
                     end
                 end
-                
-                if obj.trace_thresholds
-                    threshold_stage = geospm.stages.SPMTraceThresholdRegions(analysis);
-                    threshold_stage.centre_pixels = obj.centre_pixels;
+            else
+                if strcmp(obj.run_mode, geospm.validation.SpatialExperiment.REGULAR_MODE) || ...
+                     strcmp(obj.run_mode, geospm.validation.SpatialExperiment.RESUME_MODE)
+                    
+                    geospm.stages.SPMApplyThresholds(analysis, [], 'output_prefix', 'th_');
                 end
             end
             
@@ -316,7 +327,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
             
             arguments.smoothing_levels = obj.smoothing_levels;
             arguments.smoothing_levels_p_value = obj.smoothing_levels_p_value;
-            arguments.smoothing_levels_as_z_dimension = true;
+            arguments.smoothing_levels_as_z_dimension = obj.smoothing_levels_as_z_dimension;
             
             arguments.smoothing_method = obj.smoothing_method;
             

@@ -467,6 +467,10 @@ function [result, order] = load_spatial_index_from_csv(file_path, options)
         z = variables{3};
     end
 
+    x = cast(x, 'double');
+    y = cast(y, 'double');
+    z = cast(z, 'double');
+
     segment_index = variables{end};
     segment_index = segment_index.data;
     

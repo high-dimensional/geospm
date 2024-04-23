@@ -149,6 +149,7 @@ function [result, record] = compute(directory, data, spatial_index, ...
         
         options.smoothing_levels = parameters.smoothing_levels;
         options.smoothing_levels_p_value = parameters.smoothing_levels_p_value;
+        options.smoothing_levels_as_z_dimension = parameters.smoothing_levels_as_z_dimension;
         options.smoothing_method = parameters.smoothing_method;
         
         options.regression_add_intercept = parameters.regression_add_intercept;
@@ -159,8 +160,6 @@ function [result, record] = compute(directory, data, spatial_index, ...
     else
         options = hdng.utilities.parse_struct_from_varargin(varargin{:});
     end
-    
-    smoothing_levels_as_z_dimension = all(spatial_index.z == spatial_index.z(1));
     
     if ~isfield(options, 'run_mode')
         options.run_mode = 'regular';
@@ -215,6 +214,10 @@ function [result, record] = compute(directory, data, spatial_index, ...
     if ~isfield(options, 'smoothing_levels_p_value')
         options.smoothing_levels_p_value = 0.95;
     end
+
+    if ~isfield(options, 'smoothing_levels_as_z_dimension')
+        options.smoothing_levels_as_z_dimension = true;
+    end
     
     if ~isfield(options, 'smoothing_method')
         options.smoothing_method = 'default';
@@ -232,9 +235,15 @@ function [result, record] = compute(directory, data, spatial_index, ...
         options.report_generator = [];
     end
     
-    if ~smoothing_levels_as_z_dimension
+    if ~options.smoothing_levels_as_z_dimension
         if numel(options.smoothing_levels) ~= 3
             error('geospm.compute(): If a z-coordinate is provided, the number of smoothing levels must equal 3, one level per dimension.');
+        end
+    end
+    
+    if options.smoothing_levels_as_z_dimension
+        if ~all(spatial_index.z == spatial_index.z(1))
+            error('geospm.compute(): smoothing_levels_as_z_dimension is set to true, but z coordinates span z dimension.');
         end
     end
     
@@ -331,7 +340,7 @@ function [result, record] = compute(directory, data, spatial_index, ...
     
     arguments.smoothing_levels = options.smoothing_levels;
     arguments.smoothing_levels_p_value = options.smoothing_levels_p_value;
-    arguments.smoothing_levels_as_z_dimension = smoothing_levels_as_z_dimension;
+    arguments.smoothing_levels_as_z_dimension = options.smoothing_levels_as_z_dimension;
 
     arguments.smoothing_method = options.smoothing_method;
 

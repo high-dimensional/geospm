@@ -111,6 +111,10 @@ classdef DataEvaluator < geospm.validation.Evaluator
             attribute.description = 'Smoothing Levels P Value';
             
             attribute = obj.configuration_attributes.define(...
+                geospm.validation.Constants.SMOOTHING_LEVELS_AS_Z_DIMENSION);
+            attribute.description = 'Smoothing Levels as Z Dimension';
+            
+            attribute = obj.configuration_attributes.define(...
                 geospm.validation.Constants.SMOOTHING_METHOD);
             attribute.description = 'Smoothing Method';
 
@@ -343,6 +347,7 @@ classdef DataEvaluator < geospm.validation.Evaluator
                     geospm.validation.Constants.DOMAIN_EXPRESSION, ...
                     geospm.validation.Constants.SMOOTHING_LEVELS, ...
                     geospm.validation.Constants.SMOOTHING_LEVELS_P_VALUE, ...
+                    geospm.validation.Constants.SMOOTHING_LEVELS_AS_Z_DIMENSION, ...
                     geospm.validation.Constants.SMOOTHING_METHOD, ...
                     'spm_regression_thresholds', ...
                     'spm_observation_transforms', ...
@@ -355,6 +360,10 @@ classdef DataEvaluator < geospm.validation.Evaluator
 
                 if ~isfield(spm_arguments_copy, 'smoothing_levels_p_value')
                     spm_arguments_copy.smoothing_levels_p_value = 0.95;
+                end
+
+                if ~isfield(spm_arguments_copy, 'smoothing_levels_as_z_dimension')
+                    spm_arguments_copy.smoothing_levels_as_z_dimension = true;
                 end
 
                 if ~isfield(spm_arguments_copy, 'smoothing_method')
@@ -376,6 +385,9 @@ classdef DataEvaluator < geospm.validation.Evaluator
                 
                 configuration.values(geospm.validation.Constants.SMOOTHING_LEVELS_P_VALUE) = ...
                     hdng.experiments.Value.from(spm_arguments_copy.smoothing_levels_p_value);
+                
+                configuration.values(geospm.validation.Constants.SMOOTHING_LEVELS_AS_Z_DIMENSION) = ...
+                    hdng.experiments.Value.from(spm_arguments_copy.smoothing_levels_as_z_dimension);
                 
                 configuration.values(geospm.validation.Constants.SMOOTHING_METHOD) = ...
                     hdng.experiments.Value.from(spm_arguments_copy.smoothing_method);

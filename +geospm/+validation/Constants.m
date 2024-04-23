@@ -38,6 +38,7 @@ classdef Constants < handle
         N_SAMPLES = 'n_samples'
         SMOOTHING_LEVELS = 'smoothing_levels'
         SMOOTHING_LEVELS_P_VALUE = 'smoothing_levels_p_value'
+        SMOOTHING_LEVELS_AS_Z_DIMENSION = 'smoothing_levels_as_z_dimension';
         
         TRANSFORM = 'transform'
         DOMAIN_EXPRESSION = 'domain_expression'

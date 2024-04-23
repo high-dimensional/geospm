@@ -85,7 +85,7 @@
             end
             
             if ~isfield(options, 'write_density')
-                options.write_density = true;
+                options.write_density = false;
             end
             
             if ~isfield(options, 'write_volumes')
@@ -152,14 +152,21 @@
                 arguments.smoothing_levels_p_value, ...
                 arguments.smoothing_levels_as_z_dimension);
             
-            [volume_paths, density, volume_mask_path] = ...
-                volume_generator.smooth_spatial_index(grid_spatial_index);
-            
+            index_number = volume_generator.register_spatial_index(grid_spatial_index);
+            volume_paths = volume_generator.generate_volume_paths(index_number);
+
+            density = [];
+            volume_mask_path = '';
+
             if obj.write_density
+                tic;
+                [density, volume_mask_path] = volume_generator.compute_volume_density(index_number);
+                elapsedSecs = toc;
+                fprintf('Density computation took %.2f seconds for %d volumes.\n', elapsedSecs, grid_spatial_index.S);
                 density_path = fullfile(arguments.directory, 'density.nii');
                 geospm.utilities.write_nifti(density, density_path);
             end
-            
+
             result = struct();
             result.volume_generator = volume_generator;
             result.volume_paths = volume_paths;
@@ -194,10 +201,14 @@
             geospm.spm.SPMJobList.access_spm_interface();
             
             %smoothing_levels are specified in data units
-            smoothing_scale = grid_spatial_index.grid.cell_size(1:2);
+            smoothing_scale = grid_spatial_index.grid.cell_size;
+
+            if smoothing_levels_as_z_dimension
+                smoothing_scale = [smoothing_scale(1:2) smoothing_scale(1)];
+            end
             
-            if smoothing_scale(1) ~= smoothing_scale(2)
-                warning('Grid axes are scaled differently: Taking the maximim value as smoothing scale.');
+            if smoothing_scale(1) ~= smoothing_scale(2) || smoothing_scale(1) ~= smoothing_scale(3)
+                warning('Grid axes are scaled differently: Taking the maximum value as smoothing scale.');
             end
             
             smoothing_levels = smoothing_levels ./ max(smoothing_scale);
