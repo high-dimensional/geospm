@@ -48,9 +48,37 @@ classdef SpatialIndexTest < matlab.unittest.TestCase
                 obj.S = options.S;
             end
             
+            % number of duplicates
+            K = randi(obj.N - 1);
+
+            if isfield(options, 'K') && ~isempty(options.K)
+                K = options.K;
+            end
+            
+            duplicates = randi(obj.N - K, [K, 1]);
+            duplicates = sort(duplicates, 'descend');
+
+            unique_xyz = rand(obj.N - K, 3);
+
+            xyz = zeros(obj.N, 3);
+            xyz(1:obj.N - K, :) = unique_xyz;
+
+            for index=1:numel(duplicates)
+                choice = duplicates(index);
+                M = obj.N - K + index - 1; % Effective array size
+                xyz(choice + 1:M + 1, :) = xyz(choice:M, :);
+            end
+
+            %{
             obj.x = rand(obj.N, 1);
             obj.y = rand(obj.N, 1);
             obj.z = rand(obj.N, 1);
+            %}
+
+            obj.x = xyz(:, 1);
+            obj.y = xyz(:, 2);
+            obj.z = xyz(:, 3);
+            
 
             obj.segments = geospm.tests.SpatialIndexTest.generate_segments(obj.S, obj.N);
 
@@ -74,8 +102,12 @@ classdef SpatialIndexTest < matlab.unittest.TestCase
         function result = generate_segments(S, N)
 
             result = ones(S, 1);
+            
+            % Each segment has at least one point, so only assign 
+            % the remaining N - S points
 
             for index=S + 1:N
+                % Choose a random segment and increase its count by one.
                 r = randi(S);
                 result(r) = result(r) + 1;
             end

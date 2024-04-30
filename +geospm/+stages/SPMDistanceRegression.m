@@ -176,7 +176,7 @@ classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
             
             try
                 
-                if obj.apply_density_mask
+                if ~isempty(arguments.sample_density) && obj.apply_density_mask
                     global_mask = obj.compute_global_density_mask( ...
                         volume_generator, ...
                         arguments.sample_density);

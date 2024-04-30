@@ -23,6 +23,8 @@ classdef SpatialIndex < geospm.TabularData
         x % a column vector of length N (a N by 1 matrix) of observation x locations
         y % a column vector of length N (a N by 1 matrix) of observation y locations
         z % a column vector of length N (a N by 1 matrix) of observation z locations
+
+        count % a column vector of length N (a N by 1 matrix) indicating the count of its xyz coordinate.
         
         segment_sizes % a column vector of length S listing the number of coordinates per segment
 

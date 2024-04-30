@@ -78,6 +78,8 @@ function [result, record] = compute(directory, data, spatial_index, ...
 
         -------------------------------------------------------------------
 
+        write_density - compute and write the density of all samples.
+
         apply_density_mask - limit analysis to raster cells above a certain
                              sample density
         Default value is 'true'.
@@ -139,6 +141,7 @@ function [result, record] = compute(directory, data, spatial_index, ...
         options = struct();
         
         options.grid = parameters.grid;
+        options.write_density = parameters.write_density;
         options.apply_density_mask = parameters.apply_density_mask;
         options.density_mask_factor = parameters.density_mask_factor;
         options.apply_geographic_mask = parameters.apply_geographic_mask;
@@ -179,6 +182,10 @@ function [result, record] = compute(directory, data, spatial_index, ...
     
     if ~isfield(options, 'trace_thresholds')
         options.trace_thresholds = true;
+    end
+
+    if ~isfield(options, 'write_density')
+        options.write_density = false;
     end
     
     if ~isfield(options, 'apply_density_mask')
@@ -311,7 +318,7 @@ function [result, record] = compute(directory, data, spatial_index, ...
 
     geospm.stages.GridTransform(analysis, 'grid', options.grid);
     
-    geospm.stages.SPMSpatialSmoothing(analysis);
+    geospm.stages.SPMSpatialSmoothing(analysis, 'write_density', options.write_density);
 
     regression_stage = geospm.stages.SPMDistanceRegression(analysis);
     regression_stage.apply_density_mask = options.apply_density_mask;

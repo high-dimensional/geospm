@@ -32,6 +32,7 @@ classdef BaseGenerator < SyntheticVolumeGenerator
         smoothing_levels
         smoothing_levels_p_value
         smoothing_levels_as_z_dimension
+        smoothing_synthesis_variant
         
         peak_values
         
@@ -58,14 +59,58 @@ classdef BaseGenerator < SyntheticVolumeGenerator
         
         function obj = BaseGenerator(...
                           session_volume_directory, ...
-                          window_resolution, ...
-                          precision, ...
-                          smoothing_method, ...
-                          smoothing_levels, ...
-                          smoothing_levels_p_value, ...
-                          smoothing_levels_as_z_dimension, ...
-                          do_write_volumes, ...
-                          overwrite_existing_volumes)
+                          varargin)
+
+
+            options = hdng.utilities.parse_struct_from_varargin(varargin{:});
+
+            if ~isfield(options, 'window_resolution')
+                error('Missing window_resolution argument.');
+            end
+
+            if ~isfield(options, 'precision')
+                options.precision = 'double';
+            end
+
+            if ~isfield(options, 'smoothing_method')
+                options.smoothing_method = 'default';
+            end
+
+            if ~isfield(options, 'smoothing_levels')
+                error('Missing smoothing_levels argument.');
+            end
+
+            if ~isfield(options, 'smoothing_levels_p_value')
+                options.smoothing_levels_p_value = 0.95;
+            end
+
+            if ~isfield(options, 'smoothing_levels_as_z_dimension')
+                error('Missing smoothing_levels_as_z_dimension argument.');
+            end
+
+            if ~isfield(options, 'smoothing_synthesis_variant')
+                options.smoothing_synthesis_variant = 'default';
+            end
+
+            if ~isfield(options, 'write_volumes')
+                options.write_volumes = false;
+            end
+
+            if ~isfield(options, 'overwrite_existing_volumes')
+                options.overwrite_existing_volumes = false;
+            end
+            
+            window_resolution = options.window_resolution;
+            precision = options.precision;
+            smoothing_method = options.smoothing_method;
+            smoothing_levels = options.smoothing_levels;
+            smoothing_levels_p_value = options.smoothing_levels_p_value;
+            smoothing_levels_as_z_dimension = options.smoothing_levels_as_z_dimension;
+            smoothing_synthesis_variant = options.smoothing_synthesis_variant;
+            do_write_volumes = options.write_volumes;
+            overwrite_existing_volumes = options.overwrite_existing_volumes;
+
+
             
             if ~smoothing_levels_as_z_dimension && numel(smoothing_levels) ~= 3
                 error('geospm.spm.BaseGenerator(): ''smoothing_levels_as_z_dimension'' is false but number of smoothing levels does not equal 3.');
@@ -103,6 +148,7 @@ classdef BaseGenerator < SyntheticVolumeGenerator
             obj.smoothing_levels = smoothing_levels;
             obj.smoothing_levels_p_value = smoothing_levels_p_value;
             obj.smoothing_levels_as_z_dimension = smoothing_levels_as_z_dimension;
+            obj.smoothing_synthesis_variant = smoothing_synthesis_variant;
             
             smooth_map_size = obj.window_resolution * 2 - 1;
             sample_location = obj.window_resolution;
@@ -174,12 +220,41 @@ classdef BaseGenerator < SyntheticVolumeGenerator
                 result = cast(obj.window_resolution, 'double');
             end
         end
+
+        function V_data = synthesize_by_convolution(obj, locations)
+
+            V_data = zeros(obj.volume_size());
+            N_locations = size(locations, 1);
+            
+            for index=1:N_locations
+                sample_location = locations(index, :);
+                count = V_data(sample_location(1), sample_location(2), sample_location(3));
+                V_data(sample_location(1), sample_location(2), sample_location(3)) = count + 1;
+            end
+
+            V_data = convn(V_data, obj.smooth_map, 'same');
+        end
+
+        function V_data = synthesize_by_addition(obj, locations)
+            
+            V_data = [];
+            N_locations = size(locations, 1);
+
+            for index=1:N_locations
+                sample_location = locations(index, :);
+                S_data = obj.render_volume(sample_location);
+
+                if isempty(V_data)
+                    V_data = S_data;
+                else
+                    V_data = V_data + S_data;
+                end
+            end
+        end
         
         function V_data = synthesize(obj, specifier)
             
             locations_or_identifier = obj.parse_specifier(specifier);
-
-            V_data = [];
 
             if ischar(locations_or_identifier)
                 
@@ -194,17 +269,14 @@ classdef BaseGenerator < SyntheticVolumeGenerator
                 return;
             end
 
-            for index=1:size(locations_or_identifier, 1)
+            switch obj.smoothing_synthesis_variant
+                case {'default', 'convolution'}
+                    V_data = obj.synthesize_by_convolution(locations_or_identifier);
+                case 'addition'
+                    V_data = obj.synthesize_by_addition(locations_or_identifier);
 
-                sample_location = locations_or_identifier(index, :);
-                
-                S_data = obj.render_volume(sample_location);
-                
-                if isempty(V_data)
-                    V_data = S_data;
-                else
-                    V_data = V_data + S_data;
-                end
+                otherwise
+                    error('Unknown synthesis variant: %s', obj.synthesis_variant);
             end
             
             if obj.apply_global_mask_inline

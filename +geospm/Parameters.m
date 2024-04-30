@@ -20,6 +20,8 @@ classdef Parameters < handle
     %   grid – a geospm.Grid that defines a transformation from point
     %          locations to raster locations
     %
+    %   write_density - Compute and write the density of all samples.
+    %
     %   apply_density_mask - limit analysis to raster cells above a certain
     %                        sample density
     %   Default value is 'true'.
@@ -68,6 +70,8 @@ classdef Parameters < handle
     properties (Transient, Dependent)
         
         grid % default: []
+
+        write_density % default: false
         
         apply_density_mask % default: true
         density_mask_factor % default: []
@@ -106,6 +110,23 @@ classdef Parameters < handle
             end
             
             obj.grid_ = value;
+        end
+        
+        function result = get.write_density(obj)
+            result = obj.write_density_;
+        end
+        
+        function set.write_density(obj, value)
+            
+            if isempty(value)
+                error('Parameters.set.write_density(): argument cannot be empty.');
+            end
+            
+            if ~isa(value, 'logical')
+                error('Parameters.set.write_density(): argument is not a logical value.');
+            end
+            
+            obj.write_density_ = value;
         end
         
         function result = get.apply_density_mask(obj)
@@ -339,6 +360,8 @@ classdef Parameters < handle
         function obj = Parameters()
             
             obj.grid_ = [];
+
+            obj.write_density_ = true;
             
             obj.apply_density_mask_ = true;
             obj.density_mask_factor_ = 10.0;
@@ -390,6 +413,8 @@ classdef Parameters < handle
         
         trace_thresholds_
         
+        write_density_
+
         apply_density_mask_
         density_mask_factor_
         

@@ -37,22 +37,11 @@
     
     methods
         
-        function obj = SPMSpatialSmoothing(analysis, options, varargin)
+        function obj = SPMSpatialSmoothing(analysis, varargin)
             
             obj = obj@geospm.stages.SpatialAnalysisStage(analysis);
-            
-            if ~exist('options', 'var') || isempty(options)
-                options = struct();
-            end
-            
-            additional_options = hdng.utilities.parse_struct_from_varargin(varargin{:});
-           
-            names = fieldnames(additional_options);
-            
-            for i=1:numel(names)
-                name = names{i};
-                options.(name) = additional_options.(name);
-            end
+
+            options = hdng.utilities.parse_struct_from_varargin(varargin{:});
             
             if ~isfield(options, 'precision')
                 options.precision = 'double';
@@ -74,6 +63,10 @@
             
             if ~isfield(options, 'smoothing_levels_as_z_dimension')
                 options.smoothing_levels_as_z_dimension = true;
+            end
+            
+            if ~isfield(options, 'smoothing_synthesis_variant')
+                options.smoothing_synthesis_variant = 'default';
             end
             
             if ~isfield(options, 'volume_generator_class_name')
@@ -118,6 +111,10 @@
                 struct(), 'is_optional', true, ...
                 'default_value', options.smoothing_levels_as_z_dimension);
             
+            obj.define_requirement('smoothing_synthesis_variant', ...
+                struct(), 'is_optional', true, ...
+                'default_value', options.smoothing_synthesis_variant);
+            
             obj.define_product('volume_generator');
             obj.define_product('volume_paths');
             obj.define_product('volume_mask_path');
@@ -150,7 +147,8 @@
                 arguments.smoothing_method, ...
                 arguments.smoothing_levels, ...
                 arguments.smoothing_levels_p_value, ...
-                arguments.smoothing_levels_as_z_dimension);
+                arguments.smoothing_levels_as_z_dimension, ...
+                arguments.smoothing_synthesis_variant);
             
             index_number = volume_generator.register_spatial_index(grid_spatial_index);
             volume_paths = volume_generator.generate_volume_paths(index_number);
@@ -185,7 +183,8 @@
                 smoothing_method, ...
                 smoothing_levels, ...
                 smoothing_levels_p_value, ...
-                smoothing_levels_as_z_dimension)
+                smoothing_levels_as_z_dimension, ...
+                smoothing_synthesis_variant)
             
             volume_directory = fullfile(directory, 'spm_input');
             
@@ -205,26 +204,29 @@
 
             if smoothing_levels_as_z_dimension
                 smoothing_scale = [smoothing_scale(1:2) smoothing_scale(1)];
-            end
             
-            if smoothing_scale(1) ~= smoothing_scale(2) || smoothing_scale(1) ~= smoothing_scale(3)
-                warning('Grid axes are scaled differently: Taking the maximum value as smoothing scale.');
+                if smoothing_scale(1) ~= smoothing_scale(2) || smoothing_scale(1) ~= smoothing_scale(3)
+                    warning('Grid axes are scaled differently: Taking the maximum value as smoothing scale.');
+                end
+                
+                smoothing_levels = smoothing_levels ./ max(smoothing_scale);
+            else
+                smoothing_levels = smoothing_levels ./ smoothing_scale;
             end
-            
-            smoothing_levels = smoothing_levels ./ max(smoothing_scale);
             
             volume_generator_class = str2func(obj.volume_generator_class_name);
 
             result = volume_generator_class( ...
                     volume_directory, ...
-                    grid_spatial_index.resolution, ...
-                    precision, ...
-                    smoothing_method, ...
-                    smoothing_levels, ...
-                    smoothing_levels_p_value, ...
-                    smoothing_levels_as_z_dimension, ...
-                    obj.write_volumes, ...
-                    overwrite_existing_volumes);
+                    'window_resolution', grid_spatial_index.resolution, ...
+                    'precision', precision, ...
+                    'smoothing_method', smoothing_method, ...
+                    'smoothing_levels', smoothing_levels, ...
+                    'smoothing_levels_p_value', smoothing_levels_p_value, ...
+                    'smoothing_levels_as_z_dimension', smoothing_levels_as_z_dimension, ...
+                    'smoothing_synthesis_variant', smoothing_synthesis_variant, ...
+                    'write_volumes', obj.write_volumes, ...
+                    'overwrite_existing_volumes', overwrite_existing_volumes);
         end
         
     end
