@@ -13,42 +13,15 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-classdef GridSpatialIndex < geospm.SpatialIndex
+classdef GridSpatialIndex < geospm.BaseGridSpatialIndex & geospm.SpatialIndex
     %GridSpatialIndex Summary goes here.
     %
     
-    properties (GetAccess = public, SetAccess = immutable)
-        
-        resolution % a 3-vector specifying the u, v and w size of the grid
-        
-        u % a column vector of length N (a N by 1 matrix) of observation grid x locations
-        v % a column vector of length N (a N by 1 matrix) of observation grid y locations
-        w % a column vector of length N (a N by 1 matrix) of observation grid z locations
-        
-        grid
-    end
-    
-    properties (Dependent, Transient)
-        
-        u_min % minimum u value
-        u_max % maximum u value
-        
-        v_min % minimum v value
-        v_max % maximum v value
-        
-        w_min % minimum w value
-        w_max % maximum w value
-
-        min_uv % [min_u, min_v]
-        max_uv % [max_u, max_v]
-        
-        min_uvw % [min_u, min_v, min_w]
-        max_uvw % [max_u, max_v, max_w]
-        
-        uvw
-    end
-    
     properties (GetAccess = private, SetAccess = private)
+        
+        u_
+        v_
+        w_
         
         u_min_
         u_max_
@@ -119,15 +92,12 @@ classdef GridSpatialIndex < geospm.SpatialIndex
                 error('w is not an integral numeric type.');
             end
             
-            if ~isequal(cast(resolution, 'int64'), cast(resolution, 'double'))
-                error('resolution must be specified as integer values.');
-            end
+            obj@geospm.BaseGridSpatialIndex(size(x, 1), resolution, grid, crs);
+            obj@geospm.SpatialIndex(x, y, z, segment_sizes, crs);
             
-            obj = obj@geospm.SpatialIndex(x, y, z, segment_sizes, crs);
-            
-            obj.u = u;
-            obj.v = v;
-            obj.w = w;
+            obj.u_ = u;
+            obj.v_ = v;
+            obj.w_ = w;
             
             if (obj.u_min < 1) || (obj.u_max > resolution(1))
                 error(['One or more u locations are not in the specified resolution [' num2str(resolution(1), '%d') '].']);
@@ -141,78 +111,8 @@ classdef GridSpatialIndex < geospm.SpatialIndex
                 error(['One or more w locations are not in the specified resolution [' num2str(resolution(3), '%d') '].']);
             end
             
-            obj.resolution = resolution;
-            obj.grid = grid;
         end
         
-        function result = get.u_min(obj)
-            if isempty(obj.u_min_)
-                obj.u_min_ = min(obj.u);
-            end
-            
-            result = obj.u_min_;
-        end
-        
-        function result = get.u_max(obj)
-            if isempty(obj.u_max_)
-                obj.u_max_ = max(obj.u);
-            end
-            
-            result = obj.u_max_;
-        end
-        
-        function result = get.v_min(obj)
-            if isempty(obj.v_min_)
-                obj.v_min_ = min(obj.v);
-            end
-            
-            result = obj.v_min_;
-        end
-        
-        function result = get.v_max(obj)
-            if isempty(obj.v_max_)
-                obj.v_max_ = max(obj.v);
-            end
-            
-            result = obj.v_max_;
-        end
-        
-        function result = get.w_min(obj)
-            if isempty(obj.w_min_)
-                obj.w_min_ = min(obj.w);
-            end
-            
-            result = obj.w_min_;
-        end
-        
-        function result = get.w_max(obj)
-            if isempty(obj.w_max_)
-                obj.w_max_ = max(obj.w);
-            end
-            
-            result = obj.w_max_;
-        end
-        
-        function result = get.min_uv(obj)
-            result = [obj.u_min, obj.v_min];
-        end
-        
-        function result = get.max_uv(obj)
-            result = [obj.u_max, obj.v_max];
-        end
-        
-        function result = get.min_uvw(obj)
-            result = [obj.u_min, obj.v_min, obj.w_min];
-        end
-        
-        function result = get.max_uvw(obj)
-            result = [obj.u_max, obj.v_max, obj.w_max];
-        end
-        
-        function result = get.uvw(obj)
-            result = [obj.u, obj.v, obj.w];
-        end
-
         function [u, v, w] = uvw_coordinates_for_segment(obj, segment_index)
             
             [first, last] = obj.range_for_segment(segment_index);
@@ -238,6 +138,88 @@ classdef GridSpatialIndex < geospm.SpatialIndex
     end
     
     methods (Access=protected)
+
+        function result = access_u(obj)
+            result = obj.u_;
+        end
+
+        function result = access_v(obj)
+            result = obj.v_;
+        end
+
+        function result = access_w(obj)
+            result = obj.w_;
+        end
+
+        function result = access_u_min(obj)
+            if isempty(obj.u_min_)
+                obj.u_min_ = min(obj.u);
+            end
+            
+            result = obj.u_min_;
+        end
+        
+        function result = access_u_max(obj)
+            if isempty(obj.u_max_)
+                obj.u_max_ = max(obj.u);
+            end
+            
+            result = obj.u_max_;
+        end
+        
+        function result = access_v_min(obj)
+            if isempty(obj.v_min_)
+                obj.v_min_ = min(obj.v);
+            end
+            
+            result = obj.v_min_;
+        end
+        
+        function result = access_v_max(obj)
+            if isempty(obj.v_max_)
+                obj.v_max_ = max(obj.v);
+            end
+            
+            result = obj.v_max_;
+        end
+        
+        function result = access_w_min(obj)
+            if isempty(obj.w_min_)
+                obj.w_min_ = min(obj.w);
+            end
+            
+            result = obj.w_min_;
+        end
+        
+        function result = access_w_max(obj)
+            if isempty(obj.w_max_)
+                obj.w_max_ = max(obj.w);
+            end
+            
+            result = obj.w_max_;
+        end
+        
+        function result = access_min_uv(obj)
+            result = [obj.u_min, obj.v_min];
+        end
+        
+        function result = access_max_uv(obj)
+            result = [obj.u_max, obj.v_max];
+        end
+        
+        function result = access_min_uvw(obj)
+            result = [obj.u_min, obj.v_min, obj.w_min];
+        end
+        
+        function result = access_max_uvw(obj)
+            result = [obj.u_max, obj.v_max, obj.w_max];
+        end
+        
+        function result = access_uvw(obj)
+            result = [obj.u, obj.v, obj.w];
+        end
+
+        
 
         function assign_property(obj, name, values)
             obj.(name) = values;
@@ -277,9 +259,8 @@ classdef GridSpatialIndex < geospm.SpatialIndex
 
     methods (Static)
 
-        function result = from_json_struct(specifier)
+        function result = from_json_struct_impl(specifier)
             
-
 
             if ~isfield(specifier, 'x') || ~isnumeric(specifier.x)
                 error('Missing ''x'' field in json struct or ''x'' field is not numeric.');
