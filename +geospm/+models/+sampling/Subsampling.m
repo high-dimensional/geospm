@@ -62,7 +62,8 @@ classdef Subsampling < geospm.models.SamplingStrategy
             spatial_index = model.attachments.spatial_index;
             
             attachments = spatial_data.attachments;
-
+            
+            %{
             [u, v, w] = obj.grid.space_to_grid(spatial_index.x, spatial_index.y, spatial_index.z);
             
             row_indices = obj.grid.clip_uvw(u, v, w);
@@ -70,7 +71,13 @@ classdef Subsampling < geospm.models.SamplingStrategy
             u = u(row_indices);
             v = v(row_indices);
             w = w(row_indices);
+            %}
 
+            [grid_spatial_index, row_indices, ~] = spatial_index.project(obj.grid);
+            u = grid_spatial_index.x_protected;
+            v = grid_spatial_index.y_protected;
+            w = grid_spatial_index.z_protected;
+            
             spatial_data = spatial_data.select(row_indices, []);
             spatial_index = spatial_index.select_by_segment(row_indices);
 

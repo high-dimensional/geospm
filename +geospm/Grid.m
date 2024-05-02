@@ -493,7 +493,8 @@ classdef Grid < handle
             if ~exist('assigned_grid', 'var')
                 assigned_grid = obj;
             end
-
+            
+            %{
             % Select the subset of observations within the grid:
 
             xyz = spatial_index.xyz;
@@ -513,6 +514,9 @@ classdef Grid < handle
             segment_sizes = spatial_index.segment_indices_to_segment_sizes(spatial_index.segment_index(row_indices));
 
             grid_spatial_index = geospm.GridSpatialIndex(u, v, w, x, y, z, segment_sizes, obj.resolution, assigned_grid.clone(), spatial_index.crs);
+            %}
+
+            [grid_spatial_index, row_indices, segment_indices] = spatial_index.project(obj, assigned_grid);
         end
 
         function result = as_json_struct(obj, varargin)
@@ -537,6 +541,21 @@ classdef Grid < handle
             specifier.cell_marker_scale = obj.cell_marker_scale;
             
             result = specifier;
+        end
+
+        function result = clone(obj)
+            
+            result = geospm.Grid();
+            
+            result.define('resolution', obj.resolution, ...
+                          'origin', obj.origin, ...
+                          'cell_size', obj.cell_size, ...
+                          'rotation_z', obj.rotation_z, ...
+                          'flip_u', obj.flip_u, ...
+                          'flip_v', obj.flip_v, ...
+                          'cell_marker_alignment', obj.cell_marker_alignment, ...
+                          'cell_marker_scale', obj.cell_marker_scale);
+            
         end
     end
     
@@ -598,22 +617,6 @@ classdef Grid < handle
     end
 
     methods (Access=private)
-        
-        function result = clone(obj)
-            
-            result = geospm.Grid();
-            
-            result.define('resolution', obj.resolution, ...
-                          'origin', obj.origin, ...
-                          'cell_size', obj.cell_size, ...
-                          'rotation_z', obj.rotation_z, ...
-                          'flip_u', obj.flip_u, ...
-                          'flip_v', obj.flip_v, ...
-                          'cell_marker_alignment', obj.cell_marker_alignment, ...
-                          'cell_marker_scale', obj.cell_marker_scale);
-            
-        end
-        
         
         function clear_transform_cache(obj)
             obj.space_to_grid_transform_ = [];

@@ -101,8 +101,10 @@ classdef SpatialIndexRenderer < geospm.spm.BaseGenerator
                 segment_number = str2double(parts{2});
 
                 spatial_index = obj.spatial_indices{index_number};
-                [u, v, w] = spatial_index.uvw_coordinates_for_segment(segment_number);
-                locations_or_directive = cast([u, v, w], 'double');
+                %[u, v, w] = spatial_index.uvw_coordinates_for_segment(segment_number);
+                %locations_or_directive = cast([u, v, w], 'double');
+                [x, y, z]  = spatial_index.xyz_coordinates_for_segment(segment_number);
+                locations_or_directive = [x, y, z];
             end
         end
         

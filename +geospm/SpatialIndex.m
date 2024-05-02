@@ -115,6 +115,36 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
             [obj.segment_index_, obj.segment_offsets_] = obj.segment_indices_from_segment_sizes(size(x, 1), segment_sizes);
         end
         
+        function [grid_spatial_index, row_indices, segment_indices] = project(obj, grid, assigned_grid)
+            
+            if ~exist('assigned_grid', 'var') || isempty(assigned_grid)
+                assigned_grid = grid;
+            end
+            
+            % Select the subset of observations within the grid:
+            
+            [u, v, w] = grid.space_to_grid(obj.x, obj.y, obj.z);
+            
+            row_indices = grid.clip_uvw(u, v, w);
+
+            u = u(row_indices);
+            v = v(row_indices);
+            w = w(row_indices);
+            %x = obj.x(row_indices);
+            %y = obj.y(row_indices);
+            %z = obj.z(row_indices);
+            
+            x = cast(u, 'double');
+            y = cast(v, 'double');
+            z = cast(w, 'double');
+
+            segment_indices = obj.segment_indices_from_row_indices(row_indices);
+            segment_sizes = obj.segment_indices_to_segment_sizes(obj.segment_index(row_indices));
+
+            %grid_spatial_index = geospm.GridSpatialIndex(u, v, w, x, y, z, segment_sizes, grid.resolution, assigned_grid.clone(), obj.crs);
+            grid_spatial_index = geospm.SpatialIndex(x, y, z, segment_sizes, obj.crs);
+        end
+
         function [x, y, z] = xyz_coordinates_for_segment(obj, segment_index)
             
             [first, last] = obj.range_for_segment(segment_index);

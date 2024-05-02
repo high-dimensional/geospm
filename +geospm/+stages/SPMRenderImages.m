@@ -82,6 +82,9 @@
             obj.define_requirement('grid_spatial_index', ...
                 struct(), 'is_optional', true, 'default_value', []);
             
+            obj.define_requirement('grid', ...
+                struct(), 'is_optional', true, 'default_value', []);
+            
             obj.define_product([record_prefix 'image_records']);
             obj.define_product([record_prefix 'beta_records']);
             obj.define_product([record_prefix 'density_image']);
@@ -372,8 +375,9 @@
             grid = geospm.Grid();
             crs = hdng.SpatialCRS.empty;
             
-            if ~isempty(arguments.grid_spatial_index)
-                grid = arguments.grid_spatial_index.grid;
+            if ~isempty(arguments.grid_spatial_index) && ~isempty(arguments.grid)
+                %grid = arguments.grid_spatial_index.grid;
+                grid = arguments.grid;
                 crs = arguments.grid_spatial_index.crs;
             end
             

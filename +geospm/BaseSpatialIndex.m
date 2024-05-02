@@ -26,26 +26,26 @@ classdef BaseSpatialIndex < geospm.TabularData
     
     properties (Dependent, Transient, GetAccess=public)
 
-        
+        has_crs % is a crs defined?
+
+        S % number of segments
+        segment_offsets % a column vector of length S specifying the index of the first coordinate for each segment
+        segment_sizes % a column vector of length S listing the number of coordinates per segment
+
+        x_protected
+        y_protected
+        z_protected
+    end
+    
+    properties (Dependent, Transient, GetAccess=protected, SetAccess=protected)
+
         x % a column vector of length N (a N by 1 matrix) of observation x locations
         y % a column vector of length N (a N by 1 matrix) of observation y locations
         z % a column vector of length N (a N by 1 matrix) of observation z locations
 
-        %count % a column vector of length N (a N by 1 matrix) indicating the count of its xyz coordinate.
-        
-        segment_sizes % a column vector of length S listing the number of coordinates per segment
-
         xyz
-    end
-    
-    properties (Dependent, Transient)
 
-        S % number of segments
-        
         segment_index % a column vector of length N specifying the segment index for each coordinate
-        segment_offsets % a column vector of length S specifying the index of the first coordinate for each segment
-
-        has_crs % is a crs defined?
         
         x_min % minimum x value
         x_max % maximum x value
@@ -104,6 +104,18 @@ classdef BaseSpatialIndex < geospm.TabularData
             end
             
             obj.crs = crs;
+        end
+
+        function result = get.x_protected(obj)
+            result = obj.access_x();
+        end
+        
+        function result = get.y_protected(obj)
+            result = obj.access_y();
+        end
+        
+        function result = get.z_protected(obj)
+            result = obj.access_z();
         end
 
         function result = get.x(obj)
@@ -220,7 +232,7 @@ classdef BaseSpatialIndex < geospm.TabularData
         end
 
         function result = get.cube_max_xyz(obj)
-            result = obj.access_max_xyz();
+            result = obj.access_cube_max_xyz();
         end
         
 
@@ -231,7 +243,7 @@ classdef BaseSpatialIndex < geospm.TabularData
         function result = get.xyz(obj)
             result = obj.access_xyz();
         end
-        
+
         function [x, y, z] = xyz_coordinates_for_segment(obj, segment_index) %#ok<STOUT,INUSD>
             error('xyz_coordinates_for_segment() must be implemented by a subclass.');
         end

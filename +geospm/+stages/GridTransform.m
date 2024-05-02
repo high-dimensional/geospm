@@ -21,6 +21,7 @@ classdef GridTransform < geospm.stages.SpatialAnalysisStage
 
         data_product
         spatial_index_product
+        grid_product
 
         data_selection
         
@@ -55,6 +56,10 @@ classdef GridTransform < geospm.stages.SpatialAnalysisStage
                 options.spatial_index_product = 'grid_spatial_index';
             end
             
+            if ~isfield(options, 'grid_product')
+                options.grid_product = 'grid';
+            end
+            
             if ~isfield(options, 'data_selection')
                 options.data_selection = 'selection';
             end
@@ -76,6 +81,7 @@ classdef GridTransform < geospm.stages.SpatialAnalysisStage
 
             obj.data_product = options.data_product;
             obj.spatial_index_product = options.spatial_index_product;
+            obj.grid_product = options.grid_product;
 
             obj.data_selection = options.data_selection;
             
@@ -83,6 +89,7 @@ classdef GridTransform < geospm.stages.SpatialAnalysisStage
             obj.define_requirement(obj.spatial_index_requirement);
             obj.define_product(obj.data_product);
             obj.define_product(obj.spatial_index_product);
+            obj.define_product(obj.grid_product);
             obj.define_product(obj.data_selection);
         end
         
@@ -98,6 +105,7 @@ classdef GridTransform < geospm.stages.SpatialAnalysisStage
             result = struct();
             result.(obj.data_product) = grid_data;
             result.(obj.spatial_index_product) = grid_spatial_index;
+            result.(obj.grid_product) = obj.assigned_grid;
             result.(obj.data_selection) = selection;
         end
     end
