@@ -53,7 +53,7 @@ classdef BaseGridSpatialIndex < geospm.BaseSpatialIndex
    
     methods
 
-        function obj = BaseGridSpatialIndex(N, resolution, grid, crs)
+        function obj = BaseGridSpatialIndex(resolution, grid, crs)
             
             %Construct a GridSpatialIndex object from u, v, and w integer vectors and
             % their analogue x, y and z vectors and their segments.
@@ -73,7 +73,7 @@ classdef BaseGridSpatialIndex < geospm.BaseSpatialIndex
                 error('resolution must be specified as integer values.');
             end
             
-            obj = obj@geospm.BaseSpatialIndex(N, crs);
+            obj = obj@geospm.BaseSpatialIndex(crs);
 
             obj.resolution = resolution;
             obj.grid = grid;

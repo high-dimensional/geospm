@@ -246,7 +246,7 @@ function [result, spatial_index] = load_spatial_data(file_path, varargin)
     check_nans = options.skip_columns_with_missing_values || ...
                  options.skip_rows_with_missing_values;
     
-    result = geospm.NumericData(data_matrix, [], check_nans);
+    result = geospm.NumericData(data_matrix, check_nans);
     result.set_variable_names(data_variable_names);
     
     if isnumeric(row_labels)

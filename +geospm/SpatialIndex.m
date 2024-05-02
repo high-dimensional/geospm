@@ -103,7 +103,7 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
                 error('The number of rows in ''x'' (=%d) and ''extra'' (=%d) do not match; specify ''extra_data''as a N x k matrix', size(x,1), size(extra_data,1));
             end
             
-            obj = obj@geospm.BaseSpatialIndex(size(x, 1), crs);
+            obj = obj@geospm.BaseSpatialIndex(crs);
             
             obj.x_ = x;
             obj.y_ = y;
@@ -218,6 +218,13 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
     
     methods (Access=protected)
 
+        function result = access_N(obj)
+            result = size(obj.x_, 1);
+        end
+
+        function result = access_C(obj) %#ok<MANU>
+            result = 0;
+        end
 
         function result = access_x(obj)
             result = obj.x_;

@@ -82,7 +82,7 @@ classdef BaseSpatialIndex < geospm.TabularData
     
     methods
         
-        function obj = BaseSpatialIndex(N, crs)
+        function obj = BaseSpatialIndex(crs)
             %Construct a BaseSpatialIndex object with an optional CRS.
             % N ? number of points or locations
             % crs ? coordinate reference system or empty
@@ -95,7 +95,7 @@ classdef BaseSpatialIndex < geospm.TabularData
                 error('''crs'' should be a hdng.SpatialCRS instance, empty ([]) or a string identifier.');
             end
             
-            obj = obj@geospm.TabularData(N, 0);
+            obj = obj@geospm.TabularData();
             
             if isempty(crs)
                 crs = hdng.SpatialCRS.empty;

@@ -92,7 +92,7 @@ classdef GridSpatialIndex < geospm.BaseGridSpatialIndex & geospm.SpatialIndex
                 error('w is not an integral numeric type.');
             end
             
-            obj@geospm.BaseGridSpatialIndex(size(x, 1), resolution, grid, crs);
+            obj@geospm.BaseGridSpatialIndex(resolution, grid, crs);
             obj@geospm.SpatialIndex(x, y, z, segment_sizes, crs);
             
             obj.u_ = u;

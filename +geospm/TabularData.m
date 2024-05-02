@@ -18,50 +18,39 @@ classdef TabularData < handle
     %
     
     properties (Dependent, Transient)
-        
         N % number of rows
         C % number of columns
     end
     
-    properties (GetAccess = private, SetAccess = private)
-        N_
-        C_
-    end
-    
+
     methods
         
         function value = get.N(obj)
-            value = obj.N_;
+            value = obj.access_N();
         end
         
         function value = get.C(obj)
-            value = obj.C_;
+            value = obj.access_C();
         end
-
-        function obj = TabularData(N, C)
-            %Construct a TabularData object with the given number of rows.
-            % N ? The number of rows in the data.
-            
-            if ~exist('N', 'var') || isempty(N)
-                N = 0;
-            end
-
-            if ~exist('C', 'var') || isempty(C)
-                C = 0;
-            end
-            
-            obj.N_ = N;
-            obj.C_ = C;
+        
+        function obj = TabularData()
         end
         
         function result = select(obj, row_selection, column_selection, transform)
             % Clone this data object using the selected rows, columns and transform.
+            %   
             %   row_selection - a numeric vector of row indices
             %   column_selection - a numeric vector of column indices
+            %   
             %   transform - a function handle:
+            %   
             %   modified_specifier = fn(specifier, modifier)
-            %   specifier is a struct with the same fields as this object's
-            %   properties. modifier is a TabularDataModifier for
+            %   
+            %   specifier is a struct with N, C and data (NxC matrix) fields,
+            %   plus substructs per_row and per_column whose fields are arrays
+            %   linked to their respective dimension.
+            %   
+            %   modifier is a TabularDataModifier for
             %   transforming the specifier.
             %
             %   The transform function is passed a struct with at least the
@@ -101,6 +90,14 @@ classdef TabularData < handle
     end
     
     methods (Access = protected)
+
+        function result = access_N(obj) %#ok<STOUT,MANU>
+            error('access_N() must be implemented by a subclass.');
+        end
+
+        function result = access_C(obj) %#ok<STOUT,MANU>
+            error('access_C() must be implemented by a subclass.');
+        end
         
         function assign_property(obj, name, value)
             % A helper function for setting a property of this object to 

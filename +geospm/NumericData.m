@@ -116,7 +116,7 @@ classdef NumericData < geospm.TabularData
                 N = size(observations, 1);
             end
             
-            obj = obj@geospm.TabularData(N, size(observations, 2));
+            obj = obj@geospm.TabularData();
             
             obj.observations = observations;
             obj.did_check_for_nans = check_nans;
@@ -500,6 +500,14 @@ classdef NumericData < geospm.TabularData
     
     methods (Access=protected)
         
+        function result = access_N(obj)
+            result = size(obj.observations, 1);
+        end
+
+        function result = access_C(obj)
+            result = size(obj.observations, 2);
+        end
+
         function assign_property(obj, name, values)
             obj.(name) = values;
         end

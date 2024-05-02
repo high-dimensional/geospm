@@ -320,7 +320,7 @@ function [result, spatial_index] = load_data(file_path, varargin)
     check_nans = options.mask_columns_with_missing_values || ...
                  options.mask_rows_with_missing_values;
 
-    result = geospm.NumericData(variable_matrix, size(variable_matrix, 1), check_nans);
+    result = geospm.NumericData(variable_matrix, check_nans);
     result.set_variable_names(variable_names');
     
     label_chars = num2str(eid.data(selected_rows), '%d');
