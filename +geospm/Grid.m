@@ -32,22 +32,32 @@ classdef Grid < handle
         
         flip_u % logical ? The grid is flipped along its u direction compared to the spatial coordinate system.
         flip_v % logical ? The grid is flipped along its v direction compared to the spatial coordinate system.
-        
+
         cell_marker_alignment % 3-vector ? position of markers within a grid cell, ranges from 0 to 1
         cell_marker_scale % 3-vector ? size of markers in units of grid cells
+
+        space_to_grid_concatenable_transform
+        grid_to_space_concatenable_transform
 
         space_to_grid_transform
         grid_to_space_transform
         
         space_to_grid_translation
         space_to_grid_rotation
-        space_to_grid_flip_and_scale
+        space_to_grid_scale_and_shift
         space_to_grid_offset
         
         grid_to_space_translation
         grid_to_space_rotation
-        grid_to_space_scale_and_flip
+        grid_to_space_shift_and_scale
         grid_to_space_offset
+
+        
+        has_offset % logical
+        has_scale % logical
+        has_rotation % logical
+
+        is_identity_transform % logical
     end
     
     
@@ -65,6 +75,9 @@ classdef Grid < handle
         cell_marker_alignment_
         cell_marker_scale_
         
+        space_to_grid_concatenable_transform_
+        grid_to_space_concatenable_transform_
+
         space_to_grid_transform_
         grid_to_space_transform_
     end
@@ -221,6 +234,24 @@ classdef Grid < handle
             end
         end
         
+        function result = get.space_to_grid_concatenable_transform(obj)
+            
+            if isempty(obj.space_to_grid_concatenable_transform_)
+                obj.space_to_grid_concatenable_transform_ = obj.compute_space_to_grid_concatenable_transform();
+            end
+            
+            result = obj.space_to_grid_concatenable_transform_;
+        end
+        
+        function result = get.grid_to_space_concatenable_transform(obj)
+            
+            if isempty(obj.grid_to_space_concatenable_transform_)
+                obj.grid_to_space_concatenable_transform_ = obj.compute_grid_to_space_concatenable_transform();
+            end
+            
+            result = obj.grid_to_space_concatenable_transform_;
+        end
+
         function result = get.space_to_grid_transform(obj)
             
             if isempty(obj.space_to_grid_transform_)
@@ -239,6 +270,7 @@ classdef Grid < handle
             result = obj.grid_to_space_transform_;
         end
         
+        
         function result = get.space_to_grid_translation(obj)
             result = obj.compute_space_to_grid_translation();
         end
@@ -247,8 +279,8 @@ classdef Grid < handle
             result = obj.compute_space_to_grid_rotation();
         end
         
-        function result = get.space_to_grid_flip_and_scale(obj)
-            result = obj.compute_space_to_grid_flip_and_scale();
+        function result = get.space_to_grid_scale_and_shift(obj)
+            result = obj.compute_space_to_grid_scale_and_shift();
         end
         
         function result = get.space_to_grid_offset(obj)
@@ -263,12 +295,28 @@ classdef Grid < handle
             result = obj.compute_grid_to_space_rotation();
         end
         
-        function result = get.grid_to_space_scale_and_flip(obj)
-            result = obj.compute_grid_to_space_scale_and_flip();
+        function result = get.grid_to_space_shift_and_scale(obj)
+            result = obj.compute_grid_to_space_shift_and_scale();
         end
         
         function result = get.grid_to_space_offset(obj)
             result = obj.compute_grid_to_space_offset();
+        end
+
+        function result = get.has_offset(obj)
+            result = ~all(hdng.utilities.isalmostequal(obj.origin, [0; 0; 0]));
+        end
+
+        function result = get.has_scale(obj)
+            result = obj.flip_u ||  obj.flip_v || ~all(hdng.utilities.isalmostequal(obj.cell_size, [1; 1; 1]));
+        end
+
+        function result = get.has_rotation(obj)
+            result = ~hdng.utilities.isalmostequal(obj.rotation_z, 0.0);
+        end
+
+        function result = get.is_identity_transform(obj)
+            result = ~obj.has_offset && ~obj.has_scale && ~obj.has_rotation;
         end
         
         function obj = Grid()
@@ -488,37 +536,6 @@ classdef Grid < handle
             w = w(row_indices);
         end
 
-        function [grid_spatial_index, row_indices, segment_indices] = transform_spatial_index(obj, spatial_index, assigned_grid)
-            
-            if ~exist('assigned_grid', 'var')
-                assigned_grid = obj;
-            end
-            
-            %{
-            % Select the subset of observations within the grid:
-
-            xyz = spatial_index.xyz;
-
-            [u, v, w] = obj.space_to_grid(xyz(:, 1), xyz(:, 2), xyz(:, 3));
-            
-            row_indices = obj.clip_uvw(u, v, w);
-
-            u = u(row_indices);
-            v = v(row_indices);
-            w = w(row_indices);
-            x = xyz(row_indices, 1);
-            y = xyz(row_indices, 2);
-            z = xyz(row_indices, 3);
-            
-            segment_indices = spatial_index.segment_indices_from_row_indices(row_indices);
-            segment_sizes = spatial_index.segment_indices_to_segment_sizes(spatial_index.segment_index(row_indices));
-
-            grid_spatial_index = geospm.GridSpatialIndex(u, v, w, x, y, z, segment_sizes, obj.resolution, assigned_grid.clone(), spatial_index.crs);
-            %}
-
-            [grid_spatial_index, row_indices, segment_indices] = spatial_index.project(obj, assigned_grid);
-        end
-
         function result = as_json_struct(obj, varargin)
             %Creates a JSON representation of this Grid object.
             % The following fields can be provided in the options
@@ -560,6 +577,64 @@ classdef Grid < handle
     end
     
     methods (Static)
+
+        function result = compute_concatenation_origin(origin, cell_size, flip, resolution)
+        
+            flip_xor = xor(flip(1), flip(2));
+            flip_sign = ~flip - flip;
+            
+            result = -origin(2) ...
+                     + (flip(2) * resolution(2) - origin(1)) * cell_size(2) * flip_sign(2) ...
+                     + (flip(1) - flip_xor) * resolution(1) * cell_size(1) * cell_size(2) * flip_sign(1) * flip_sign(2);
+
+            result = -result;
+        end
+        
+        function result = concat(A, B)
+        
+            if A.has_rotation
+                error('A has a rotational component, which is currently not supported');
+            end
+        
+            if B.has_rotation
+                error('B has a rotational component, which is currently not supported');
+            end
+            
+
+            cell_size = A.cell_size .* B.cell_size;
+
+            flip_u = xor(A.flip_u, B.flip_u);
+            flip_v = xor(A.flip_v, B.flip_v);
+
+            origin = [geospm.Grid.compute_concatenation_origin(...
+                        [A.origin(1); B.origin(1)], ...
+                        [A.cell_size(1); B.cell_size(1)], ...
+                        [A.flip_u; B.flip_u], ...
+                        [A.resolution(1); B.resolution(1)]), ...
+                        ...
+                       geospm.Grid.compute_concatenation_origin(...
+                        [A.origin(2); B.origin(2)], ...
+                        [A.cell_size(2); B.cell_size(2)], ...
+                        [A.flip_v; B.flip_v], ...
+                        [A.resolution(2); B.resolution(2)]), ...
+                        ...
+                       geospm.Grid.compute_concatenation_origin(...
+                        [A.origin(3); B.origin(3)], ...
+                        [A.cell_size(3); B.cell_size(3)], ...
+                        [false; false], ...
+                        [A.resolution(3); B.resolution(3)]) ...
+                        ];
+
+            result = geospm.Grid();
+
+            result.define(...
+                'origin', origin, ...
+                'cell_size', cell_size, ...
+                'flip_u', flip_u, ...
+                'flip_v', flip_v, ...
+                'resolution', A.resolution ...
+                );
+        end
 
         function result = from_json_struct(specifier)
             
@@ -690,45 +765,7 @@ classdef Grid < handle
             result(1:2, 2) = [-sine; cosine];
         end
         
-        
-        %{
-        function [result, is_identity] = compute_space_to_grid_shear(obj)
-            result = eye(3);
-            
-            is_identity = hdng.utilities.isalmostequal(obj.shear(1), 0.0) ...
-                          && hdng.utilities.isalmostequal(obj.shear(2), 0.0);
-            
-            if is_identity
-                return
-            end
-            
-            result(1, 2) = obj.shear(1);
-            result(2, 1) = obj.shear(2);
-        end
-        
-        function [result, is_identity] = compute_grid_to_space_shear(obj)
-            
-            result = eye(3);
-            
-            is_identity = hdng.utilities.isalmostequal(obj.shear(1), 0.0) ...
-                          && hdng.utilities.isalmostequal(obj.shear(2), 0.0);
-            
-            if is_identity
-                return
-            end
-            
-            d = 1.0 / (1.0 - obj.shear(1) * obj.shear(2));
-            
-            result(1, 1) = d;
-            result(2, 2) = d;
-            
-            result(1, 2) = -obj.shear(1) * d;
-            result(2, 1) = -obj.shear(2) * d;
-        end
-        %}
-        
-        
-        function [result, is_identity] = compute_space_to_grid_flip_and_scale(obj)
+        function [result, is_identity] = compute_space_to_grid_scale_and_shift(obj)
             
             result = eye(4);
             
@@ -750,7 +787,7 @@ classdef Grid < handle
             result(3, 4) = 0.0;
         end
         
-        function [result, is_identity] = compute_grid_to_space_scale_and_flip(obj)
+        function [result, is_identity] = compute_grid_to_space_shift_and_scale(obj)
             
             result = eye(4);
             
@@ -790,24 +827,31 @@ classdef Grid < handle
             result(1:3, 4) = -[1; 1; 1];
         end
         
+        function [result, result_is_identity] = compute_space_to_grid_concatenable_transform(obj)
+            [result, result_is_identity] = obj.compute_transform(true, true);
+        end
+        
+        function [result, result_is_identity] = compute_grid_to_space_concatenable_transform(obj)
+            [result, result_is_identity] = obj.compute_transform(false, true);
+        end
         
         
         function [result, result_is_identity] = compute_space_to_grid_transform(obj)
-            [result, result_is_identity] = obj.compute_transform(true);
+            [result, result_is_identity] = obj.compute_transform(true, false);
         end
         
         function [result, result_is_identity] = compute_grid_to_space_transform(obj)
-            [result, result_is_identity] = obj.compute_transform(false);
+            [result, result_is_identity] = obj.compute_transform(false, false);
         end
         
-        function [result, result_is_identity] = compute_transform(obj, space_to_grid)
+        function [result, result_is_identity] = compute_transform(obj, space_to_grid, concatenable)
             
             result_is_identity = true;
             result = eye(4);
             
             if space_to_grid
                 
-                % result = FlipAndScale * Shear * R * T;
+                % result = ScaleAndShift * R * T;
             
                 [T, is_identity] = obj.compute_space_to_grid_translation();
 
@@ -833,47 +877,35 @@ classdef Grid < handle
                     
                     result_is_identity = false;
                 end
-
-                %{
-                [Shear, is_identity] = obj.compute_space_to_grid_shear();
-
-                if ~is_identity
-                    if result_is_identity
-                        result = Shear;
-                    else
-                        result = Shear * result;
-                    end
-
-                    result_is_identity = false;
-                end
-                %}
                 
-                [FlipAndScale, is_identity] = obj.compute_space_to_grid_flip_and_scale();
+                [ScaleAndShift, is_identity] = obj.compute_space_to_grid_scale_and_shift();
 
                 if ~is_identity
                     if result_is_identity
-                        result = FlipAndScale;
+                        result = ScaleAndShift;
                     else
-                        result = FlipAndScale * result;
+                        result = ScaleAndShift * result;
                     end
 
                     result_is_identity = false;
                 end
                 
-                [Offset, is_identity] = obj.compute_space_to_grid_offset();
-
-                if ~is_identity
-                    if result_is_identity
-                        result = Offset;
-                    else
-                        result = Offset * result;
+                if ~concatenable
+                    [Offset, is_identity] = obj.compute_space_to_grid_offset();
+    
+                    if ~is_identity
+                        if result_is_identity
+                            result = Offset;
+                        else
+                            result = Offset * result;
+                        end
+    
+                        result_is_identity = false;
                     end
-
-                    result_is_identity = false;
                 end
             else
                 
-                % result = T * R * Shear * ScaleAndFlip;
+                % result = T * R * ShiftAndScale;
                 
                 [T, is_identity] = obj.compute_grid_to_space_translation();
 
@@ -901,42 +933,30 @@ classdef Grid < handle
                     result_is_identity = false;
                 end
 
-                %{
-                [Shear, is_identity] = obj.compute_grid_to_space_shear();
+                [ShiftAndScale, is_identity] = obj.compute_grid_to_space_shift_and_scale();
 
                 if ~is_identity
                     if result_is_identity
-                        result = Shear;
+                        result = ShiftAndScale;
                     else
-                        result = result * Shear;
-                    end
-
-                    result_is_identity = false;
-                end
-                %}
-                
-                [ScaleAndFlip, is_identity] = obj.compute_grid_to_space_scale_and_flip();
-
-                if ~is_identity
-                    if result_is_identity
-                        result = ScaleAndFlip;
-                    else
-                        result = result * ScaleAndFlip;
+                        result = result * ShiftAndScale;
                     end
 
                     result_is_identity = false;
                 end
                 
-                [Offset, is_identity] = obj.compute_grid_to_space_offset();
-
-                if ~is_identity
-                    if result_is_identity
-                        result = Offset;
-                    else
-                        result = result * Offset;
+                if ~concatenable
+                    [Offset, is_identity] = obj.compute_grid_to_space_offset();
+    
+                    if ~is_identity
+                        if result_is_identity
+                            result = Offset;
+                        else
+                            result = result * Offset;
+                        end
+    
+                        result_is_identity = false;
                     end
-
-                    result_is_identity = false;
                 end
             end
         end

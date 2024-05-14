@@ -21,7 +21,11 @@ classdef BaseSpatialIndex < geospm.TabularData
     properties (GetAccess = public, SetAccess = immutable)
     
         crs % an optional SpatialCRS or empty
-    
+    end
+
+    properties
+
+        attachments % struct of optional attachments
     end
     
     properties (Dependent, Transient, GetAccess=public)
@@ -29,7 +33,7 @@ classdef BaseSpatialIndex < geospm.TabularData
         has_crs % is a crs defined?
 
         S % number of segments
-        segment_offsets % a column vector of length S specifying the index of the first coordinate for each segment
+
         segment_sizes % a column vector of length S listing the number of coordinates per segment
 
         x_protected
@@ -37,48 +41,6 @@ classdef BaseSpatialIndex < geospm.TabularData
         z_protected
     end
     
-    properties (Dependent, Transient, GetAccess=protected, SetAccess=protected)
-
-        x % a column vector of length N (a N by 1 matrix) of observation x locations
-        y % a column vector of length N (a N by 1 matrix) of observation y locations
-        z % a column vector of length N (a N by 1 matrix) of observation z locations
-
-        xyz
-
-        segment_index % a column vector of length N specifying the segment index for each coordinate
-        
-        x_min % minimum x value
-        x_max % maximum x value
-        
-        y_min % minimum y value
-        y_max % maximum y value
-        
-        z_min % minimum z value
-        z_max % maximum z value
-        
-        min_xy % [min_x, min_y]
-        max_xy % [max_x, max_y]
-        span_xy % max_xy - min_xy
-        
-        min_xyz % [min_x, min_y, min_z]
-        max_xyz % [max_x, max_y, max_z]
-        span_xyz % max_xyz - min_xyz
-        
-        centroid_x
-        centroid_y
-        centroid_z
-        
-        centroid_xyz
-        
-        square_min_xy
-        square_max_xy
-        square_xy % Centres a square around the rectangle spanned by min_xy and max_xy
-
-        cube_min_xyz
-        cube_max_xyz
-        cube_xyz % Centres a cube around the volume spanned by min_xyz and max_xyz
-        
-    end
     
     methods
         
@@ -104,8 +66,21 @@ classdef BaseSpatialIndex < geospm.TabularData
             end
             
             obj.crs = crs;
+            obj.attachments = struct();
         end
 
+        function result = get.has_crs(obj)
+            result = ~isempty(obj.crs);
+        end
+        
+        function result = get.segment_sizes(obj)
+            result = obj.access_segment_sizes();
+        end
+
+        function result = get.S(obj)
+            result = obj.access_S();
+        end
+        
         function result = get.x_protected(obj)
             result = obj.access_x();
         end
@@ -117,137 +92,12 @@ classdef BaseSpatialIndex < geospm.TabularData
         function result = get.z_protected(obj)
             result = obj.access_z();
         end
-
-        function result = get.x(obj)
-            result = obj.access_x();
-        end
         
-        function result = get.y(obj)
-            result = obj.access_y();
-        end
-
-        function result = get.z(obj)
-            result = obj.access_z();
-        end
-        
-        function result = get.segment_sizes(obj)
-            result = obj.access_segment_sizes();
-        end
-
-        
-        function result = get.S(obj)
-            result = obj.access_S();
-        end
-        
-        function result = get.segment_index(obj)
-            result = obj.access_segment_index();
-        end
-        
-        function result = get.segment_offsets(obj)
-            result = obj.access_segment_offsets();
-        end
-
-        function result = get.has_crs(obj)
-            result = ~isempty(obj.crs);
-        end
-        
-        function result = get.x_min(obj)
-            result = obj.access_x_min();
-        end
-        
-        function result = get.x_max(obj)
-            result = obj.access_x_max();
-        end
-        
-        function result = get.y_min(obj)
-            result = obj.access_y_min();
-        end
-        
-        function result = get.y_max(obj)
-            result = obj.access_y_max();
-        end
-        
-        function result = get.z_min(obj)
-            result = obj.access_z_min();
-        end
-        
-        function result = get.z_max(obj)
-            result = obj.access_z_max();
-        end
-        
-        function result = get.min_xy(obj)
-            result = obj.access_min_xy();
-        end
-        
-        function result = get.max_xy(obj)
-            result = obj.access_max_xy();
-        end
-        
-        function result = get.span_xy(obj)
-            result = obj.access_span_xy();
-        end
-        
-        function result = get.min_xyz(obj)
-            result = obj.access_min_xyz();
-        end
-        
-        function result = get.max_xyz(obj)
-            result = obj.access_max_xyz();
-        end
-
-        function result = get.span_xyz(obj)
-            result = obj.access_span_xyz();
-        end
-        
-        function result = get.centroid_x(obj)
-            result = obj.access_centroid_x();
-        end
-        
-        function result = get.centroid_y(obj)
-            result = obj.access_centroid_y();
-        end
-        
-        function result = get.centroid_z(obj)
-            result = obj.access_centroid_z();
-        end
-        
-        function result = get.centroid_xyz(obj)
-            result = obj.access_centroid_xyz();
-        end
-
-        function result = get.square_min_xy(obj)
-            result = obj.access_square_min_xy();
-        end
-
-        function result = get.square_max_xy(obj)
-            result = obj.access_square_max_xy();
-        end
-        
-        function result = get.square_xy(obj)
-            result = obj.obj.access_square_xy();
-        end
-
-        function result = get.cube_min_xyz(obj)
-            result = obj.access_cube_min_xyz();
-        end
-
-        function result = get.cube_max_xyz(obj)
-            result = obj.access_cube_max_xyz();
-        end
-        
-
-        function result = get.cube_xyz(obj)
-            result = obj.access_cube_xyz();
-        end
-        
-        function result = get.xyz(obj)
-            result = obj.access_xyz();
-        end
-
         function [x, y, z] = xyz_coordinates_for_segment(obj, segment_index) %#ok<STOUT,INUSD>
             error('xyz_coordinates_for_segment() must be implemented by a subclass.');
         end
 
+        %{
         function result = row_indices_from_segment_indices(obj, segment_indices) %#ok<STOUT,INUSD>
             error('row_indices_from_segment_indices() must be implemented by a subclass.');
         end
@@ -255,44 +105,18 @@ classdef BaseSpatialIndex < geospm.TabularData
         function result = segment_indices_from_row_indices(obj, row_indices) %#ok<STOUT,INUSD>
             error('segment_indices_from_row_indices() must be implemented by a subclass.');
         end
+        %}
         
-        function result = select_by_segment(obj, segment_selection, transform)
+        function result = select_by_segment(obj, segment_selection, transform) %#ok<STOUT,INUSD>
+            error('select_by_segment() must be implemented by a subclass.');
+        end
+
+        function [spatial_index, segment_indices] = project(obj, grid, assigned_grid) %#ok<STOUT,INUSD>
+            error('project() must be implemented by a subclass.');
+        end
         
-            if ~exist('segment_selection', 'var')
-                segment_selection = [];
-            end
-            
-            if isempty(segment_selection)
-                segment_selection = 1:obj.S;
-            end
-
-            if ~isnumeric(segment_selection)
-                
-                if islogical(segment_selection)
-                    if numel(segment_selection) ~= obj.S
-                        error('select_by_segment(): The length of a logical segment selection vector must be equal to the number of segments.');
-                    end
-                else
-                    error('select_by_segment(): segment selection vector must be a numeric or logical array.');
-                end
-            else
-                segment_selection = segment_selection(:);
-
-                try
-                    tmp = (1:obj.S)';
-                    tmp = tmp(segment_selection); %#ok<NASGU>
-                    clear('tmp');
-                catch
-                    error('select_by_segment(): One or more segment selection indices are out of bounds.');
-                end
-            end
-            
-            if ~exist('transform', 'var')
-                transform = @(specifier, modifier) specifier;
-            end
-
-            row_selection = obj.row_indices_from_segment_indices(segment_selection);
-            result = obj.select(row_selection, [], transform);
+        function result = convolve_segment(obj, segment_index, span_origin, span_limit, kernel) %#ok<STOUT,INUSD>
+            error('convolve_segment() must be implemented by a subclass.');
         end
         
         function write_as_eps(obj, file_path, point1, point2, variant, varargin)
@@ -391,6 +215,7 @@ classdef BaseSpatialIndex < geospm.TabularData
             error('() must be implemented by a subclass.');
         end
         
+        %{
         function result = access_segment_index(obj) %#ok<STOUT,MANU>
             error('access_segment_index() must be implemented by a subclass.');
         end
@@ -491,7 +316,7 @@ classdef BaseSpatialIndex < geospm.TabularData
         function result = access_xyz(obj) %#ok<STOUT,MANU>
             error('access_xyz() must be implemented by a subclass.');
         end
-        
+        %}
         
         function assign_property(obj, name, values)
             obj.(name) = values;

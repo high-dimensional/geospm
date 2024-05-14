@@ -221,28 +221,41 @@ classdef BaseGenerator < SyntheticVolumeGenerator
             end
         end
 
-        function V_data = synthesize_by_convolution(obj, locations)
-
-            V_data = zeros(obj.volume_size());
-            N_locations = size(locations, 1);
+        function V_data = synthesize_by_convolution(obj, specifier)
             
-            for index=1:N_locations
-                sample_location = locations(index, :);
-                count = V_data(sample_location(1), sample_location(2), sample_location(3));
-                V_data(sample_location(1), sample_location(2), sample_location(3)) = count + 1;
-            end
+            if obj.smoothing_levels_as_z_dimension
+                
+                V_data = zeros(obj.volume_size());
 
-            V_data = convn(V_data, obj.smooth_map, 'same');
+                for index=1:obj.window_resolution(3)
+
+                    V_data(:, :, index) = specifier.spatial_index.convolve_segment( ...
+                        specifier.segment_number, ...
+                        [1, 1, 1], [obj.window_resolution(1:2), 1] + [1, 1, 0], ...
+                        obj.smooth_map(:, :, index));
+                end
+            else
+
+                V_data = specifier.spatial_index.convolve_segment( ...
+                    specifier.segment_number, ...
+                    [1, 1, 1], obj.window_resolution + [1, 1, 1], ...
+                    obj.smooth_map);
+            end
         end
 
-        function V_data = synthesize_by_addition(obj, locations)
+        %{
+        function V_data = synthesize_by_addition(obj, specifier)
             
+
+            [x, y, z] = specifier.spatial_index.xyz_coordinates_for_segment(specifier.segment_number);
+
+
             V_data = [];
-            N_locations = size(locations, 1);
+            N_locations = size(x, 1);
 
             for index=1:N_locations
-                sample_location = locations(index, :);
-                S_data = obj.render_volume(sample_location);
+
+                S_data = obj.render_volume([x(index), y(index), z(index)]);
 
                 if isempty(V_data)
                     V_data = S_data;
@@ -251,46 +264,57 @@ classdef BaseGenerator < SyntheticVolumeGenerator
                 end
             end
         end
-        
+        %}
+
         function V_data = synthesize(obj, specifier)
             
-            locations_or_identifier = obj.parse_specifier(specifier);
+            specifier = obj.parse_specifier(specifier);
+            
+            switch specifier.type
 
-            if ischar(locations_or_identifier)
-                
-                switch locations_or_identifier
-                    case 'global_mask'
-                        V_data = obj.global_mask;
+                case 'directive'
+                    switch specifier.directive
+                        case 'global_mask'
+                            V_data = obj.global_mask;
+                            
+                        otherwise
+                            error('Undefined volume ''%s''.', specifier.directive);
+                    end
+                    
+                    return;
+
+                case 'segment'
+                    
+                    switch obj.smoothing_synthesis_variant
+                        case {'default', 'convolution'}
+                            V_data = obj.synthesize_by_convolution(specifier);
+
+                        %{
+                        case 'addition'
+                            V_data = obj.synthesize_by_addition(specifier);
+                        %}
                         
-                    otherwise
-                        error('geospm.BaseVolumeGenerator.synthesize(): Undefined volume ''%s''.', locations_or_identifier);
-                end
-                
-                return;
-            end
-
-            switch obj.smoothing_synthesis_variant
-                case {'default', 'convolution'}
-                    V_data = obj.synthesize_by_convolution(locations_or_identifier);
-                case 'addition'
-                    V_data = obj.synthesize_by_addition(locations_or_identifier);
+                        otherwise
+                            error('Unknown synthesis variant: %s', obj.synthesis_variant);
+                    end
+                    
+                    if obj.apply_global_mask_inline
+                        V_data(~obj.global_mask) = NaN;
+                    end
+                    
+                    if obj.debug
+                        
+                        file_path = fullfile(obj.session_volume_directory, 'debug', [identifier '.nii']);
+                        obj.save_volume(file_path, V_data);
+                    end
 
                 otherwise
-                    error('Unknown synthesis variant: %s', obj.synthesis_variant);
+                    error('Unknown specifier type ''%s''.', specifier.type);
             end
-            
-            if obj.apply_global_mask_inline
-                V_data(~obj.global_mask) = NaN;
-            end
-            
-            if obj.debug
-                
-                file_path = fullfile(obj.session_volume_directory, 'debug', [identifier '.nii']);
-                obj.save_volume(file_path, V_data);
-            end
+
         end
 
-        function locations_or_identifier = parse_specifier(obj, specifier) %#ok<STOUT>
+        function result = parse_specifier(obj, specifier) %#ok<STOUT>
             error(['BaseGenerator.parse_specifier() must be ', ...
                    'implemented by a subclass [session_key="%s", ', ...
                    'specifier="%s"].'

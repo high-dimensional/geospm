@@ -87,24 +87,37 @@ classdef SpatialIndexRenderer < geospm.spm.BaseGenerator
             end
         end
 
-        function locations_or_directive = parse_specifier(obj, specifier)
+        function result = parse_specifier(obj, specifier)
             
+            result = struct();
+
+            result.type = '';
+            result.text = specifier;
+            result.directive = '';
+            result.spatial_index = [];
+            result.segment_number = [];
+
             [~, id, ~] = fileparts(specifier);
             
             parts = split(id, ';');
             
             if numel(parts) == 1
-                locations_or_directive = id;
+                result.type = 'directive';
+                result.directive = id;
             else
                 
                 index_number = str2double(parts{1});
                 segment_number = str2double(parts{2});
 
                 spatial_index = obj.spatial_indices{index_number};
-                %[u, v, w] = spatial_index.uvw_coordinates_for_segment(segment_number);
-                %locations_or_directive = cast([u, v, w], 'double');
-                [x, y, z]  = spatial_index.xyz_coordinates_for_segment(segment_number);
-                locations_or_directive = [x, y, z];
+
+                %[x, y, z]  = spatial_index.xyz_coordinates_for_segment(segment_number);
+                %locations_or_directive = [x, y, z];
+    
+                result.type = 'segment';
+                result.spatial_index = spatial_index;
+                result.segment_number = segment_number;
+
             end
         end
         

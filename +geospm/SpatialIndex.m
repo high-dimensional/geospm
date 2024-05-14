@@ -17,6 +17,50 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
     %SpatialIndex A spatial index stores coordinates grouped
     % into segments.
     %
+
+    properties (Dependent, Transient, GetAccess=protected, SetAccess=protected)
+
+        x % a column vector of length N (a N by 1 matrix) of observation x locations
+        y % a column vector of length N (a N by 1 matrix) of observation y locations
+        z % a column vector of length N (a N by 1 matrix) of observation z locations
+
+        xyz
+
+        segment_offsets % a column vector of length S specifying the index of the first coordinate for each segment
+        segment_index % a column vector of length N specifying the segment index for each coordinate
+        
+        x_min % minimum x value
+        x_max % maximum x value
+        
+        y_min % minimum y value
+        y_max % maximum y value
+        
+        z_min % minimum z value
+        z_max % maximum z value
+        
+        min_xy % [min_x, min_y]
+        max_xy % [max_x, max_y]
+        span_xy % max_xy - min_xy
+        
+        min_xyz % [min_x, min_y, min_z]
+        max_xyz % [max_x, max_y, max_z]
+        span_xyz % max_xyz - min_xyz
+        
+        centroid_x
+        centroid_y
+        centroid_z
+        
+        centroid_xyz
+        
+        square_min_xy
+        square_max_xy
+        square_xy % Centres a square around the rectangle spanned by min_xy and max_xy
+
+        cube_min_xyz
+        cube_max_xyz
+        cube_xyz % Centres a cube around the volume spanned by min_xyz and max_xyz
+        
+    end
     
     properties (GetAccess = private, SetAccess = private)
         
@@ -114,35 +158,117 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
             obj.segment_sizes_ = segment_sizes;
             [obj.segment_index_, obj.segment_offsets_] = obj.segment_indices_from_segment_sizes(size(x, 1), segment_sizes);
         end
+
+        function result = get.x(obj)
+            result = obj.access_x();
+        end
         
-        function [grid_spatial_index, row_indices, segment_indices] = project(obj, grid, assigned_grid)
-            
-            if ~exist('assigned_grid', 'var') || isempty(assigned_grid)
-                assigned_grid = grid;
-            end
-            
-            % Select the subset of observations within the grid:
-            
-            [u, v, w] = grid.space_to_grid(obj.x, obj.y, obj.z);
-            
-            row_indices = grid.clip_uvw(u, v, w);
+        function result = get.y(obj)
+            result = obj.access_y();
+        end
 
-            u = u(row_indices);
-            v = v(row_indices);
-            w = w(row_indices);
-            %x = obj.x(row_indices);
-            %y = obj.y(row_indices);
-            %z = obj.z(row_indices);
-            
-            x = cast(u, 'double');
-            y = cast(v, 'double');
-            z = cast(w, 'double');
+        function result = get.z(obj)
+            result = obj.access_z();
+        end
+        
+        function result = get.xyz(obj)
+            result = obj.access_xyz();
+        end
 
-            segment_indices = obj.segment_indices_from_row_indices(row_indices);
-            segment_sizes = obj.segment_indices_to_segment_sizes(obj.segment_index(row_indices));
+        function result = get.segment_index(obj)
+            result = obj.access_segment_index();
+        end
+        
+        function result = get.segment_offsets(obj)
+            result = obj.access_segment_offsets();
+        end
+        
+        function result = get.x_min(obj)
+            result = obj.access_x_min();
+        end
+        
+        function result = get.x_max(obj)
+            result = obj.access_x_max();
+        end
+        
+        function result = get.y_min(obj)
+            result = obj.access_y_min();
+        end
+        
+        function result = get.y_max(obj)
+            result = obj.access_y_max();
+        end
+        
+        function result = get.z_min(obj)
+            result = obj.access_z_min();
+        end
+        
+        function result = get.z_max(obj)
+            result = obj.access_z_max();
+        end
+        
+        function result = get.min_xy(obj)
+            result = obj.access_min_xy();
+        end
+        
+        function result = get.max_xy(obj)
+            result = obj.access_max_xy();
+        end
+        
+        function result = get.span_xy(obj)
+            result = obj.access_span_xy();
+        end
+        
+        function result = get.min_xyz(obj)
+            result = obj.access_min_xyz();
+        end
+        
+        function result = get.max_xyz(obj)
+            result = obj.access_max_xyz();
+        end
 
-            %grid_spatial_index = geospm.GridSpatialIndex(u, v, w, x, y, z, segment_sizes, grid.resolution, assigned_grid.clone(), obj.crs);
-            grid_spatial_index = geospm.SpatialIndex(x, y, z, segment_sizes, obj.crs);
+        function result = get.span_xyz(obj)
+            result = obj.access_span_xyz();
+        end
+        
+        function result = get.centroid_x(obj)
+            result = obj.access_centroid_x();
+        end
+        
+        function result = get.centroid_y(obj)
+            result = obj.access_centroid_y();
+        end
+        
+        function result = get.centroid_z(obj)
+            result = obj.access_centroid_z();
+        end
+        
+        function result = get.centroid_xyz(obj)
+            result = obj.access_centroid_xyz();
+        end
+
+        function result = get.square_min_xy(obj)
+            result = obj.access_square_min_xy();
+        end
+
+        function result = get.square_max_xy(obj)
+            result = obj.access_square_max_xy();
+        end
+        
+        function result = get.square_xy(obj)
+            result = obj.obj.access_square_xy();
+        end
+
+        function result = get.cube_min_xyz(obj)
+            result = obj.access_cube_min_xyz();
+        end
+
+        function result = get.cube_max_xyz(obj)
+            result = obj.access_cube_max_xyz();
+        end
+        
+        function result = get.cube_xyz(obj)
+            result = obj.access_cube_xyz();
         end
 
         function [x, y, z] = xyz_coordinates_for_segment(obj, segment_index)
@@ -211,6 +337,76 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
 
             row_selection = obj.row_indices_from_segment_indices(segment_selection);
             result = obj.select(row_selection, [], transform);
+        end
+        
+        function [spatial_index, segment_indices] = project(obj, grid, assigned_grid)
+            
+            if ~exist('assigned_grid', 'var') || isempty(assigned_grid)
+                assigned_grid = grid;
+            end
+            
+            % Select the subset of observations within the grid:
+            
+            [u, v, w] = grid.space_to_grid(obj.x, obj.y, obj.z);
+            
+            row_indices = grid.clip_uvw(u, v, w);
+
+            u = u(row_indices);
+            v = v(row_indices);
+            w = w(row_indices);
+            
+            x_projected = cast(u, 'double');
+            y_projected = cast(v, 'double');
+            z_projected = cast(w, 'double');
+
+            segment_indices = obj.segment_indices_from_row_indices(row_indices);
+            segment_sizes = obj.segment_indices_to_segment_sizes(obj.segment_index(row_indices));
+
+            spatial_index = geospm.SpatialIndex(x_projected, y_projected, z_projected, segment_sizes, obj.crs);
+            
+            spatial_index.attachments.assigned_grid = assigned_grid;
+        end
+        
+        function result = convolve_segment(obj, segment_index, span_origin, span_limit, kernel)
+
+            [x_segment, y_segment, z_segment] = obj.xyz_coordinates_for_segment(segment_index);
+            
+            selector = x_segment >= span_origin(1) & x_segment < span_limit(1) & y_segment >= span_origin(2) & y_segment < span_limit(2) & z_segment >= span_origin(3) & z_segment < span_limit(3);
+
+            x_segment = x_segment(selector);
+            y_segment = y_segment(selector);
+            z_segment = z_segment(selector);
+
+            N_locations = size(x_segment, 1);
+
+            result = zeros(span_limit - span_origin);
+            
+            if N_locations > 1
+                for index=1:N_locations
+    
+                    xi = x_segment(index);
+                    yi = y_segment(index);
+                    zi = z_segment(index);
+                    
+                    result(xi, yi, zi) = result(xi, yi, zi) + 1;
+                end
+    
+                result = convn(result, kernel, 'same');
+            else
+
+                window_resolution = span_limit - span_origin;
+                xyz_segment = [x_segment, y_segment, z_segment] - span_origin + 1;
+ 
+                %If sample_location is (1, 1), then range_start is window_resolution
+                %If sample_location is window_resolution, then range_start is 1
+                
+                range_start = window_resolution - xyz_segment + 1;
+                range_end = range_start + window_resolution - 1;
+                
+                result = kernel(range_start(1):range_end(1), ...
+                                range_start(2):range_end(2), ...
+                                range_start(3):range_end(3));
+            end
         end
        
         function result = as_json_struct(obj, varargin)
@@ -440,9 +636,9 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
             
             [specifier, modifier] = define_clone_specifier@geospm.BaseSpatialIndex(obj);
             
-            specifier.per_row.x = obj.x;
-            specifier.per_row.y = obj.y;
-            specifier.per_row.z = obj.z;
+            specifier.per_row.x = obj.x_protected;
+            specifier.per_row.y = obj.y_protected;
+            specifier.per_row.z = obj.z_protected;
             specifier.per_row.segment_index = obj.segment_index;
 
             specifier.segment_sizes = obj.segment_sizes;

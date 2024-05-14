@@ -18,8 +18,6 @@ function [result, spatial_index] = load_spatial_data(file_path, varargin)
         Creates geospm.NumericData and geospm.SpatialIndex objects 
         from a CSV file.
 
-        Rows in the CSV file without coordinates are ignored.
-
         The following name-value arguments are supported:
         
         -------------------------------------------------------------------
@@ -41,14 +39,16 @@ function [result, spatial_index] = load_spatial_data(file_path, varargin)
         file or a Matlab file produced by SpatialIndex.write_matlab().
         
         x_coordinate – The name of the column that holds the x
-        or eastings values of the point data. Defaults to 'x'.
+        or eastings values of the point data. Defaults to 'x'. Not used if
+        the spatial index is in MATLAB format.
 
         y_coordinate – The name of the column that holds the y
-        or northings values of the point data. Defaults to 'y'.
+        or northings values of the point data. Defaults to 'y'. Not used if
+        the spatial index is in MATLAB format.
 
         z_coordinate – Optional. The name of the column that holds the z
         values of the point data. Defaults to '', meaning no z coordinate
-        is defined.
+        is defined. Not used if the spatial index is in MATLAB format.
         
         The following arguments are only relevant if the coordinates are 
         stored in a separate CSV file:

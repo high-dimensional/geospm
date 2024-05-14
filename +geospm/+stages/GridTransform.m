@@ -97,9 +97,9 @@ classdef GridTransform < geospm.stages.SpatialAnalysisStage
             
             spatial_data = arguments.(obj.data_requirement);
             spatial_index = arguments.(obj.spatial_index_requirement);
-
-            [grid_spatial_index, ~, selection] = obj.grid.transform_spatial_index(spatial_index, obj.assigned_grid);
             
+            [grid_spatial_index, selection] = spatial_index.project(obj.grid, obj.assigned_grid);
+
             grid_data = spatial_data.select(selection, []);
 
             result = struct();
