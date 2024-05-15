@@ -132,7 +132,7 @@ classdef StandardSampling < geospm.models.SamplingStrategy
             result.set_categories(categories);
             result.attachments.spatial_resolution = model.spatial_resolution;
 
-            spatial_index = geospm.SpatialIndex(x, y, [], []);
+            spatial_index = geospm.SpatialIndex(x, y, [], [], []);
         end
         
         function result = char(obj)

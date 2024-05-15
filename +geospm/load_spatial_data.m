@@ -407,7 +407,7 @@ function result = create_spatial_index_from_variables(variables, crs_or_crs_iden
         z = variables{3}.data;
     end
 
-    result = geospm.SpatialIndex(x, y, z, [], crs_or_crs_identifier);
+    result = geospm.SpatialIndex(x, y, z, [], [], crs_or_crs_identifier);
 end
 
 function [result, order] = load_spatial_index_from_csv(file_path, options)
@@ -478,5 +478,5 @@ function [result, order] = load_spatial_index_from_csv(file_path, options)
     [segment_index, order] = sort(segment_index);
 
     segments = geospm.SpatialIndex.segment_indices_to_segment_sizes(segment_index);
-    result = geospm.SpatialIndex(x, y, z, segments, crs_or_crs_identifier);
+    result = geospm.SpatialIndex(x, y, z, segments, [], crs_or_crs_identifier);
 end

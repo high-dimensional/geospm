@@ -34,13 +34,16 @@ classdef BaseSpatialIndex < geospm.TabularData
 
         S % number of segments
 
-        segment_sizes % a column vector of length S listing the number of coordinates per segment
+        segment_labels % a column vector of length S listing the label for each segment.
 
         x_protected
         y_protected
         z_protected
     end
-    
+
+    properties (Dependent, Transient, GetAccess=protected)
+        segment_sizes % a column vector of length S listing the number of coordinates per segment
+    end
     
     methods
         
@@ -75,6 +78,10 @@ classdef BaseSpatialIndex < geospm.TabularData
         
         function result = get.segment_sizes(obj)
             result = obj.access_segment_sizes();
+        end
+        
+        function result = get.segment_labels(obj)
+            result = obj.access_segment_labels();
         end
 
         function result = get.S(obj)
@@ -209,6 +216,10 @@ classdef BaseSpatialIndex < geospm.TabularData
         
         function result = access_segment_sizes(obj) %#ok<STOUT,MANU>
             error('access_segment_sizes() must be implemented by a subclass.');
+        end
+        
+        function result = access_segment_labels(obj) %#ok<STOUT,MANU>
+            error('access_segment_labels() must be implemented by a subclass.');
         end
 
         function result = access_S(obj) %#ok<STOUT,MANU>
@@ -489,12 +500,12 @@ classdef BaseSpatialIndex < geospm.TabularData
             result = ctor(specifier);
         end
         
-        function result = load_from_matlab(filepath)
+        function result = load_from_matlab(filepath, varargin)
             
             specifier = load(filepath);
             result = geospm.BaseSpatialIndex.from_json_struct(specifier);
         end
-        
+
         function segment_sizes = segment_indices_to_segment_sizes(segment_indices)
             
             if any(segment_indices <= 0)

@@ -41,7 +41,7 @@ function compute_from_observations(directory, observations, x, y, z, ...
     end
     
     data = geospm.NumericData(observations);
-    spatial_index = geospm.SpatialIndex(x, y, z, [], options.crs);
+    spatial_index = geospm.SpatialIndex(x, y, z, [], [], options.crs);
     
     options = rmfield(options, 'crs');
     

@@ -111,13 +111,9 @@ classdef SpatialIndexRenderer < geospm.spm.BaseGenerator
 
                 spatial_index = obj.spatial_indices{index_number};
 
-                %[x, y, z]  = spatial_index.xyz_coordinates_for_segment(segment_number);
-                %locations_or_directive = [x, y, z];
-    
                 result.type = 'segment';
                 result.spatial_index = spatial_index;
                 result.segment_number = segment_number;
-
             end
         end
         

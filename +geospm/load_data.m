@@ -341,5 +341,5 @@ function [result, spatial_index] = load_data(file_path, varargin)
     result = result.select(order, []);
 
     segments = geospm.SpatialIndex.segment_indices_to_segment_sizes(segment_index);
-    spatial_index = geospm.SpatialIndex(x, y, [], segments, crs_or_crs_identifier);
+    spatial_index = geospm.SpatialIndex(x, y, [], segments, [], crs_or_crs_identifier);
 end

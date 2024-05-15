@@ -71,6 +71,7 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
         extra_data_
 
         segment_sizes_
+        segment_labels_
 
         segment_index_
         segment_offsets_
@@ -89,7 +90,7 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
     
     methods
         
-        function obj = SpatialIndex(x, y, z, segment_sizes, crs, extra_data)
+        function obj = SpatialIndex(x, y, z, segment_sizes, segment_labels, crs, extra_data)
             %Construct a SpatialIndex object from x, y and z vectors and an
             %optional CRS.
             % x ? x locations
@@ -137,8 +138,11 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
             if isempty(segment_sizes)
                 segment_sizes = ones(size(x, 1), 1);
             end
-            
 
+            if isempty(segment_labels)
+                segment_labels = arrayfun(@(x) num2str(x), 1:numel(segment_sizes), 'UniformOutput', false);
+            end
+            
             if ~isempty(extra_data) && ~ismatrix(extra_data)
                 error('''extra_data'' is not a numeric matrix.');
             end
@@ -156,6 +160,8 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
             obj.extra_data_ = extra_data;
             
             obj.segment_sizes_ = segment_sizes;
+            obj.segment_labels_ = segment_labels;
+
             [obj.segment_index_, obj.segment_offsets_] = obj.segment_indices_from_segment_sizes(size(x, 1), segment_sizes);
         end
 
@@ -361,8 +367,9 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
 
             segment_indices = obj.segment_indices_from_row_indices(row_indices);
             segment_sizes = obj.segment_indices_to_segment_sizes(obj.segment_index(row_indices));
+            segment_labels = obj.segment_labels(segment_indices);
 
-            spatial_index = geospm.SpatialIndex(x_projected, y_projected, z_projected, segment_sizes, obj.crs);
+            spatial_index = geospm.SpatialIndex(x_projected, y_projected, z_projected, segment_sizes, segment_labels, obj.crs);
             
             spatial_index.attachments.assigned_grid = assigned_grid;
         end
@@ -466,6 +473,10 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
         
         function result = access_segment_sizes(obj)
             result = obj.segment_sizes_;
+        end
+        
+        function result = access_segment_labels(obj)
+            result = obj.segment_labels_;
         end
         
         function result = access_S(obj)
@@ -642,6 +653,7 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
             specifier.per_row.segment_index = obj.segment_index;
 
             specifier.segment_sizes = obj.segment_sizes;
+            specifier.segment_labels = obj.segment_labels;
             specifier.segment_offsets = obj.segment_offsets_;
         end
 
@@ -655,6 +667,7 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
                                          specifier.per_row.y, ...
                                          specifier.per_row.z, ...
                                          specifier_segment_sizes, ...
+                                         specifier.segment_labels, ...
                                          specifier.crs);
         end
 
@@ -680,17 +693,25 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
                 error('Missing ''segment_sizes'' field in json struct or ''segment_sizes'' field is not numeric.');
             end
             
+            if ~isfield(specifier, 'segment_labels')
+                specifier.segment_labels = [];
+            end
+
+            if ~isfield(specifier, 'segment_labels') || ~isnumeric(specifier.segment_labels)
+                error('Missing ''segment_labels'' field in json struct or ''segment_labels'' field is not a cell array.');
+            end
+            
             if isfield(specifier, 'crs') && ~ischar(specifier.crs)
                 error('''crs'' field is not char.');
             end
             
             crs = '';
-
+            
             if isfield(specifier, 'crs') && ~isempty(specifier.crs)
                 crs = specifier.crs;
             end
             
-            result = geospm.SpatialIndex(specifier.x, specifier.y, specifier.z, specifier.segment_sizes, crs);
+            result = geospm.SpatialIndex(specifier.x, specifier.y, specifier.z, specifier.segment_sizes, specifier.segment_labels, crs);
 
         end
     end
