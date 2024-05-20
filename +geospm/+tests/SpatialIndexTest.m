@@ -124,7 +124,6 @@ classdef SpatialIndexTest < matlab.unittest.TestCase
             [~] = obj.spatial_index.S;
         end
 
-        %{
         function test_x(obj)
             [~] = obj.spatial_index.x;
         end
@@ -137,17 +136,22 @@ classdef SpatialIndexTest < matlab.unittest.TestCase
             [~] = obj.spatial_index.z;
         end
 
+        function test_xyz(obj)
+            obj.verifyEqual(obj.spatial_index.xyz, [obj.x, obj.y, obj.z], 'xyz does not match actual concatenation xyz');
+        end
+
         function test_N_xyz_consistent(obj)
             obj.verifyEqual([obj.spatial_index.N, 1], size(obj.spatial_index.x), 'N and dimensions of x do not agree');
             obj.verifyEqual(size(obj.spatial_index.x), size(obj.spatial_index.y), 'x and y dimensions do not agree');
             obj.verifyEqual(size(obj.spatial_index.x), size(obj.spatial_index.z), 'x and z dimensions do not agree');
         end
-        %}
 
+        %{
         function test_S_offsets_sizes_consistent(obj)
             obj.verifyEqual([obj.spatial_index.S, 1], size(obj.spatial_index.segment_offsets), 'S and dimensions of segment offsets do not agree');
             obj.verifyEqual(size(obj.spatial_index.segment_offsets), size(obj.spatial_index.segment_sizes), 'segment offsets and segment sizes dimensions do not agree');
         end
+        %}
 
         function test_ctor(obj)
 
@@ -165,8 +169,7 @@ classdef SpatialIndexTest < matlab.unittest.TestCase
             actual_segments = [diff(obj.spatial_index.segment_offsets); obj.N - obj.spatial_index.segment_offsets(end) + 1];
             obj.verifyEqual(actual_segments, obj.segments, 'segment offsets do not agree with specification');
         end
-
-        %{
+        
         function test_segment_indices(obj)
 
             segment_index = 1;
@@ -187,9 +190,7 @@ classdef SpatialIndexTest < matlab.unittest.TestCase
 
             obj.verifyEqual(obj.spatial_index.segment_index, expected_indices, 'segment indices do not agree with specification');
         end
-        %}
-
-        %{
+        
         function test_x_min_max(obj)
             obj.verifyEqual(obj.spatial_index.x_min, min(obj.x), 'x_min does not match actual minimum');
             obj.verifyEqual(obj.spatial_index.x_max, max(obj.x), 'x_max does not match actual maximum');
@@ -230,13 +231,6 @@ classdef SpatialIndexTest < matlab.unittest.TestCase
         function test_centroid_xyz(obj)
             obj.verifyEqual(obj.spatial_index.centroid_xyz, [mean(obj.x), mean(obj.y), mean(obj.z)], 'centroid_xyz does not match actual mean value of xyz');
         end
-        %}
-        
-        %{
-        function test_xyz(obj)
-            obj.verifyEqual(obj.spatial_index.xyz, [obj.x, obj.y, obj.z], 'xyz does not match actual concatenation xyz');
-        end
-        %}
 
         function test_select(obj)
             

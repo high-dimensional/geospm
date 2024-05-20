@@ -40,10 +40,6 @@ classdef BaseSpatialIndex < geospm.TabularData
         y_protected
         z_protected
     end
-
-    properties (Dependent, Transient, GetAccess=protected)
-        segment_sizes % a column vector of length S listing the number of coordinates per segment
-    end
     
     methods
         
@@ -74,10 +70,6 @@ classdef BaseSpatialIndex < geospm.TabularData
 
         function result = get.has_crs(obj)
             result = ~isempty(obj.crs);
-        end
-        
-        function result = get.segment_sizes(obj)
-            result = obj.access_segment_sizes();
         end
         
         function result = get.segment_labels(obj)
@@ -206,10 +198,6 @@ classdef BaseSpatialIndex < geospm.TabularData
 
         function result = access_z(obj) %#ok<STOUT,MANU>
             error('access_z() must be implemented by a subclass.');
-        end
-        
-        function result = access_segment_sizes(obj) %#ok<STOUT,MANU>
-            error('access_segment_sizes() must be implemented by a subclass.');
         end
         
         function result = access_segment_labels(obj) %#ok<STOUT,MANU>

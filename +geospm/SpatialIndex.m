@@ -30,6 +30,7 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
         xyz
 
         segment_offsets % a column vector of length S specifying the index of the first coordinate for each segment
+        segment_sizes % a column vector of length S listing the number of coordinates per segment
         segment_index % a column vector of length N specifying the segment index for each coordinate
         
         x_min % minimum x value
@@ -143,7 +144,7 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
             end
 
             if isempty(segment_labels)
-                segment_labels = arrayfun(@(x) num2str(x), 1:numel(segment_sizes), 'UniformOutput', false);
+                segment_labels = arrayfun(@(x) num2str(x), (1:numel(segment_sizes))', 'UniformOutput', false);
             end
             
             if ~isempty(extra_data) && ~ismatrix(extra_data)
@@ -192,6 +193,10 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
             result = obj.access_segment_index();
         end
         
+        function result = get.segment_sizes(obj)
+            result = obj.access_segment_sizes();
+        end
+
         function result = get.segment_offsets(obj)
             result = obj.access_segment_offsets();
         end
@@ -631,6 +636,11 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
             
             [specifier, modifier] = define_clone_specifier@geospm.BaseSpatialIndex(obj);
             
+            % Replace specifier.data so that data has a valid number of
+            % rows
+
+            specifier.data = zeros(obj.N, 0);
+
             specifier.per_row.x = obj.x_protected;
             specifier.per_row.y = obj.y_protected;
             specifier.per_row.z = obj.z_protected;
