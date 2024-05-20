@@ -122,7 +122,7 @@ function [result, spatial_index] = load_spatial_data(file_path, varargin)
 
         switch lower(ext)
             case '.mat'
-                spatial_index = geospm.SpatialIndex.load_from_matlab(spatial_index_path);
+                spatial_index = geospm.BaseSpatialIndex.load_from_matlab(spatial_index_path);
             
             case '.csv'
                 spatial_index = load_spatial_index_from_csv(spatial_index_path, crs_or_crs_identifier, options);
@@ -162,11 +162,9 @@ function [result, spatial_index] = load_spatial_data(file_path, varargin)
     end
     
     %{
-    handler_map = create_handler_map(options.map_variables);
-    variables = apply_handlers(variables, handler_map);
+    variable_map = create_variable_map(variables);
     %}
 
-    variable_map = create_variable_map(variables);
     role_map = create_role_map(variables);
     
     if ~isKey(role_map, '')
@@ -239,6 +237,7 @@ function [result, spatial_index] = load_spatial_data(file_path, varargin)
         N_rows = sum(row_selector);
         data_matrix = data_matrix(row_selector, :);
         missing_values = missing_values(row_selector, :);
+        row_labels = row_labels(row_selector);
     else
         row_selector = ones(N_rows, 1, 'logical');
     end
@@ -261,15 +260,41 @@ function [result, spatial_index] = load_spatial_data(file_path, varargin)
     end
 
     result.set_labels(row_labels);
-    
-    rows_selected_in_file = (1:numel(row_selector))';
-    rows_selected_in_file = rows_selected_in_file(row_selector);
 
-    if numel(row_selector) ~= N_rows
-        spatial_index = spatial_index.select_by_segment(rows_selected_in_file);
+    segment_labels = spatial_index.segment_labels;
+    segment_map = containers.Map('KeyType', 'char', 'ValueType', 'double');
+
+    for index=1:numel(segment_labels)
+        label = segment_labels{index};
+        segment_map(label) = index;
+    end
+    
+    unmatched_rows = {};
+    segment_indices = zeros(numel(row_labels), 1);
+
+    for index=1:numel(row_labels)
+        label = row_labels{index};
+
+        if ~isKey(segment_map, label)
+            unmatched_rows{end + 1} = label; %#ok<AGROW>
+            continue;
+        end
+
+        segment_index = segment_map(label);
+        segment_indices(index - numel(unmatched_rows)) = segment_index;
     end
 
-    result.attachments.rows_selected_in_file = rows_selected_in_file;
+    if numel(unmatched_rows) ~= 0
+
+        unmatched_rows = join(unmatched_rows, ', ');
+        unmatched_rows = unmatched_rows{1};
+
+        error('Couldn''t match one or more data rows to the spatial index: %s.', unmatched_rows);
+    end
+
+    spatial_index = spatial_index.select_by_segment(segment_indices);
+    
+    result.attachments.rows_selected_in_file = row_labels;
     result.attachments.missing_values = missing_values;
     result.attachments.variable_types = data_variable_types;
 end

@@ -17,22 +17,12 @@ classdef TabularData < handle
     %TabularData A base class for data arranged in rows.
     %
     
-    properties (Dependent, Transient)
-        N % number of rows
-        C % number of columns
+    properties (Dependent, Transient, GetAccess=protected)
     end
     
 
     methods
-        
-        function value = get.N(obj)
-            value = obj.access_N();
-        end
-        
-        function value = get.C(obj)
-            value = obj.access_C();
-        end
-        
+
         function obj = TabularData()
         end
         
@@ -64,16 +54,8 @@ classdef TabularData < handle
                 row_selection = [];
             end
             
-            if isempty(row_selection)
-                row_selection = 1:obj.N;
-            end
-            
             if ~exist('column_selection', 'var')
                 column_selection = [];
-            end
-            
-            if isempty(column_selection)
-                column_selection = 1:obj.C;
             end
             
             if ~exist('transform', 'var')
@@ -117,8 +99,8 @@ classdef TabularData < handle
 
             specifier = struct();
             
-            specifier.N = obj.N;
-            specifier.C = obj.C;
+            %specifier.N = obj.N;
+            %specifier.C = obj.C;
 
             specifier.data = [];
 

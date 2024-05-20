@@ -13,11 +13,26 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function result = load_json(file_path)
+function result = load_json(file_path, varargin)
     
+    options = hdng.utilities.parse_struct_from_varargin(varargin{:});
+
     bytes = hdng.utilities.load_bytes(file_path);
     
-    options = options_from_file_path(file_path);
+    file_options = options_from_file_path(file_path);
+
+    option_names = fieldnames(file_options);
+
+    for index=1:numel(option_names)
+        option_name = option_names{index};
+
+        if isfield(options, option_name)
+            continue;
+        end
+
+        options.(option_name) = file_options.(option_name);
+    end
+
     result = decode(bytes, options);
 end
 
@@ -40,8 +55,13 @@ function result = decode(bytes, options)
     if ~isfield(options, 'compression')
         options.compression = false;
     end
+
     if ~isfield(options, 'base64')
         options.base64 = false;
+    end
+
+    if ~isfield(options, 'as_struct')
+        options.as_struct = false;
     end
 
     if options.compression
@@ -56,5 +76,9 @@ function result = decode(bytes, options)
         text = native2unicode(bytes, 'UTF-8');
     end
 
-    result = hdng.utilities.decode_json(text);
+    if ~options.as_struct
+        result = hdng.utilities.decode_json(text);
+    else
+        result = jsondecode(text);
+    end
 end

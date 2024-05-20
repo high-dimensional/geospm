@@ -15,8 +15,8 @@
 
 function [result_min, result_max] = intersect_boxes(left_min, left_max, right_min, right_max)
     
-    result_min = max([left_min(:); right_min(:)]);
-    result_max = min([left_max(:); right_max(:)]);
+    result_min = max([left_min(:)'; right_min(:)']);
+    result_max = min([left_max(:)'; right_max(:)']);
 
     if any(result_min >= result_max)
         result_min = [];

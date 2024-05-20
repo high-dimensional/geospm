@@ -103,16 +103,6 @@ classdef BaseSpatialIndex < geospm.TabularData
         function [x, y, z] = xyz_coordinates_for_segment(obj, segment_index) %#ok<STOUT,INUSD>
             error('xyz_coordinates_for_segment() must be implemented by a subclass.');
         end
-
-        %{
-        function result = row_indices_from_segment_indices(obj, segment_indices) %#ok<STOUT,INUSD>
-            error('row_indices_from_segment_indices() must be implemented by a subclass.');
-        end
-
-        function result = segment_indices_from_row_indices(obj, row_indices) %#ok<STOUT,INUSD>
-            error('segment_indices_from_row_indices() must be implemented by a subclass.');
-        end
-        %}
         
         function result = select_by_segment(obj, segment_selection, transform) %#ok<STOUT,INUSD>
             error('select_by_segment() must be implemented by a subclass.');
@@ -162,6 +152,10 @@ classdef BaseSpatialIndex < geospm.TabularData
         end
         
         function result = as_json_struct(obj, varargin) %#ok<STOUT,INUSD>
+            %Creates a JSON representation of this SpatialIndex as a struct.
+            % Possible name-value arguments are:
+            % None so far.
+
             error('as_json_struct() must be implemented by a subclass.');
         end
         
@@ -329,6 +323,39 @@ classdef BaseSpatialIndex < geospm.TabularData
         end
         %}
         
+
+        function segment_selection = normalise_segment_selection(obj, segment_selection)
+
+            if ~exist('segment_selection', 'var')
+                segment_selection = [];
+            end
+            
+            if isempty(segment_selection)
+                segment_selection = 1:obj.S;
+            end
+            
+            if ~isnumeric(segment_selection)
+                
+                if islogical(segment_selection)
+                    if numel(segment_selection) ~= obj.S
+                        error('The length of a logical segment selection vector must be equal to the number of segments.');
+                    end
+                else
+                    error('segment selection vector must be a numeric or logical array.');
+                end
+            else
+                segment_selection = segment_selection(:);
+
+                try
+                    tmp = (1:obj.S)';
+                    tmp = tmp(segment_selection); %#ok<NASGU>
+                    clear('tmp');
+                catch
+                    error('One or more segment selection indices are out of bounds.');
+                end
+            end
+        end
+
         function assign_property(obj, name, values)
             obj.(name) = values;
         end
@@ -490,20 +517,26 @@ classdef BaseSpatialIndex < geospm.TabularData
             frame_size = max_point - min_point;
         end
 
-        function result = from_json_struct_impl(specifier) %#ok<STOUT,INUSD>
+        function result = from_json_struct_impl(specifier, options) %#ok<STOUT,INUSD>
             error('from_json_struct_impl() must be implemented by a subclass.');
         end
 
-        function result = from_json_struct(specifier)
+        function result = from_json_struct(specifier, options)
                 
             ctor = str2func([specifier.ctor '.from_json_struct_impl']);
-            result = ctor(specifier);
+            result = ctor(specifier, options);
         end
         
         function result = load_from_matlab(filepath, varargin)
             
+            options = hdng.utilities.parse_struct_from_varargin(varargin{:});
+
+            if ~isfield(options, 'segment_base_path')
+                options.segment_base_path = fileparts(filepath);
+            end
+
             specifier = load(filepath);
-            result = geospm.BaseSpatialIndex.from_json_struct(specifier);
+            result = geospm.BaseSpatialIndex.from_json_struct(specifier, options);
         end
 
         function segment_sizes = segment_indices_to_segment_sizes(segment_indices)

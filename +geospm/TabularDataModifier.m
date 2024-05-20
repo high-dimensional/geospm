@@ -56,7 +56,7 @@ classdef TabularDataModifier < handle
                                             values(index:end)];
             end
 
-            specifier.N = size(specifier.data, 1);
+            %specifier.N = size(specifier.data, 1);
         end
 
         function specifier = insert_columns_op(obj, specifier, index, data, per_column)
@@ -93,12 +93,15 @@ classdef TabularDataModifier < handle
 
             end
 
-            specifier.C = size(specifier.data, 2);
+            %specifier.C = size(specifier.data, 2);
         end
 
         function specifier = select_op(obj, specifier, row_selection, column_selection)
             
-            [row_indices, column_indices] = obj.normalise_selection(specifier.N, specifier.C, row_selection, column_selection);
+            N = size(specifier.data, 1);
+            C = size(specifier.data, 2);
+
+            [row_indices, column_indices] = obj.normalise_selection(N, C, row_selection, column_selection);
             
             if ~isempty(specifier.data)
                 specifier.data = specifier.data(row_indices, column_indices);
@@ -120,8 +123,8 @@ classdef TabularDataModifier < handle
                 specifier.per_column.(name) = values(column_indices);
             end
 
-            specifier.N = size(specifier.data, 1);
-            specifier.C = size(specifier.data, 2);
+            %specifier.N = size(specifier.data, 1);
+            %specifier.C = size(specifier.data, 2);
         end
 
         function specifier = delete_op(~, specifier, row_indices, column_indices)
@@ -150,8 +153,8 @@ classdef TabularDataModifier < handle
                 specifier.per_column.(name) = values(col_selector);
             end
 
-            specifier.N = size(specifier.data, 1);
-            specifier.C = size(specifier.data, 2);
+            %specifier.N = size(specifier.data, 1);
+            %specifier.C = size(specifier.data, 2);
         end
 
         function specifier = permutate_op(~, specifier, row_permutation, column_permutation)

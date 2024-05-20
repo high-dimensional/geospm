@@ -42,6 +42,8 @@ classdef NumericData < geospm.TabularData
     
     properties (Dependent, Transient)
         
+        N % number of rows
+        C % number of columns
         P % number of variables == number of columns
         
         mean % row vector ? mean of the data
@@ -57,6 +59,14 @@ classdef NumericData < geospm.TabularData
     end
     
     methods
+        
+        function value = get.N(obj)
+            value = obj.access_N();
+        end
+        
+        function value = get.C(obj)
+            value = obj.access_C();
+        end
 
         function value = get.P(obj)
             value = obj.C;

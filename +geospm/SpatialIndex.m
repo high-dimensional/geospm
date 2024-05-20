@@ -18,7 +18,10 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
     % into segments.
     %
 
-    properties (Dependent, Transient, GetAccess=protected, SetAccess=protected)
+
+    properties (Dependent, Transient)
+        
+        N % number of rows
 
         x % a column vector of length N (a N by 1 matrix) of observation x locations
         y % a column vector of length N (a N by 1 matrix) of observation y locations
@@ -163,6 +166,10 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
             obj.segment_labels_ = segment_labels;
 
             [obj.segment_index_, obj.segment_offsets_] = obj.segment_indices_from_segment_sizes(size(x, 1), segment_sizes);
+        end
+
+        function result = get.N(obj)
+            result = obj.access_N();
         end
 
         function result = get.x(obj)
@@ -312,30 +319,7 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
                 segment_selection = [];
             end
             
-            if isempty(segment_selection)
-                segment_selection = 1:obj.S;
-            end
-
-            if ~isnumeric(segment_selection)
-                
-                if islogical(segment_selection)
-                    if numel(segment_selection) ~= obj.S
-                        error('select_by_segment(): The length of a logical segment selection vector must be equal to the number of segments.');
-                    end
-                else
-                    error('select_by_segment(): segment selection vector must be a numeric or logical array.');
-                end
-            else
-                segment_selection = segment_selection(:);
-
-                try
-                    tmp = (1:obj.S)';
-                    tmp = tmp(segment_selection); %#ok<NASGU>
-                    clear('tmp');
-                catch
-                    error('select_by_segment(): One or more segment selection indices are out of bounds.');
-                end
-            end
+            segment_selection = obj.normalise_segment_selection(segment_selection);
             
             if ~exist('transform', 'var')
                 transform = @(specifier, modifier) specifier;
@@ -675,7 +659,7 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
 
     methods (Static)
 
-        function result = from_json_struct_impl(specifier)
+        function result = from_json_struct_impl(specifier, ~)
             
             if ~isfield(specifier, 'x') || ~isnumeric(specifier.x)
                 error('Missing ''x'' field in json struct or ''x'' field is not numeric.');
