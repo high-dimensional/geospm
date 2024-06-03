@@ -14,7 +14,39 @@
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
 function study_path = run_comparative_study(varargin)
+    
+    %{
+        Defines additional variables in the study schedule and 
+        runs all experiments in a study via run_study().
 
+        The following name-value arguments are supported, in addition to
+        those defined for run_study():
+        -------------------------------------------------------------------
+
+        evaluator - The evaluator instance to be used. If not specified,
+        a geospm.validation.DataEvaluator instance will be created.
+
+        method - A cell array of method names. Defaults to {'SPM',
+        'Kriging'}.
+
+        spatial_data_specifier - A cell array of specifier structs.
+
+        n_samples - A cell array of sample numbers. Defaults to {1500,
+        2000, 2500};
+        
+        
+        The following additional variables will always be defined in the 
+        study schedule of a comparative study:
+
+        Spatial Data Specifier
+
+        Experiment Label - extracts the identifier and label fields from 
+        "Spatial Data Specifier"
+
+        Method
+        Number of Samples
+    %}
+    
     options = hdng.utilities.parse_struct_from_varargin(varargin{:});
     
     if ~isfield(options, 'n_samples')

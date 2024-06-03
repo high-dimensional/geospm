@@ -21,7 +21,16 @@ function [result, spatial_index] = load_data(file_path, varargin)
         Rows in the CSV file without coordinates are ignored.
 
         The following name-value arguments are supported:
+                
+        csv_delimiter – The field delimiter character of the CSV file.
+        Defaults to ',' (comma).
+
+        crs_identifier – An identifier for acoordinate reference system,
+        for example: 'EPSG:27700' If this parameter is not specified and
+        no '.prj' sidecar file can be found, a warning will be generated.
         
+        
+
         -------------------------------------------------------------------
         
         include – A cell array of column names to include
@@ -30,18 +39,11 @@ function [result, spatial_index] = load_data(file_path, varargin)
         Only one of 'include' and 'exclude' can be specified at the same
         time.
 
-        crs_identifier – An identifier for acoordinate reference system,
-        for example: 'EPSG:27700' If this parameter is not specified and
-        no '.prj' sidecar file can be found, a warning will be generated.
-        
         eastings_label – The name of the column that holds the eastings
         or x values of the point data. Defaults to 'x'.
 
         northings_label – The name of the column that holds the northings
         or y values of the point data. Defaults to 'y'.
-        
-        csv_delimiter – The field delimiter character of the CSV file.
-        Defaults to ',' (comma).
         
         row_identifier_label – The name of the column whose values uniquely
         identify rows. If defined, takes precedence over row_identifier_index.

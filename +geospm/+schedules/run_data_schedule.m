@@ -83,6 +83,14 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
     if ~isfield(options, 'presentation_layers')
         options.presentation_layers = {};
     end
+
+    if ~isfield(options, 'colour_map')
+        options.colour_map = [];
+    end
+
+    if ~isfield(options, 'colour_map_mode')
+        options.colour_map_mode = '';
+    end
     
     if ~isfield(options, 'study_name')
         [~, options.study_name, ~] = fileparts(study_directory);
@@ -114,7 +122,7 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
             [source, ~] = granular_connection.add_local_directory_source(study_directory, options.study_name);
             
             if isempty(source)
-                error('run_parallel_data_schedule(): Couldn''t create granular source.');
+                error('run_data_schedule(): Couldn''t create granular source.');
             end
         
             options.source_ref = source.file_root;
@@ -194,25 +202,6 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
     
     options.extra_variables = {};
     
-    options.extra_variables = add_conditional_value_list_variable(...
-        options.extra_variables, ...
-        'variogram_function', 'Variogram Function', ...
-        'method', 'Kriging', ...
-        'Mat', 'Gau');
-    
-    options.extra_variables = add_conditional_value_list_variable(...
-        options.extra_variables, ...
-        'add_nugget', 'Nugget Component', ...
-        'method', 'Kriging', ...
-        true, false);
-    
-    options.extra_variables = add_conditional_value_list_variable(...
-        options.extra_variables, ...
-        'coincident_observations_mode', 'Coincident Observations Mode', ...
-        'method', 'Kriging', ...
-        'jitter', 'average');
-    
-    
     options.evaluator = geospm.validation.DataEvaluator();
     
     options.evaluator.do_write_spatial_data = options.do_write_spatial_data;
@@ -241,6 +230,18 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
     
     options.evaluator.trace_thresholds = options.trace_thresholds;
     options = rmfield(options, 'trace_thresholds');
+
+    if ~isempty(options.colour_map)
+        options.evaluator.colour_map = options.colour_map;
+    end
+
+    options = rmfield(options, 'colour_map');
+
+    if ~isempty(options.colour_map_mode)
+        options.evaluator.colour_map_mode = options.colour_map_mode;
+    end
+
+    options = rmfield(options, 'colour_map_mode');
     
     if ~isempty(options.grid_options)
         options.evaluator.grid_options = options.grid_options;
@@ -364,26 +365,3 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
     end
 end
 
-function variables = add_conditional_value_list_variable(variables, identifier, description, requirement, condition_value, varargin)
-    
-    conditional = create_string_conditional(requirement, condition_value);
-    conditional.value_generator = hdng.experiments.ValueList.from(varargin{:});
-    
-    variable = struct(...
-        'identifier', identifier, ...
-        'description', description, ...
-        'value_generator', conditional ...
-    );
-    
-    variable.requirements = { conditional.requirement };
-    variables = [variables, {variable}];
-end
-
-function conditional = create_string_conditional(requirement, condition)
-
-    conditional = hdng.experiments.ConditionalGenerator();
-    conditional.requirement = requirement;
-    conditional.requirement_test = @(value) strcmp(value, condition);
-    conditional.missing_label = '-';
-    conditional.value_generator = [];
-end

@@ -171,7 +171,7 @@ classdef DataEvaluator < geospm.validation.Evaluator
             copyfile(layer.path, path);
         end
         
-        function path = render_image_field_presentation_layer(~, directory, layer, context)
+        function path = render_image_field_presentation_layer(~, directory, layer, context) %#ok<INUSD>
             
             path = [];
             parts = split(layer.record_path, '.');
@@ -322,13 +322,7 @@ classdef DataEvaluator < geospm.validation.Evaluator
                 grid_max_location = grid_options_copy.grid.cell_size(1:2) .* grid_options_copy.grid.resolution(1:2);
                 grid_spatial_resolution = grid_options_copy.grid.resolution;
             end
-            
-            spm_arguments_copy = obj.geospm_arguments;
-            
-            if ~isfield(spm_arguments_copy, 'spm_add_intercept')
-            	spm_arguments_copy.spm_add_intercept = true;
-            end
-            
+
             [spatial_model, domain_expr] = obj.create_dummy_model(spatial_data, spatial_index, grid_options_copy.grid.resolution(1:2), 'direct', false);
             
             sampling_strategy = geospm.models.sampling.Subsampling(grid_options_copy.grid);
@@ -354,52 +348,58 @@ classdef DataEvaluator < geospm.validation.Evaluator
                     'spm_add_intercept'
                 };
                 
-                if ~isfield(spm_arguments_copy, 'smoothing_levels')
-                    spm_arguments_copy.smoothing_levels = [10 20 30 50];
-                end
-
-                if ~isfield(spm_arguments_copy, 'smoothing_levels_p_value')
-                    spm_arguments_copy.smoothing_levels_p_value = 0.95;
-                end
-
-                if ~isfield(spm_arguments_copy, 'smoothing_levels_as_z_dimension')
-                    spm_arguments_copy.smoothing_levels_as_z_dimension = true;
-                end
-
-                if ~isfield(spm_arguments_copy, 'smoothing_method')
-                    spm_arguments_copy.smoothing_method = 'default';
-                end
-
-                if ~isfield(spm_arguments_copy, 'spm_thresholds')
-                    spm_arguments_copy.spm_thresholds = { 'T[1,2]: p<0.05 (FWE)' };
-                end
-
-                if ~isfield(spm_arguments_copy, 'spm_observation_transforms')
-                    spm_arguments_copy.spm_observation_transforms = { geospm.stages.ObservationTransform.IDENTITY };
+                experiment_arguments = obj.geospm_arguments;
+                
+                if ~isfield(experiment_arguments, 'spm_add_intercept')
+            	    experiment_arguments.spm_add_intercept = true;
                 end
                 
-                spm_arguments_copy.spm_thresholds = geospm.SignificanceTest.from_char(spm_arguments_copy.spm_thresholds);
+                if ~isfield(experiment_arguments, 'smoothing_levels')
+                    experiment_arguments.smoothing_levels = [10 20 30 50];
+                end
+
+                if ~isfield(experiment_arguments, 'smoothing_levels_p_value')
+                    experiment_arguments.smoothing_levels_p_value = 0.95;
+                end
+
+                if ~isfield(experiment_arguments, 'smoothing_levels_as_z_dimension')
+                    experiment_arguments.smoothing_levels_as_z_dimension = true;
+                end
+
+                if ~isfield(experiment_arguments, 'smoothing_method')
+                    experiment_arguments.smoothing_method = 'default';
+                end
+
+                if ~isfield(experiment_arguments, 'spm_thresholds')
+                    experiment_arguments.spm_thresholds = { 'T[1,2]: p<0.05 (FWE)' };
+                end
+
+                if ~isfield(experiment_arguments, 'spm_observation_transforms')
+                    experiment_arguments.spm_observation_transforms = { geospm.stages.ObservationTransform.IDENTITY };
+                end
+                
+                experiment_arguments.spm_thresholds = geospm.SignificanceTest.from_char(experiment_arguments.spm_thresholds);
                 
                 configuration.values(geospm.validation.Constants.SMOOTHING_LEVELS) = ...
-                    hdng.experiments.Value.from(spm_arguments_copy.smoothing_levels);
+                    hdng.experiments.Value.from(experiment_arguments.smoothing_levels);
                 
                 configuration.values(geospm.validation.Constants.SMOOTHING_LEVELS_P_VALUE) = ...
-                    hdng.experiments.Value.from(spm_arguments_copy.smoothing_levels_p_value);
+                    hdng.experiments.Value.from(experiment_arguments.smoothing_levels_p_value);
                 
                 configuration.values(geospm.validation.Constants.SMOOTHING_LEVELS_AS_Z_DIMENSION) = ...
-                    hdng.experiments.Value.from(spm_arguments_copy.smoothing_levels_as_z_dimension);
+                    hdng.experiments.Value.from(experiment_arguments.smoothing_levels_as_z_dimension);
                 
                 configuration.values(geospm.validation.Constants.SMOOTHING_METHOD) = ...
-                    hdng.experiments.Value.from(spm_arguments_copy.smoothing_method);
+                    hdng.experiments.Value.from(experiment_arguments.smoothing_method);
                 
                 configuration.values('spm_regression_thresholds') = ...
-                    hdng.experiments.Value.from(spm_arguments_copy.spm_thresholds);
+                    hdng.experiments.Value.from(experiment_arguments.spm_thresholds);
                 
                 configuration.values('spm_observation_transforms') = ...
-                    hdng.experiments.Value.from(spm_arguments_copy.spm_observation_transforms{1});
+                    hdng.experiments.Value.from(experiment_arguments.spm_observation_transforms{1});
                 
                 configuration.values('spm_add_intercept') = ...
-                    hdng.experiments.Value.from(spm_arguments_copy.spm_add_intercept);
+                    hdng.experiments.Value.from(experiment_arguments.spm_add_intercept);
                 
             elseif strcmp(method, 'Kriging')
                 
@@ -413,16 +413,16 @@ classdef DataEvaluator < geospm.validation.Evaluator
                     'variogram_function', ...
                     'add_nugget' };
                 
-                kriging_arguments_copy = obj.kriging_arguments;
+                experiment_arguments = obj.kriging_arguments;
                 
-                if ~isfield(kriging_arguments_copy, 'kriging_thresholds')
-                    kriging_arguments_copy.kriging_thresholds = { 'normal [1,2]: p < 0.05' };
+                if ~isfield(experiment_arguments, 'kriging_thresholds')
+                    experiment_arguments.kriging_thresholds = { 'normal [1,2]: p < 0.05' };
                 end
                 
-                kriging_arguments_copy.kriging_thresholds = geospm.SignificanceTest.from_char(kriging_arguments_copy.kriging_thresholds);
+                experiment_arguments.kriging_thresholds = geospm.SignificanceTest.from_char(experiment_arguments.kriging_thresholds);
                 
                 configuration.values('kriging_thresholds') = ...
-                    hdng.experiments.Value.from(kriging_arguments_copy.kriging_thresholds);
+                    hdng.experiments.Value.from(experiment_arguments.kriging_thresholds);
                 
             else
                 error('DataEvaluator.apply(): Unknown method \"%s\".', method);
@@ -468,6 +468,114 @@ classdef DataEvaluator < geospm.validation.Evaluator
     
     methods (Access=protected)
         
+        function [spatial_data, spatial_index] = load_spatial_data_future(obj, load_specifier)
+
+            file_path = load_specifier.file_path;
+            
+            if ~isfield(load_specifier, 'spatial_index_file')
+                load_specifier.spatial_index_file = [];
+            end
+
+            if ~isfield(load_specifier, 'include')
+                load_specifier.include = [];
+            end
+            
+            if ~isfield(load_specifier, 'interactions')
+                load_specifier.interactions = [];
+            end
+            
+
+            if ~isfield(load_specifier, 'identifier')
+                load_specifier.identifier = '';
+            end
+            
+            if ~isfield(load_specifier, 'label')
+                load_specifier.label = load_specifier.identifier;
+            end
+            
+            if ~isfield(load_specifier, 'group_identifier')
+                load_specifier.group_identifier = '';
+            end
+            
+            if ~isfield(load_specifier, 'group_label')
+                load_specifier.group_label = load_specifier.group_identifier;
+            end
+            
+
+
+            if ~isfield(load_specifier, 'variable_labels')
+                load_specifier.variable_labels = struct();
+            end
+            
+            
+            tmp = load_specifier;
+            tmp = rmfield(tmp, 'file_path');
+            tmp = rmfield(tmp, 'include');
+            tmp = rmfield(tmp, 'bool_variables');
+            tmp = rmfield(tmp, 'standardise');
+            tmp = rmfield(tmp, 'interactions');
+            tmp = rmfield(tmp, 'identifier');
+            tmp = rmfield(tmp, 'label');
+            tmp = rmfield(tmp, 'group_identifier');
+            tmp = rmfield(tmp, 'group_label');
+            tmp = rmfield(tmp, 'variable_labels');
+            
+            arguments = hdng.utilities.struct_to_name_value_sequence(tmp);
+            
+            cache_key = [file_path ':' load_specifier.spatial_index_file];
+
+            if ~obj.spatial_data_cache_.holds_key(cache_key)
+                [spatial_data, spatial_index] = geospm.load_spatial_data(file_path, arguments{:}, 'skip_rows_with_missing_values', false, 'skip_columns_with_missing_values', false);
+                obj.spatial_data_cache_(cache_key) = {spatial_data, spatial_index};
+            else
+                [spatial_data, spatial_index] = obj.spatial_data_cache_(cache_key);
+            end
+
+            % selection
+            
+
+            columns = [];
+            
+            if ~isempty(load_specifier.include)
+                for i=1:numel(load_specifier.include)
+                    name = load_specifier.include{i};
+                    index = find(strcmp(name, spatial_data.variable_names));
+                    columns = [columns, index]; %#ok<AGROW>
+                end
+            else
+                columns = 1:spatial_data.P;
+            end
+            
+            rows = ~any(isnan(spatial_data.observations(:, columns)), 2);
+            
+            spatial_data = spatial_data.select(rows, columns, ...
+                @(specifier, modifier) obj.transform_spatial_data(specifier, modifier, load_specifier.standardise));
+            
+            spatial_index = spatial_index.select(rows, []);
+            
+            % interactions
+
+            if ~isempty(load_specifier.interactions)
+                
+                spatial_data = spatial_data.select(...
+                    [], ...
+                    [], ...
+                    @(specifier, modifier) geospm.validation.DataEvaluator.add_interactions(...
+                        specifier, modifier, load_specifier.interactions));
+                
+                load_specifier.variable_labels = ...
+                    geospm.validation.DataEvaluator.add_interaction_labels(...
+                        load_specifier.variable_labels, load_specifier.interactions);
+            end
+            
+            % attachments
+
+            spatial_data.attachments.group_identifier = load_specifier.group_identifier;
+            spatial_data.attachments.group_label = load_specifier.group_label;
+            spatial_data.attachments.variable_labels = load_specifier.variable_labels;
+        end
+        
+
         function [spatial_data, spatial_index] = load_spatial_data(obj, load_specifier)
 
             file_path = load_specifier.file_path;
@@ -567,6 +675,7 @@ classdef DataEvaluator < geospm.validation.Evaluator
             spatial_data.attachments.variable_labels = load_specifier.variable_labels;
         end
         
+
         function domain = build_data_domain(~, spatial_data)
             
             domain = geospm.models.Domain();
