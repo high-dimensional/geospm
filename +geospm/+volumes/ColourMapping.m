@@ -41,7 +41,6 @@ classdef ColourMapping < geospm.volumes.Renderer
             
             obj.colour_map = hdng.colour_mapping.GenericColourMap.twilight_27();
             obj.colour_map_mode = hdng.colour_mapping.ColourMap.LAYER_MODE;
-            %obj.colour_map_mode = hdng.colour_mapping.ColourMap.BATCH_MODE;
         end
         
         function [files, metadata_per_file] = render(obj, context)
