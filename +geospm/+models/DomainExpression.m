@@ -141,10 +141,11 @@ classdef DomainExpression < handle
 
             function specifier = swap_observations(specifier, modifier)
                 
-                old_column_indices = 1:specifier.C;
+                C = size(specifier.data, 2);
+                old_column_indices = 1:C;
 
                 per_column.variable_names = obj.term_names;
-                specifier = modifier.insert_columns_op(specifier, specifier.C + 1, observations, per_column);
+                specifier = modifier.insert_columns_op(specifier, C + 1, observations, per_column);
                 specifier = modifier.delete_op(specifier, [], old_column_indices);
             end
 
