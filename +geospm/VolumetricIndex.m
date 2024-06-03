@@ -86,6 +86,11 @@ classdef VolumetricIndex < geospm.BaseSpatialIndex
             obj.segment_metadata_ = cell(numel(segment_paths), 1);
         end
         
+
+        function result = select(obj, row_selection, column_selection, transform) %#ok<STOUT,INUSD>
+            error('select() is not supported by VolumetricIndex.');
+        end
+
         function [x, y, z] = xyz_coordinates_for_segment(obj, segment_index)
 
             path = obj.segment_paths{segment_index};
