@@ -355,10 +355,10 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
             z_projected = cast(w, 'double');
 
             segment_indices = obj.segment_indices_from_row_indices(row_indices);
-            segment_sizes = obj.segment_indices_to_segment_sizes(obj.segment_index(row_indices));
+            segment_sizes_new = obj.segment_indices_to_segment_sizes(obj.segment_index(row_indices));
             segment_labels = obj.segment_labels(segment_indices);
 
-            spatial_index = geospm.SpatialIndex(x_projected, y_projected, z_projected, segment_sizes, segment_labels, obj.crs);
+            spatial_index = geospm.SpatialIndex(x_projected, y_projected, z_projected, segment_sizes_new, segment_labels, obj.crs);
             
             spatial_index.attachments.assigned_grid = assigned_grid;
         end

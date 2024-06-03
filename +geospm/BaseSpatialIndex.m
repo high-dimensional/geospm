@@ -328,6 +328,9 @@ classdef BaseSpatialIndex < geospm.TabularData
                     if numel(segment_selection) ~= obj.S
                         error('The length of a logical segment selection vector must be equal to the number of segments.');
                     end
+
+                    segment_selection = find(segment_selection);
+                    segment_selection = segment_selection(:);
                 else
                     error('segment selection vector must be a numeric or logical array.');
                 end
