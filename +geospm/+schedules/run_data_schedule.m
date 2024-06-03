@@ -13,20 +13,79 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function run_data_schedule(study_random_seed, study_directory, file_specifier, model_specifiers, run_mode, varargin)
-    
-    
-    %geospm.validation.SpatialExperiment.REGULAR_MODE
+function run_data_schedule(study_random_seed, study_directory, data_specifiers, run_mode, varargin)
     
     %{
-    
+        
+        study_random_seed - The randomisation seed of the study. Specify
+        a value to replicate a particular run of a study, otherwise a
+        default value is generated via 'randi(intmax('uint32'), 1)'.
+        
+        study_directory - A path to the study directory. If empty, a
+        timestamped directory in the current working directory will be
+        created.
+        
+        data_specifiers - A cell array of data specifiers
+
+        run_mode - The run mode for the study.
+        
+        The following name-value arguments are supported:
+        
+        -------------------------------------------------------------------
+        
+        n_samples – 
+
+        n_repetitions – Defaults to 1.
+
+        generate_report - Defaults to true.
+
+        geospm_arguments - A struct with the following fields:
+            
+            write_applied_mask
+
+            smoothing_levels
+            smoothing_levels_p_value
+            smoothing_levels_as_z_dimension
+            smoothing_method
+            
+            spm_thresholds
+            spm_observation_transforms
+            spm_add_intercept
+
+        kriging_arguments - A struct with the following fields:
+            
+            kriging_thresholds
+            adjust_variance
+
+        grid_options
+
+        apply_density_mask
+        density_mask_factor
+
+        apply_geographic_mask
+        add_georeference_to_images
+
+        presentation_layers
+        colour_map
+        colour_map_mode
+        
+        study_name
+        attachments
+        granular
+        source_ref
+        optional_cmds
+        
+        render_intercept_separately
+        set_model_grid
+        do_write_spatial_data
+        experiments
+
         model_specifier:
     
         label
         variables
         interactions
     %}
-    
     
     options = hdng.utilities.parse_struct_from_varargin(varargin{:});
     
@@ -36,16 +95,12 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
     options.study_random_seed = study_random_seed;
     options.study_directory = study_directory;
     
-    if ~isfield(options, 'method') 
-        options.method = { 'SPM' };
-    end
-    
     if ~isfield(options, 'n_samples')
         options.n_samples = { 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 15000 };
     end
     
     if ~isfield(options, 'n_repetitions')
-        options.n_repetitions = 10;
+        options.n_repetitions = 1;
     end
     
     if ~isfield(options, 'generate_report')
@@ -53,11 +108,51 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
     end
     
     if ~isfield(options, 'geospm_arguments')
-        options.geospm_arguments = [];
+        options.geospm_arguments = {};
+    end
+    
+    if ~isfield(options.geospm_arguments, 'write_applied_mask')
+        options.geospm_arguments.write_applied_mask = true;
+    end
+    
+    if ~isfield(options.geospm_arguments, 'smoothing_levels')
+        options.geospm_arguments.smoothing_levels = [10 20 30 50];
+    end
+
+    if ~isfield(options.geospm_arguments, 'smoothing_levels_p_value')
+        options.geospm_arguments.smoothing_levels_p_value = 0.95;
+    end
+
+    if ~isfield(options.geospm_arguments, 'smoothing_levels_as_z_dimension')
+        options.geospm_arguments.smoothing_levels_as_z_dimension = true;
+    end
+
+    if ~isfield(options.geospm_arguments, 'smoothing_method')
+        options.geospm_arguments.smoothing_method = 'default';
+    end
+
+    if ~isfield(options.geospm_arguments, 'spm_thresholds')
+        options.geospm_arguments.spm_thresholds = { 'T[1,2]: p<0.05 (FWE)' };
+    end
+
+    if ~isfield(options.geospm_arguments, 'spm_observation_transforms')
+        options.geospm_arguments.spm_observation_transforms = { geospm.stages.ObservationTransform.IDENTITY };
+    end
+
+    if ~isfield(options.geospm_arguments, 'spm_add_intercept')
+        options.geospm_arguments.spm_add_intercept = true;
     end
     
     if ~isfield(options, 'kriging_arguments')
-        options.kriging_arguments = [];
+        options.kriging_arguments = {};
+    end
+
+    if ~isfield(options.kriging_arguments, 'kriging_thresholds')
+        options.kriging_arguments.kriging_thresholds = { 'normal [2]: p < 0.05', 'normal [1,2]: p < 0.05' };
+    end
+
+    if ~isfield(options.kriging_arguments, 'adjust_variance')
+        options.kriging_arguments.adjust_variance = true;
     end
     
     if ~isfield(options, 'grid_options')
@@ -144,63 +239,94 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
     if ~isfield(options, 'do_write_spatial_data')
         options.do_write_spatial_data = true;
     end
-    
-    if ~isfield(options.geospm_arguments, 'write_applied_mask')
-        options.geospm_arguments.write_applied_mask = true;
-    end
 
-    if ~isfield(options.geospm_arguments, 'spm_add_intercept')
-        options.geospm_arguments.spm_add_intercept = true;
-    end
-    
-    if ~isfield(options.geospm_arguments, 'spm_thresholds')
-        options.geospm_arguments.spm_thresholds = { 'T[2]: p<0.05 (FWE)', 'T[1,2]: p<0.05 (FWE)' };
-    end
+    if ~isfield(options, 'experiments')
+        
+        spm_regression = geospm.validation.configure_spm_experiment(options.geospm_arguments);
 
-    if ~isfield(options.kriging_arguments, 'kriging_thresholds')
-        options.kriging_arguments.kriging_thresholds = { 'normal [2]: p < 0.05', 'normal [1,2]: p < 0.05' };
+        options.experiments = { spm_regression ...
+                                };
     end
     
-    options.spatial_data_specifier = {};
-    
-    for i=1:numel(model_specifiers)
+    for i=1:numel(options.experiments)
+        experiment = options.experiments{i};
 
-        model_specifier = model_specifiers{i};
-        
-        if ~isfield(model_specifier, 'interactions')
-            model_specifier.interactions = {};
+        if ~isfield(experiment, 'experiment_type')
+            error('Expected experiment type in experiment specification.');
         end
         
-        if ~isfield(model_specifier, 'variable_labels')
-            model_specifier.variable_labels = {};
+        if ~isfield(experiment, 'extra_requirements')
+            experiment.extra_requirements = {};
         end
         
-        model_file_specifier = file_specifier;
-        model_file_specifier.identifier = model_specifier.identifier;
-        model_file_specifier.label = model_specifier.label;
-        model_file_specifier.group_identifier = model_specifier.group_identifier;
-        model_file_specifier.group_label = model_specifier.group_label;
-        model_file_specifier.include = [model_file_specifier.include, model_specifier.variables];
-        model_file_specifier.interactions = model_specifier.interactions;
-        model_file_specifier.variable_labels = model_specifier.variable_labels;
-        
-        if isfield(model_file_specifier, 'bool_variables')
-            model_file_specifier = rmfield(model_file_specifier, 'bool_variables');
+        if ~isfield(experiment, 'extra_variables')
+            experiment.extra_variables = {};
         end
         
-        for j=1:numel(model_specifier.variables)
-            
-            variable = model_specifier.variables{j};
-            
-            if ~ismember(variable, file_specifier.bool_variables)
-                model_file_specifier.standardise{end + 1} = variable;
-            end
-        end
-        
-        options.spatial_data_specifier{end + 1} = model_file_specifier;
+        options.experiments{i} = experiment;
     end
     
-    options.extra_variables = {};
+    experiment_values = cell(numel(options.experiments), 1);
+    
+    for index=1:numel(options.experiments)
+        experiment = options.experiments{index};
+        
+        if isfield(experiment, 'description')
+            description = experiment.description;
+        else
+            description = experiment.experiment_type;
+        end
+        
+        experiment = hdng.experiments.Value.from(experiment, description, missing, 'builtin.missing');
+        experiment_values{index} = experiment;
+    end
+    
+    options.extra_variables = {
+        
+
+        geospm.schedules.configure_variable(...
+            geospm.validation.Constants.N_SAMPLES, 'Number of Samples', ...
+            {}, options.n_samples);
+       
+        geospm.schedules.configure_variable(...
+            'spatial_data_specifier', 'Spatial Data Specifier', ...
+            {}, data_specifiers);
+        
+        geospm.schedules.configure_variable(...
+            'experiment_label', 'Experiment Label', ...
+            {'spatial_data_specifier'}, ...
+            geospm.validation.value_generators.ExtractStructField('from', 'spatial_data_specifier', 'field', 'identifier', 'label_field', 'label') ...
+         );
+         
+        geospm.schedules.configure_variable(...
+            geospm.validation.Constants.EXPERIMENT, 'Experiment Type', ...
+            {}, experiment_values);
+
+    };
+    
+    options.extra_variables = options.extra_variables';
+    
+    %{
+    sampling_strategy = geospm.validation.value_generators.CreateSamplingStrategy(options.sampling_strategy, ...
+        'add_position_jitter', options.add_position_jitter, ...
+        'add_observation_noise', options.add_observation_noise, ...
+        'observation_noise', options.observation_noise, ...
+        'coincident_observations_mode', options.coincident_observations_mode );
+    
+    hdng.experiments.Variable(schedule, geospm.validation.Constants.SAMPLING_STRATEGY, sampling_strategy, {}, 'description', 'Sampling Strategy');
+    
+    create_domain_expressions = geospm.validation.value_generators.CreateDomainExpressions('encoding', options.domain_encoding);
+    hdng.experiments.Variable(schedule, geospm.validation.Constants.DOMAIN_EXPRESSION, create_domain_expressions, {generator}, 'description', 'Domain Expression');
+    %}
+
+    
+    for i=1:numel(options.experiments)
+        experiment = options.experiments{i};
+        options.extra_variables = [options.extra_variables, experiment.extra_variables];
+    end
+    
+    options = rmfield(options, 'n_samples');
+
     
     options.evaluator = geospm.validation.DataEvaluator();
     
@@ -249,37 +375,21 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
     
     options = rmfield(options, 'grid_options');
     
-    if ~isempty(options.geospm_arguments)
-        argument_names = fieldnames(options.geospm_arguments);
-        
-        for i=1:numel(argument_names)
-            name = argument_names{i};
-            
-            options.evaluator.geospm_arguments.(name) = options.geospm_arguments.(name);
-        end
-    end
-    
     options = rmfield(options, 'geospm_arguments');
-    
-    if ~isempty(options.kriging_arguments)
-        argument_names = fieldnames(options.kriging_arguments);
-        
-        for i=1:numel(argument_names)
-            name = argument_names{i};
-            
-            options.evaluator.kriging_arguments.(name) = options.kriging_arguments.(name);
-        end
-    end
     
     options = rmfield(options, 'kriging_arguments');
     
     options.evaluator.run_mode = run_mode;
     options.evaluator.null_level = 0.0;
     
+    %{
     for i=1:numel(file_specifier.bool_variables)
         bool_variable = file_specifier.bool_variables{i};
         options.evaluator.null_level_map(bool_variable) = 0.5;
     end
+    %}
+
+    assign_null_levels(data_specifiers, options.evaluator);
     
     if ~strcmp(run_mode, geospm.validation.SpatialExperiment.DEFERRED_MODE)
         
@@ -300,8 +410,6 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
         options.evaluator.no_targets = true;
         options.evaluator.load_targets = false;
     end
-    
-    options.evaluator.adjust_variance = true;
     
     generate_report = options.generate_report && ...
                       ~strcmp(run_mode, geospm.validation.SpatialExperiment.DEFERRED_MODE) && ...
@@ -331,7 +439,7 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
     
     arguments = hdng.utilities.struct_to_name_value_sequence(options);
     
-    study_path = geospm.validation.run_comparative_study(arguments{:});
+    study_path = geospm.validation.run_study(arguments{:});
     
     options.evaluator.save_diagnostics_as_json(fullfile(study_path, 'diagnostics.json'));
     
@@ -365,3 +473,39 @@ function run_data_schedule(study_random_seed, study_directory, file_specifier, m
     end
 end
 
+function assign_null_levels(data_specifiers, evaluator)
+
+    variable_type_map = struct();
+    variable_bool_map = struct();
+
+    for index=1:numel(data_specifiers)
+        specifier = data_specifiers{index};
+        variables = specifier.file_options.variables;
+    
+        for i=1:numel(variables)
+            variable = variables(i);
+    
+            identifier = variable.resolve_name();
+
+            if ~isfield(variable_type_map, identifier)
+                variable_type_map.(identifier) = struct();
+            end
+
+            types = variable_type_map.(identifier);
+            types.(variable.type) = true;
+            variable_type_map.(identifier) = types;
+            
+            is_logical = strcmp(variable.type, 'logical');
+
+            if is_logical
+                variable_bool_map.(identifier) = true;
+                evaluator.null_level_map(identifier) = 0.5;
+            end
+
+            if isfield(variable_bool_map, identifier) && numel(fieldnames(types)) > 1
+                error('Inconsistent variable types across one or more data specifiers.');
+            end
+        end
+        
+    end
+end

@@ -14,7 +14,7 @@
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
 function run_parallel_data_schedule(study_random_seed, study_directory, ... 
-            file_specifier, model_specifiers, run_mode, varargin)
+            data_specifiers, run_mode, varargin)
     
     
     %geospm.validation.SpatialExperiment.REGULAR_MODE
@@ -89,20 +89,20 @@ function run_parallel_data_schedule(study_random_seed, study_directory, ...
         hdng.utilities.save_text('', PROCESS_ID_FILE);
     end
     
-    model_directories = cell(numel(model_specifiers), 1);
+    data_directories = cell(numel(data_specifiers), 1);
 
-    for i=1:numel(model_specifiers)
-        model_specifier = model_specifiers{i};
+    for i=1:numel(data_specifiers)
+        specifier = data_specifiers{i};
         
-        model_directory = fullfile(study_directory, model_specifier.identifier);
-        model_directories{i} = model_directory;
+        data_directory = fullfile(study_directory, specifier.identifier);
+        data_directories{i} = data_directory;
         
-        [dirstatus, dirmsg] = mkdir(model_directory);
+        [dirstatus, dirmsg] = mkdir(data_directory);
         if dirstatus ~= 1; error(dirmsg); end
         
-        log_path = fullfile(model_directory, [model_specifier.identifier '.log']);
+        log_path = fullfile(data_directory, [specifier.identifier '.log']);
         
-        command = create_model_mat_command(study_random_seed, model_directory, file_specifier, model_specifier, run_mode, optional_cmds, options);
+        command = create_model_mat_command(study_random_seed, data_directory, specifier, run_mode, optional_cmds, options);
         
         if options.do_debug
             eval(command);
@@ -113,7 +113,7 @@ function run_parallel_data_schedule(study_random_seed, study_directory, ...
             [~, cmdout] = system(execute);
             %fprintf(cmdout);
 
-            hdng.utilities.save_text([cmdout(1:end-numel(newline)) ':' model_directory newline], PROCESS_ID_FILE, 'append');
+            hdng.utilities.save_text([cmdout(1:end-numel(newline)) ':' data_directory newline], PROCESS_ID_FILE, 'append');
             
             INTERVAL = INTERVAL + 1;
 
@@ -135,14 +135,14 @@ function run_parallel_data_schedule(study_random_seed, study_directory, ...
     [~, cmdout] = system(execute);
     fprintf(cmdout);
     
-    record_arguments = cell(numel(model_specifiers), 1);
+    record_arguments = cell(numel(data_specifiers), 1);
 
     for i=1:numel(record_arguments)
         argument = struct();
-        argument.path = fullfile(model_directories{i}, 'records.json.gz');
+        argument.path = fullfile(data_directories{i}, 'records.json.gz');
         argument.rebase_paths = struct();
         argument.rebase_paths.dir_regexp = ['^([^' filesep ']).+$'];
-        argument.rebase_paths.dir_replacement = [model_specifiers{i}.identifier filesep];
+        argument.rebase_paths.dir_replacement = [data_specifiers{i}.identifier filesep];
         argument.rebase_paths.dir_mode = 'before';
         
         record_arguments{i} = argument;
@@ -157,19 +157,19 @@ function run_parallel_data_schedule(study_random_seed, study_directory, ...
     hdng.experiments.save_records(records, records_path);
 end
 
-function result = create_model_mat_command(study_random_seed, study_directory, file_specifier, model_specifier, run_mode, optional_cmds, options)
+function result = create_model_mat_command(study_random_seed, study_directory, data_specifier, run_mode, optional_cmds, options)
     
-    filename = [model_specifier.identifier, '_command.mat'];
+    filename = [data_specifier.identifier, '_command.mat'];
     filepath = fullfile(study_directory, filename);
-    model_specifiers = {model_specifier};
+    data_specifiers = {data_specifier};
     
-    save(filepath, 'study_random_seed', 'study_directory', 'file_specifier', 'model_specifiers', 'run_mode', 'options');
+    save(filepath, 'study_random_seed', 'study_directory', 'data_specifiers', 'run_mode', 'options');
     
     result = sprintf('geospm.schedules.run_data_schedule_from(%s);', ...
                 char_to_literal(filepath));
 end
 
-function result = create_model_text_command(study_random_seed, study_directory, file_specifier, model_specifier, run_mode, options)
+function result = create_model_text_command(study_random_seed, study_directory, data_specifier, run_mode, options)
     
     optional_arguments = struct_to_literal(options, true, '    ');
     
@@ -185,9 +185,7 @@ function result = create_model_text_command(study_random_seed, study_directory, 
                 argsep, ...
                 char_to_literal(study_directory), ...
                 argsep, ...
-                struct_to_literal(file_specifier, false, '    '), ...
-                argsep, ...
-                ['{' struct_to_literal(model_specifier, false, '    ') '}'], ...
+                ['{' struct_to_literal(data_specifier, false, '    ') '}'], ...
                 argsep, ...
                 char_to_literal(run_mode), ...
                 optional_arguments);
