@@ -14,6 +14,82 @@
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
 function study_path = run_study(varargin)
+    
+    %{
+        Runs all experiments in a study.
+
+        The following name-value arguments are supported:
+        -------------------------------------------------------------------
+
+        study_directory - A path to the study directory. If empty, a
+        timestamped directory in the current working directory will be
+        created.
+
+        study_name - The name of the study. The default value is ''.
+
+        canonical_base_path - A path to be used as the canonical base path
+        for all metadata instead of the study directory, which is the
+        default.
+
+        source_ref - A granular server source reference to be used in
+        conjunction with the canonical_base_path in all file references
+        when writing metadata. Empty ('') by default, otherwise specify the
+        UUID4 of a source stored in a granular server. 
+        
+        study_random_seed - The randomisation seed of the study. Specify
+        a value to replicate a particular run of a study, otherwise a
+        default value is generated via 'randi(intmax('uint32'), 1)'.
+
+        is_rehearsal - Indicates a whether this run is a rehearsal. A
+        rehearsal iterates all experiments in a study without running them.
+        Defaults to 'false'.
+
+        n_repetitions - Specifies the number of times individual 
+        experiments in the study are repeated.
+
+        repetition - An array of unique repetition numbers to be used as
+        a variable in the study.
+
+        randomisation_variables - A cell array of study schedule variables
+        whose values affect the randomisation of each experiment. If not
+        specified, only hdng.experiments.Schedule.REPETITION is assumed to
+        be a randomisation variable.
+        
+        stage_identifier -
+
+        no_stage_path - Defaults to 'true'.
+
+        evaluation_prefix - Defaults to ''.
+        
+        evaluator - The evaluator instance to be used. If not specified,
+        a hdng.experiments.SimulatedEvaluator instance will be created.
+
+        extra_variables - A cell array of additional variables to be 
+        included in the study schedule. Each variable is specified as a
+        struct with the following fields:
+
+            identifier - a unique identifier of the variable
+            description - a human-readable text label
+            requirements - a cell array of identifier of variables this
+            variable depends on.
+            value_generator - An instance of a value generator that
+            iterates all values of the variable to be used.
+            
+            interactive - A struct of presentation parameters. Currently
+            defaults to a single field, 'default_display_mode' and a default
+            value, 'auto'.
+        
+        attachments - A struct of optional study attachments.
+
+        The following variables will always be defined in the study
+        schedule:
+
+        geospm.validation.Constants.SOURCE_VERSION
+        geospm.validation.Constants.REPETITION
+        geospm.validation.Constants.RANDOM_SEED
+        geospm.validation.Constants.SPM_VERSION
+        
+    %}
 
     options = hdng.utilities.parse_struct_from_varargin(varargin{:});
     
@@ -36,6 +112,7 @@ function study_path = run_study(varargin)
     if ~isfield(options, 'study_random_seed')
         options.study_random_seed = randi(intmax('uint32'), 1);
     end
+
     if ~isfield(options, 'is_rehearsal')
         options.is_rehearsal = false;
     end
@@ -104,10 +181,6 @@ function study_path = run_study(varargin)
         end
         
         options.extra_variables{i} = variable;
-    end
-    
-    if ~isfield(options, 'n_subsamples')
-        %options.n_subsamples = {500 1000 1500 2000 2500};
     end
     
     if ~isfield(options, 'attachments')
@@ -188,6 +261,7 @@ function study_path = run_study(varargin)
     study_path = study.execute(options.study_directory, study_options);
 end
 
+%{
 function [with_requirements, without_requirements] = ...
     filter_extra_variables_by_requirements(extra_variables, requirements)
 
@@ -213,6 +287,7 @@ function [with_requirements, without_requirements] = ...
     end
 end
 
+
 function result = match_string(value, candidates)
 
     result = zeros(numel(candidates), 1, 'logical');
@@ -221,3 +296,4 @@ function result = match_string(value, candidates)
         result(i) = strcmp(value, candidates{i});
     end
 end
+%}
