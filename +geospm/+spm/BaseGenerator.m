@@ -227,11 +227,11 @@ classdef BaseGenerator < SyntheticVolumeGenerator
                 
                 V_data = zeros(obj.volume_size());
 
-                for index=1:obj.window_resolution(3)
+                for index=1:size(obj.smooth_map, 3)
 
                     V_data(:, :, index) = specifier.spatial_index.convolve_segment( ...
                         specifier.segment_number, ...
-                        [1, 1, 1], [obj.window_resolution(1:2), 1] + [1, 1, 0], ...
+                        [1, 1, 1], [obj.window_resolution(1:2), 1] + [1, 1, 1], ...
                         obj.smooth_map(:, :, index));
                 end
             else
