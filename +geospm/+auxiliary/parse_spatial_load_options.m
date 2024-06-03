@@ -32,18 +32,25 @@ function [load_options, other_options] = parse_spatial_load_options(varargin)
         other_options = rmfield(other_options, 'spatial_index_file');
     end
     
-    if ~isfield(other_options, 'x_label')
-        load_options.eastings_label = 'x';
+    if ~isfield(other_options, 'x_coordinate')
+        load_options.x_coordinate = 'x';
     else
-        load_options.eastings_label = other_options.eastings_label;
-        other_options = rmfield(other_options, 'eastings_label');
+        load_options.x_coordinate = other_options.x_coordinate;
+        other_options = rmfield(other_options, 'x_coordinate');
     end
     
-    if ~isfield(other_options, 'y_label')
-        load_options.northings_label = 'y';
+    if ~isfield(other_options, 'y_coordinate')
+        load_options.y_coordinate = 'y';
     else
-        load_options.northings_label = other_options.northings_label;
-        other_options = rmfield(other_options, 'northings_label');
+        load_options.y_coordinate = other_options.y_coordinate;
+        other_options = rmfield(other_options, 'y_coordinate');
+    end
+    
+    if ~isfield(other_options, 'z_coordinate')
+        load_options.z_coordinate = '';
+    else
+        load_options.z_coordinate = other_options.z_coordinate;
+        other_options = rmfield(other_options, 'z_coordinate');
     end
     
     if isfield(other_options, 'segment_index')

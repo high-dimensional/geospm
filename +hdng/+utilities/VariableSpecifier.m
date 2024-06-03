@@ -21,12 +21,12 @@ classdef VariableSpecifier
         
         name_or_index_in_file
         rename_as
+        label
         
         type
         value_options
         
         role
-
         handlers
     end
     
@@ -82,40 +82,40 @@ classdef VariableSpecifier
             result = ~isempty(obj.type);
         end
 
-        function obj = VariableSpecifier(varargin)
+        function obj = VariableSpecifier(name_or_index_in_file, rename_as, ...
+                label, type, value_options, role, handlers)
             
-            options = hdng.utilities.parse_struct_from_varargin(varargin{:});
-            
-            if ~isfield(options, 'name_or_index_in_file')
-                options.name_or_index_in_file = [];
+            if ~exist('rename_as', 'var')
+                rename_as = '';
             end
 
-            if ~isfield(options, 'rename_as')
-                options.rename_as = '';
+            if ~exist('label', 'var')
+                label = '';
             end
 
-            if ~isfield(options, 'type')
-                options.type = 'char';
+            if ~exist('type', 'var')
+                type = 'double';
             end
 
-            if ~isfield(options, 'value_options')
-                options.value_options = hdng.utilities.ValueOptions.empty;
+            if ~exist('value_options', 'var')
+                value_options = hdng.utilities.ValueOptions.empty;
             end
 
-            if ~isfield(options, 'role')
-                options.role = '';
+            if ~exist('role', 'var')
+                role = '';
             end
 
-            if ~isfield(options, 'handlers')
-                options.handlers = {};
+            if ~exist('handlers', 'var')
+                handlers = {};
             end
 
-            obj.name_or_index_in_file = options.name_or_index_in_file;
-            obj.rename_as = options.rename_as;
-            obj.type = options.type;
-            obj.value_options = options.value_options;
-            obj.role = options.role;
-            obj.handlers = options.handlers;
+            obj.name_or_index_in_file = name_or_index_in_file;
+            obj.rename_as = rename_as;
+            obj.label = label;
+            obj.type = type;
+            obj.value_options = value_options;
+            obj.role = role;
+            obj.handlers = handlers;
         end
 
         function [index, resolved_name] = locate_in(obj, variable_names)
@@ -184,6 +184,10 @@ classdef VariableSpecifier
 
         function name = resolve_name(obj, default_name)
 
+            if ~exist('default_name', '')
+                default_name = '';
+            end
+
             name = obj.name_in_file;
             
             if ~isempty(obj.rename_as)
@@ -194,5 +198,70 @@ classdef VariableSpecifier
                 name = default_name;
             end
         end
+
+        function label = resolve_label(obj, default_label)
+
+            if ~exist('default_label', '')
+                default_label = '';
+            end
+            
+            label = obj.label;
+            
+            if isempty(label)
+                label = obj.resolve_name();
+            end
+
+            if isempty(label)
+                label = default_label;
+            end
+        end
+    end
+
+    methods (Static)
+    
+
+        function obj = from(varargin)
+            
+            options = hdng.utilities.parse_struct_from_varargin(varargin{:});
+            
+            if ~isfield(options, 'name_or_index_in_file')
+                options.name_or_index_in_file = [];
+            end
+
+            if ~isfield(options, 'rename_as')
+                options.rename_as = '';
+            end
+
+            if ~isfield(options, 'type')
+                options.type = 'double';
+            end
+
+            if ~isfield(options, 'value_options')
+                options.value_options = hdng.utilities.ValueOptions.empty;
+            end
+
+            if ~isfield(options, 'role')
+                options.role = '';
+            end
+            
+            if ~isfield(options, 'label')
+                options.label = '';
+            end
+
+            if ~isfield(options, 'handlers')
+                options.handlers = {};
+            end
+
+            obj = hdng.utilities.VariableSpecifier( ...
+                options.name_or_index_in_file, ...
+                options.rename_as, ...
+                options.label, ...
+                options.type, ...
+                options.value_options, ...
+                options.role, ...
+                options.handlers ...
+            );
+        end
+
     end
 end

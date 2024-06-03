@@ -97,7 +97,7 @@ function [result, spatial_index] = load_spatial_data(file_path, varargin)
         skip_columns_with_missing_values – Ignore columns with missing
         values. Defaults to true.
 
-        Also see geospm.auxiliary.parse_load_options().
+        Also see geospm.auxiliary.parse_spatial_load_options().
     %}
 
     [options, unused_options] = geospm.auxiliary.parse_spatial_load_options(varargin{:});
@@ -143,6 +143,10 @@ function [result, spatial_index] = load_spatial_data(file_path, varargin)
         loader.load_from_file( ...
             file_path, [spatial_variables(:); options.variables(:)]);
 
+    role_map = create_role_map(variables);
+
+    row_labels = define_row_labels(variables, N_rows, role_map);
+    
     N_spatial_variables = numel(spatial_variables);
 
     if N_spatial_variables > 0
@@ -155,111 +159,62 @@ function [result, spatial_index] = load_spatial_data(file_path, varargin)
         end
     
         spatial_variables = variables(1:N_spatial_variables);
-        variables = variables(N_spatial_variables + 1:end);
-        selected_specifiers = selected_specifiers(N_spatial_variables + 1:end);
-
-        spatial_index = create_spatial_index_from_variables(spatial_variables, crs_or_crs_identifier);
+        spatial_index = create_spatial_index_from_variables(spatial_variables, crs_or_crs_identifier, row_labels);
     end
-    
-    %{
-    variable_map = create_variable_map(variables);
-    %}
-
-    role_map = create_role_map(variables);
     
     if ~isKey(role_map, '')
         error('No data variables defined.');
     end
     
-    if ~isKey(role_map, 'row_label')
-        row_labels = (1:N_rows)';
-    else
-        
-        row_label_index = role_map('row_label');
-
-        if numel(row_label_index) > 1
-            error('Multiple variables defined for role ''role_label''');
-        end
-
-        row_labels = variables{row_label_index}.data;
-    end
-    
     data_variables = variables(role_map(''));
-    data_variable_names = cell(1, numel(data_variables));
-    data_variable_types = cell(1, numel(data_variables));
-    data_matrix = zeros(N_rows, numel(data_variables));
-    missing_values = zeros(N_rows, numel(data_variables), 'logical');
 
-    num_data_variables = 0;
-
-    for index=1:numel(data_variables)
-        variable = data_variables{index};
-        
-        if variable.is_char
-            error('Only numeric variables are supported: ''%s''', variable.name);
-        end
-
-        if variable.has_missing_values && options.skip_columns_with_missing_values
-            continue;
-        end
-
-        num_data_variables = num_data_variables + 1;
-
-        data_matrix(:, index) = cast(variable.data, 'double');
-        missing_values(:, index) = variable.is_missing;
-        data_variable_names{index} = variable.name;
-        data_variable_types{index} = variable.type;
-    end
-
-    % Adjust for skipped columns
-
-    data_variables = data_variables(1:num_data_variables);
-    data_variable_names = data_variable_names(1:num_data_variables);
-    data_variable_types = data_variable_types(1:num_data_variables);
-    data_matrix = data_matrix(:, 1:num_data_variables);
-    missing_values = missing_values(:, 1:num_data_variables);
-
-    
-    if options.add_constant
-        data_matrix = [ones(size(data_matrix, 1), 1), data_matrix];
-        missing_values = [zeros(size(missing_values, 1), 1), missing_values];
-        data_variable_names = ['constant', data_variable_names];
-        data_variable_types = ['int64', data_variable_types];
-    end
+    %{
+    data_variables = define_data_variables(data_variables, N_rows, options.add_constant);
     
     if options.skip_rows_with_missing_values
-        row_selector = ~any(missing_values, 2);
-    else
-        row_selector = [];
+        row_selector = ~any(data_variables.missing_values, 2);
+        N_available_rows = sum(row_selector);
+
+        if N_rows ~= N_available_rows
+            N_rows = N_available_rows;
+            data_variables.matrix = data_variables.matrix(row_selector, :);
+            data_variables.missing_values = data_variables.missing_values(row_selector, :);
+            row_labels = row_labels(row_selector);
+            spatial_index = spatial_index.select_by_segment(row_selector);
+        end
     end
+    %}
+
+    [data_variables, row_selector] = define_data_variables(data_variables, N_rows, options.add_constant, options.skip_rows_with_missing_values);
 
     if ~isempty(row_selector)
-        N_rows = sum(row_selector);
-        data_matrix = data_matrix(row_selector, :);
-        missing_values = missing_values(row_selector, :);
-        row_labels = row_labels(row_selector);
-    else
-        row_selector = ones(N_rows, 1, 'logical');
+        N_available_rows = sum(row_selector);
+    
+        if N_rows ~= N_available_rows
+            N_rows = N_available_rows; %#ok<NASGU>
+            row_labels = row_labels(row_selector);
+            spatial_index = spatial_index.select_by_segment(row_selector);
+        end
     end
-
+    
     check_nans = options.skip_columns_with_missing_values || ...
                  options.skip_rows_with_missing_values;
     
-    result = geospm.NumericData(data_matrix, check_nans);
-    result.set_variable_names(data_variable_names);
-    
-    if isnumeric(row_labels)
-        
-        tmp = cell(N_rows, 1);
-        
-        for index=1:N_rows
-            tmp{index} = sprintf('%d', row_labels(index));
-        end
+    result = geospm.NumericData(data_variables.matrix, check_nans);
 
-        row_labels = tmp;
-    end
-
+    result.set_variable_names(data_variables.names);
     result.set_labels(row_labels);
+
+    spatial_index = match_spatial_index(spatial_index, row_labels);
+
+    result.attachments.rows_selected_in_file = row_labels;
+    result.attachments.missing_values = data_variables.missing_values;
+    result.attachments.variable_types = data_variables.types;
+end
+
+function spatial_index = match_spatial_index(spatial_index, row_labels)
+
+    N_rows = numel(row_labels);
 
     segment_labels = spatial_index.segment_labels;
     segment_map = containers.Map('KeyType', 'char', 'ValueType', 'double');
@@ -270,7 +225,7 @@ function [result, spatial_index] = load_spatial_data(file_path, varargin)
     end
     
     unmatched_rows = {};
-    segment_indices = zeros(numel(row_labels), 1);
+    segment_indices = zeros(N_rows, 1);
 
     for index=1:numel(row_labels)
         label = row_labels{index};
@@ -292,11 +247,9 @@ function [result, spatial_index] = load_spatial_data(file_path, varargin)
         error('Couldn''t match one or more data rows to the spatial index: %s.', unmatched_rows);
     end
 
-    spatial_index = spatial_index.select_by_segment(segment_indices);
-    
-    result.attachments.rows_selected_in_file = row_labels;
-    result.attachments.missing_values = missing_values;
-    result.attachments.variable_types = data_variable_types;
+    if ~isequal(segment_indices, (1:N_rows)')
+        spatial_index = spatial_index.select_by_segment(segment_indices);
+    end
 end
 
 function assert_no_unused_options(unused_options)
@@ -383,6 +336,33 @@ function result = create_role_map(variables)
     end
 end
 
+function row_labels = define_row_labels(variables, N_rows, role_map)
+
+    if ~isKey(role_map, 'row_label')
+        row_labels = (1:N_rows)';
+    else
+        
+        row_label_index = role_map('row_label');
+
+        if numel(row_label_index) > 1
+            error('Multiple variables defined for role ''role_label''');
+        end
+
+        row_labels = variables{row_label_index}.data;
+    end
+    
+    if isnumeric(row_labels)
+        
+        tmp = cell(N_rows, 1);
+        
+        for index=1:N_rows
+            tmp{index} = sprintf('%d', row_labels(index));
+        end
+
+        row_labels = tmp;
+    end
+end
+
 function result = create_variable_map(variables)
     
     result = containers.Map('KeyType', 'char', 'ValueType', 'any');
@@ -400,29 +380,90 @@ function result = create_variable_map(variables)
     end
 end
 
+function [result, row_selector] = define_data_variables(data_variables, N_rows, add_constant, skip_rows_with_missing_values)
+    
+    result = struct();
+    
+    result.names = cell(1, numel(data_variables));
+    result.types = cell(1, numel(data_variables));
+    result.matrix = zeros(N_rows, numel(data_variables));
+    result.missing_values = zeros(N_rows, numel(data_variables), 'logical');
+
+    row_selector = [];
+
+    num_data_variables = 0;
+    
+    for index=1:numel(data_variables)
+        variable = data_variables{index};
+        
+        if variable.is_char
+            error('Only numeric variables are supported: ''%s''', variable.name);
+        end
+
+        if variable.has_missing_values && options.skip_columns_with_missing_values
+            continue;
+        end
+
+        num_data_variables = num_data_variables + 1;
+        
+        result.matrix(:, index) = cast(variable.data, 'double');
+        result.missing_values(:, index) = variable.is_missing;
+        result.names{index} = variable.name;
+        result.types{index} = variable.type;
+    end
+
+    % Adjust for skipped columns
+
+    result.variables = data_variables(1:num_data_variables);
+    result.names = result.names(1:num_data_variables);
+    result.types = result.types(1:num_data_variables);
+    result.matrix = result.matrix(:, 1:num_data_variables);
+    result.missing_values = result.missing_values(:, 1:num_data_variables);
+    
+    if skip_rows_with_missing_values
+        row_selector = ~any(result.missing_values, 2);
+        N_available_rows = sum(row_selector);
+
+        if N_rows ~= N_available_rows
+            N_rows = N_available_rows; %#ok<NASGU>
+            data_variables.matrix = data_variables.matrix(row_selector, :);
+            data_variables.missing_values = data_variables.missing_values(row_selector, :);
+        end
+    end
+
+    if add_constant
+        result.matrix = [ones(size(result.matrix, 1), 1), result.matrix];
+        result.missing_values = [zeros(size(result.missing_values, 1), 1), result.missing_values];
+        result.names = ['constant', result.names];
+        result.types = ['int64', result.types];
+    end
+end
+
 function specifiers = define_spatial_variables(options)
 
     %opts = str2func('hdng.utilities.ValueOptions');
-    var = str2func('hdng.utilities.VariableSpecifier');
+    var = str2func('hdng.utilities.VariableSpecifier.from');
     
     specifiers = hdng.utilities.VariableSpecifier.empty;
 
     specifiers(end + 1) = var(...
         'name_or_index_in_file', options.x_coordinate, ...
-        'type', 'double');
+        'type', 'double', 'role', 'coordinate');
 
     specifiers(end + 1) = var(...
         'name_or_index_in_file', options.y_coordinate, ...
-        'type', 'double');
-
+        'type', 'double', 'role', 'coordinate');
+    
     if ~isempty(options.z_coordinate)
         specifiers(end + 1) = var(...
             'name_or_index_in_file', options.z_coordinate, ...
-            'type', 'double');
+            'type', 'double', 'role', 'coordinate');
     end
+
+
 end
 
-function result = create_spatial_index_from_variables(variables, crs_or_crs_identifier)
+function result = create_spatial_index_from_variables(variables, crs_or_crs_identifier, row_labels)
     
     x = variables{1}.data;
     y = variables{2}.data;
@@ -432,7 +473,7 @@ function result = create_spatial_index_from_variables(variables, crs_or_crs_iden
         z = variables{3}.data;
     end
 
-    result = geospm.SpatialIndex(x, y, z, [], [], crs_or_crs_identifier);
+    result = geospm.SpatialIndex(x, y, z, [], row_labels, crs_or_crs_identifier);
 end
 
 function [result, order] = load_spatial_index_from_csv(file_path, options)
@@ -446,8 +487,9 @@ function [result, order] = load_spatial_index_from_csv(file_path, options)
 
     if ~isempty(options.segment_label)
         specifiers(end + 1) = var(...
-            'name_or_index_in_file', options.segment_label, ...
-            'type', 'int64');
+            options.segment_label, ...
+            '', ...
+            'int64');
     else
         
         if isempty(options.segment_index)
@@ -455,8 +497,9 @@ function [result, order] = load_spatial_index_from_csv(file_path, options)
         end
 
         specifiers(end + 1) = var(...
-            'name_or_index_in_file', options.segment_index, ...
-            'type', 'int64');
+            options.segment_index, ...
+            '', ...
+            'int64');
     end
     
     [~, variables, selected] = loader.load_from_file(file_path, crs_or_crs_identifier, specifiers);
