@@ -117,13 +117,73 @@ function [kriging] = configure_kriging_experiment(options)
     add_nugget.requirements = { conditional.requirement };
     
     kriging.extra_variables = [kriging.extra_variables, {add_nugget}];
+    
     %---
+    
+    conditional = hdng.experiments.ConditionalGenerator();
+    conditional.requirement = 'experiment';
+    conditional.requirement_test = @(value) strcmp(value.experiment_type, 'geospm.validation.experiments.Kriging');
+    conditional.missing_label = '-';
+    
+    if ~isfield(options, 'coincident_observations_mode')
+        options.coincident_observations_mode = { 'jitter' };
+    end
+    
+    if ~iscell(options.coincident_observations_mode)
+        options.coincident_observations_mode = { options.coincident_observations_mode };
+    end
+    
+    conditional.value_generator = hdng.experiments.ValueList.from(options.coincident_observations_mode{:});
+    
+    coincident_observations_mode = struct(...
+        'identifier', 'coincident_observations_mode', ...
+        'description', 'Coincident Observations Mode', ...
+        'value_generator', conditional, ...
+        'interactive', struct('default_display_mode', 'auto') ...
+    );
+    
+    coincident_observations_mode.requirements = { conditional.requirement };
+    
+    kriging.extra_variables = [kriging.extra_variables, {coincident_observations_mode}];
+    
+    %---
+    
+    conditional = hdng.experiments.ConditionalGenerator();
+    conditional.requirement = 'experiment';
+    conditional.requirement_test = @(value) strcmp(value.experiment_type, 'geospm.validation.experiments.Kriging');
+    conditional.missing_label = '-';
+    
+    if ~isfield(options, 'adjust_variance')
+        options.adjust_variance = { false };
+    end
+    
+    if ~iscell(options.adjust_variance)
+        options.adjust_variance = { options.adjust_variance };
+    end
+    
+    conditional.value_generator = hdng.experiments.ValueList.from(options.adjust_variance{:});
+    
+    adjust_variance = struct(...
+        'identifier', 'adjust_variance', ...
+        'description', 'Adjusted Variance Term', ...
+        'value_generator', conditional, ...
+        'interactive', struct('default_display_mode', 'auto') ...
+    );
+    
+    adjust_variance.requirements = { conditional.requirement };
+    
+    kriging.extra_variables = [kriging.extra_variables, {adjust_variance}];
+    
+    %---
+   
     
     kriging.extra_requirements = {
         geospm.validation.Constants.DOMAIN_EXPRESSION, ...
         'kriging_thresholds', ...
         'variogram_function', ...
-        'add_nugget' };
+        'add_nugget', ...
+        'coincident_observations_mode', ...
+        'adjust_variance' };
     
     
 

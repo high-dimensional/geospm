@@ -103,6 +103,34 @@ function [spm_regression] = configure_spm_experiment(options)
     
     spm_regression.extra_variables = [spm_regression.extra_variables, {smoothing_levels_p_value}];
     
+    conditional = hdng.experiments.ConditionalGenerator();
+    conditional.requirement = 'experiment';
+    conditional.requirement_test = @(value) strcmp(value.experiment_type, 'geospm.validation.experiments.SPMRegression');
+    conditional.missing_label = '-';
+    
+    if ~isfield(options, 'smoothing_levels_as_z_dimension')
+        options.smoothing_levels_as_z_dimension = { true };
+    end
+    
+    if ~iscell(options.smoothing_levels_as_z_dimension)
+        options.smoothing_levels_as_z_dimension = { options.smoothing_levels_as_z_dimension };
+    end
+    
+    conditional.value_generator = hdng.experiments.ValueList.from(options.smoothing_levels_as_z_dimension{:});
+    
+    smoothing_levels_as_z_dimension = struct(...
+        'identifier', 'smoothing_levels_as_z_dimension', ...
+        'description', 'SPM Smoothing Levels as Z Dimension', ...
+        'value_generator', conditional, ...
+        'interactive', struct('default_display_mode', 'auto') ...
+    );
+    
+    smoothing_levels_as_z_dimension.requirements = { conditional.requirement };
+    
+    spm_regression.extra_variables = [spm_regression.extra_variables, {smoothing_levels_as_z_dimension}];
+    
+
+
     
     conditional = hdng.experiments.ConditionalGenerator();
     conditional.requirement = 'experiment';
@@ -141,16 +169,16 @@ function [spm_regression] = configure_spm_experiment(options)
     
     conditional.value_generator = hdng.experiments.ValueList.from(options.spm_observation_transforms{:});
     
-    spm_add_intercept = struct(...
+    observation_transform = struct(...
         'identifier', 'spm_observation_transforms', ...
         'description', 'SPM Observation Transform', ...
         'value_generator', conditional, ...
         'interactive', struct('default_display_mode', 'auto') ...
     );
     
-    spm_add_intercept.requirements = { conditional.requirement };
+    observation_transform.requirements = { conditional.requirement };
     
-    spm_regression.extra_variables = [spm_regression.extra_variables, {spm_add_intercept}];
+    spm_regression.extra_variables = [spm_regression.extra_variables, {observation_transform}];
     
     
     
@@ -161,6 +189,10 @@ function [spm_regression] = configure_spm_experiment(options)
     
     if ~isfield(options, 'spm_add_intercept')
         options.spm_add_intercept = { true };
+    end
+
+    if ~iscell(options.spm_add_intercept)
+        options.spm_add_intercept = { options.spm_add_intercept };
     end
     
     conditional.value_generator = hdng.experiments.ValueList.from(options.spm_add_intercept{:});
@@ -181,6 +213,7 @@ function [spm_regression] = configure_spm_experiment(options)
         geospm.validation.Constants.DOMAIN_EXPRESSION, ...
         geospm.validation.Constants.SMOOTHING_LEVELS, ...
         geospm.validation.Constants.SMOOTHING_LEVELS_P_VALUE, ...
+        geospm.validation.Constants.SMOOTHING_LEVELS_AS_Z_DIMENSION, ...
         geospm.validation.Constants.SMOOTHING_METHOD, ...
         'spm_regression_thresholds', ...
         'spm_observation_transforms', ...

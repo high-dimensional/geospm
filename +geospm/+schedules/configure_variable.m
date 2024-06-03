@@ -13,31 +13,23 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function [variable] = configure_variable(varargin)
+function variable = configure_variable(identifier, description, ...
+    requirements, value_generator, varargin)
 
-    
     options = hdng.utilities.parse_struct_from_varargin(varargin{:});
+    
+    if ~isfield(options, 'interactive')
+        options.interactive = struct('default_display_mode', 'auto');
+    end
 
-    if ~isfield(options, 'identifier')
-        error('geospm.validation.configure_variable() is missing an identifier argument.');
-    end
-    
-    if ~isfield(options, 'requirements')
-        options.requirements = {};
-    end
-    
-    if ~isfield(options, 'value_generator')
-        error('geospm.validation.configure_variable() is missing a value_generator argument.');
-    end
-    
-    if ~isfield(options, 'description')
-        options.description = options.identifier;
+    if iscell(value_generator)
+        value_generator = hdng.experiments.ValueList.from(value_generator{:});
     end
     
     variable = struct();
-    variable.identifier = options.identifier;
-    variable.requirements = options.requirements;
-    variable.value_generator = options.value_generator;
-    variable.interactive = struct('default_display_mode', 'auto');
-    variable.description = options.description;
+    variable.identifier = identifier;
+    variable.requirements = requirements;
+    variable.value_generator = value_generator;
+    variable.interactive = options.interactive;
+    variable.description = description;
 end
