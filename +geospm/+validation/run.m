@@ -79,11 +79,12 @@ function run(varargin)
     end
     
     if ~isfield(options, 'experiments')
-        spm_regression = struct('experiment_type', 'geospm.validation.experiments.SPMRegression');
-        kriging = struct('experiment_type', 'geospm.validation.experiments.Kriging');
+        %spm_regression = struct('experiment_type', 'geospm.validation.experiments.SPMRegression');
+        %kriging = struct('experiment_type', 'geospm.validation.experiments.Kriging');
         
-        options.experiments = { spm_regression, ...
-                                kriging ...
+        spm_regression = geospm.validation.configure_spm_experiment(options);
+
+        options.experiments = { spm_regression ...
                                 };
     end
     
@@ -153,8 +154,8 @@ function run(varargin)
             error('Cannot define default for generators if noise_level is declared empty.');
         end
         
-        options.controls = { {'a_probability', 'dependency', 'noise_level', @noise_level_conversion}, ...
-                             {'b_probability', 'dependency', 'noise_level', @noise_level_conversion}};
+        options.controls = { {'a_probability', 'A Probability', 'dependency', 'noise_level', @noise_level_conversion}, ...
+                             {'b_probability', 'B Probability', 'dependency', 'noise_level', @noise_level_conversion}};
     end
     
     if ~isfield(options, 'controls')
@@ -194,7 +195,7 @@ function run(varargin)
     end
     
     if ~isfield(options, 'coincident_observations_mode')
-        options.coincident_observations_mode = geospm.models.sampling.StandardSampling2.JITTER_MODE;
+        options.coincident_observations_mode = geospm.models.sampling.Subsampling.JITTER_MODE;
     end
     
     if ~isfield(options, 'domain_encoding')
