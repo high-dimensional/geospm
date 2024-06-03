@@ -250,7 +250,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
             analysis.define_product('regression_probe_file');
             
             grid = geospm.Grid();
-            grid.span_frame([1, 1, 0], [obj.model.spatial_resolution + 1 0], obj.model.spatial_resolution);
+            grid.span_frame([1, 1, 1], [obj.model.spatial_resolution + 1 1], obj.model.spatial_resolution);
 
             grid_stage = geospm.stages.GridTransform(analysis, 'grid', grid, 'assigned_grid', obj.model_grid, 'data_product', 'untransformed_grid_data', 'spatial_index_product', 'untransformed_grid_index');
             
