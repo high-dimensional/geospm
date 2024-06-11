@@ -22,6 +22,7 @@
         
         volume_generator_class_name
 
+        compute_density
         write_density
         write_volumes
     end
@@ -77,6 +78,10 @@
                 options.grid_spatial_index_requirement = 'grid_spatial_index';
             end
             
+            if ~isfield(options, 'compute_density')
+                options.compute_density = false;
+            end
+            
             if ~isfield(options, 'write_density')
                 options.write_density = false;
             end
@@ -87,6 +92,7 @@
 
             obj.volume_generator_class_name = options.volume_generator_class_name;
             obj.grid_spatial_index_requirement = options.grid_spatial_index_requirement;
+            obj.compute_density = options.compute_density;
             obj.write_density = options.write_density;
             obj.write_volumes = options.write_volumes;
             
@@ -158,13 +164,18 @@
             density = [];
             volume_mask_path = '';
 
-            if obj.write_density
+            if obj.compute_density
+
                 tic;
                 [density, volume_mask_path] = volume_generator.compute_volume_density(index_number);
                 elapsedSecs = toc;
+                
                 fprintf('Density computation took %.2f seconds for %d volumes.\n', elapsedSecs, grid_spatial_index.S);
-                density_path = fullfile(arguments.directory, 'density.nii');
-                geospm.utilities.write_nifti(density, density_path);
+
+                if obj.write_density
+                    density_path = fullfile(arguments.directory, 'density.nii');
+                    geospm.utilities.write_nifti(density, density_path);
+                end
             end
 
             result = struct();
@@ -201,11 +212,9 @@
             
             geospm.spm.SPMJobList.access_spm_interface();
             
-            %grid_resolution = grid_spatial_index.resolution;
             grid_resolution = grid.resolution;
            
             %smoothing_levels are specified in data units
-            %smoothing_scale = grid_spatial_index.grid.cell_size;
             smoothing_scale = grid.cell_size;
             
             if smoothing_levels_as_z_dimension
