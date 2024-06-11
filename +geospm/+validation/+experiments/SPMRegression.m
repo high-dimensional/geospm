@@ -250,7 +250,8 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
             analysis.define_product('regression_probe_file');
             
             grid = geospm.Grid();
-            grid.span_frame([1, 1, 1], [obj.model.spatial_resolution + 1 1], obj.model.spatial_resolution);
+            %grid.span_frame([1, 1, 1], [obj.model.spatial_resolution + 1 1], obj.model.spatial_resolution);
+            grid.span_frame([1, 1, 1], obj.model_spatial_resolution + 1, obj.model_spatial_resolution);
 
             grid_stage = geospm.stages.GridTransform(analysis, 'grid', grid, 'assigned_grid', obj.model_grid, 'data_product', 'untransformed_grid_data', 'spatial_index_product', 'untransformed_grid_index');
             
@@ -261,8 +262,13 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 'spatial_index_product', 'grid_spatial_index', ...
                 'transform_requirement', 'observation_transform');
             
-            geospm.stages.SPMSpatialSmoothing(analysis);
+            smoothing_stage = geospm.stages.SPMSpatialSmoothing(analysis);
             
+            if obj.apply_density_mask
+                smoothing_stage.compute_density = true;
+                smoothing_stage.write_density = true;
+            end
+
             obj.regression_stage = geospm.stages.SPMDistanceRegression(analysis);
             obj.regression_stage.apply_density_mask = obj.apply_density_mask;
             obj.regression_stage.write_applied_mask = true;

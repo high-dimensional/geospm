@@ -91,6 +91,8 @@ classdef SpatialExperiment < handle
         
         directory_name
         directory_path
+
+        model_spatial_resolution
     end
     
     properties (GetAccess=private, SetAccess=private)
@@ -98,6 +100,15 @@ classdef SpatialExperiment < handle
     
     
     methods
+
+        function result = get.model_spatial_resolution(obj)
+            result = model.spatial_resolution;
+
+            if numel(result) == 2
+                result = [result 1];
+            end
+        end
+
         
         function obj = SpatialExperiment(...
                         seed, ...
@@ -135,7 +146,8 @@ classdef SpatialExperiment < handle
             
             if isempty(obj.model_grid)
                 obj.model_grid = geospm.Grid();
-                obj.model_grid.span_frame([1, 1, 0], [obj.model.spatial_resolution + 1 0], obj.model.spatial_resolution);
+                %obj.model_grid.span_frame([1, 1, 1], [obj.model.spatial_resolution + 1 1], obj.model.spatial_resolution);
+                obj.model_grid.span_frame([1, 1, 1], obj.model_spatial_resolution + 1, obj.model_spatial_resolution);
             end
             
             obj.model_metadata = model_and_metadata.metadata;
@@ -316,10 +328,10 @@ classdef SpatialExperiment < handle
             %result.set_categories(categories);
             
             scatter_plot_path = fullfile(obj.directory, ['probes' '.eps']);
-            result.write_as_eps(scatter_plot_path, [1, 1], obj.model.spatial_resolution + 1);
+            result.write_as_eps(scatter_plot_path, [1, 1], obj.model_spatial_resolution + 1);
             
             scatter_plot_path = fullfile(obj.directory, ['probes' '.png']);
-            result.write_as_png(scatter_plot_path, [1, 1], obj.model.spatial_resolution + 1);
+            result.write_as_png(scatter_plot_path, [1, 1], obj.model_spatial_resolution + 1);
         end
         
         function category_map = map_categories(obj)
@@ -662,15 +674,15 @@ classdef SpatialExperiment < handle
             
             arguments = {...
                 'frequencies', ...
-                'grid_size', obj.model.spatial_resolution(1:2), ...
-                'max_pixel_size', max(obj.model.spatial_resolution(1:2)) * 24, ...
-                'no_background', true, ...
+                'grid_size', obj.model_spatial_resolution(1:2), ...
+                'max_pixel_size', max(obj.model_spatial_resolution(1:2)) * 24, ...
+                'no_background', false, ...
                 'marker_alignment', obj.model_grid.cell_marker_alignment(1:2), ...
                 'marker_scale', max(obj.model_grid.cell_marker_scale(1:2))
                 };
 
             if obj.should_write_files()
-                obj.spatial_index.write_as_eps(scatter_plot_path, [1, 1], obj.model.spatial_resolution + 1, arguments{:});
+                obj.spatial_index.write_as_eps(scatter_plot_path, [1, 1, 1], obj.model_spatial_resolution + 1, arguments{:});
             end
             
             file = hdng.experiments.FileReference();
@@ -681,13 +693,19 @@ classdef SpatialExperiment < handle
             scatter_plot_path = fullfile(obj.directory, [model_data_name '.png']);
             
             if obj.should_write_files()
-                obj.spatial_index.write_as_png(scatter_plot_path, [1, 1], obj.model.spatial_resolution + 1, arguments{:});
+                obj.spatial_index.write_as_png(scatter_plot_path, [1, 1, 1], obj.model_spatial_resolution + 1, arguments{:});
             end
             
             file = hdng.experiments.ImageReference();
             file.path = obj.canonical_path(scatter_plot_path);
             file.source_ref = obj.source_ref;
             file_records('model_data.png') = hdng.experiments.Value.from(file); %#ok<NASGU>
+
+            scatter_plot_path = fullfile(obj.directory, [model_data_name '.pdf']);
+            
+            if obj.should_write_files()
+                obj.spatial_index.write_as_pdf(scatter_plot_path, [1, 1, 1], obj.model_spatial_resolution + 1, arguments{:});
+            end
         end
         
         function targets = compute_targets(obj)
