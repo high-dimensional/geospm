@@ -70,7 +70,7 @@ classdef VolumetricIndex < geospm.BaseSpatialIndex
             end
 
             if isempty(segment_labels)
-                segment_labels = arrayfun(@(x) num2str(x), (1:numel(segment_sizes))', 'UniformOutput', false);
+                segment_labels = arrayfun(@(x) num2str(x), (1:numel(segment_paths))', 'UniformOutput', false);
             end
                         
             if ~all(cellfun(@(x) ischar(x), segment_paths))
@@ -126,7 +126,7 @@ classdef VolumetricIndex < geospm.BaseSpatialIndex
             error('Transform selections are not supported for VolumetricIndex.');
         end
 
-        function [spatial_index, segment_indices] = project(obj, grid, assigned_grid)
+        function [spatial_index, segment_indices] = project(obj, grid, assigned_grid, as_integers) %#ok<INUSD>
                     
             if grid.has_rotation
                 error('Projection grid has a rotational component, which is currently not supported.');
@@ -252,6 +252,14 @@ classdef VolumetricIndex < geospm.BaseSpatialIndex
     end
     
     methods (Access=protected)
+        
+        function result = render_in_figure(obj, origin, frame_size, variant, varargin) %#ok<INUSD>
+            
+            warning('render_in_figure() is not supported for VolumetricIndex.');
+            
+            result = struct();
+            result.corrective_scale_factor = 1.0;
+        end
 
         function result = get_segment_path(obj, segment_number)
             

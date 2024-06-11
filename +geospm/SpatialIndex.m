@@ -334,15 +334,19 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
             result = obj.select(row_selection, [], transform);
         end
         
-        function [spatial_index, segment_indices] = project(obj, grid, assigned_grid)
+        function [spatial_index, segment_indices] = project(obj, grid, assigned_grid, as_integers)
             
             if ~exist('assigned_grid', 'var') || isempty(assigned_grid)
                 assigned_grid = grid;
             end
+
+            if ~exist('as_integers', 'var')
+                as_integers = true;
+            end
             
             % Select the subset of observations within the grid:
             
-            [u, v, w] = grid.space_to_grid(obj.x, obj.y, obj.z);
+            [u, v, w] = grid.space_to_grid(obj.x, obj.y, obj.z, as_integers);
             
             row_indices = grid.clip_uvw(u, v, w);
 
@@ -641,9 +645,9 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
 
             specifier.data = zeros(obj.N, 0);
 
-            specifier.per_row.x = obj.x_protected;
-            specifier.per_row.y = obj.y_protected;
-            specifier.per_row.z = obj.z_protected;
+            specifier.per_row.x = obj.x;
+            specifier.per_row.y = obj.y;
+            specifier.per_row.z = obj.z;
             specifier.per_row.segment_index = obj.segment_index;
 
             specifier.segment_sizes = obj.segment_sizes;

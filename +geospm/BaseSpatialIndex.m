@@ -35,10 +35,6 @@ classdef BaseSpatialIndex < geospm.TabularData
         S % number of segments
 
         segment_labels % a column vector of length S listing the label for each segment.
-
-        x_protected
-        y_protected
-        z_protected
     end
     
     methods
@@ -80,18 +76,6 @@ classdef BaseSpatialIndex < geospm.TabularData
             result = obj.access_S();
         end
         
-        function result = get.x_protected(obj)
-            result = obj.access_x();
-        end
-        
-        function result = get.y_protected(obj)
-            result = obj.access_y();
-        end
-        
-        function result = get.z_protected(obj)
-            result = obj.access_z();
-        end
-        
         function [x, y, z] = xyz_coordinates_for_segment(obj, segment_index) %#ok<STOUT,INUSD>
             error('xyz_coordinates_for_segment() must be implemented by a subclass.');
         end
@@ -100,7 +84,7 @@ classdef BaseSpatialIndex < geospm.TabularData
             error('select_by_segment() must be implemented by a subclass.');
         end
 
-        function [spatial_index, segment_indices] = project(obj, grid, assigned_grid) %#ok<STOUT,INUSD>
+        function [spatial_index, segment_indices] = project(obj, grid, assigned_grid, as_integers) %#ok<STOUT,INUSD>
             error('project() must be implemented by a subclass.');
         end
         
@@ -123,6 +107,23 @@ classdef BaseSpatialIndex < geospm.TabularData
             end
 
             obj.render_frame_in_figure_and_write_to_file(point1, point2, variant, file_path, 'epsc', varargin{:});
+        end
+        
+        function write_as_pdf(obj, file_path, point1, point2, variant, varargin)
+            
+            if ~exist('point1', 'var')
+                point1 = [];
+            end
+            
+            if ~exist('point2', 'var')
+                point2 = [];
+            end
+
+            if ~exist('variant', 'var')
+                variant = [];
+            end
+
+            obj.render_frame_in_figure_and_write_to_file(point1, point2, variant, file_path, 'pdf', varargin{:});
         end
 
 
@@ -377,31 +378,37 @@ classdef BaseSpatialIndex < geospm.TabularData
             
             method_name = ['render_' variant '_in_figure'];
 
-            if ~ismethod(obj, method_name)
-                return;
+            try
+                result = obj.(method_name)(origin, frame_size, varargin{:});
+            catch ME
+
+                if strcmp(ME.identifier, 'MATLAB:noSuchMethodOrField') && ...
+                        contains(ME.message, method_name)
+                    return;
+                end
+
+                rethrow(ME);
             end
-            
-            result = obj.(method_name)(origin, frame_size, varargin{:});
         end
 
         function [origin, frame_size] = sanitise_origin_and_frame_size(obj, origin, frame_size)
             
-            tmp_square_xy = [];
+            tmp_square_xyz = [];
 
             function compute_square_xy()
-                if ~isempty(tmp_square_xy)
-                    tmp_square_xy = obj.square_xy;
+                if ~isempty(tmp_square_xyz)
+                    tmp_square_xyz = obj.square_xyz;
                 end
             end
             
             if isempty(origin)
                 compute_square_xy();
-                origin = tmp_square_xy(1, :);
+                origin = tmp_square_xyz(1, :);
             end
 
             if isempty(frame_size)
                 compute_square_xy();
-                frame_size = tmp_square_xy(2, :) - tmp_square_xy(1, :);
+                frame_size = tmp_square_xyz(2, :) - tmp_square_xyz(1, :);
             end
         end
 
@@ -410,7 +417,7 @@ classdef BaseSpatialIndex < geospm.TabularData
             options = hdng.utilities.parse_struct_from_varargin(varargin{:});
 
             [origin, frame_size] = obj.sanitise_origin_and_frame_size(origin, frame_size);
-
+            
             if ~isfield(options, 'grid_size')
                 cell_size = max(frame_size) / 100;
                 options.grid_size = ceil(frame_size ./ cell_size);
@@ -427,30 +434,15 @@ classdef BaseSpatialIndex < geospm.TabularData
             grid = geospm.Grid();
             grid.span_frame(origin, origin + frame_size, options.grid_size);
             
-            [grid_spatial_index, ~] = grid.transform_spatial_index(obj);
+            [projected_index, ~] = obj.project(grid);
             
-            linear_index = sub2ind(grid.resolution(1:2), grid_spatial_index.u, grid_spatial_index.v);
+            linear_index = sub2ind(grid.resolution(1:2), projected_index.x, projected_index.y);
 
             [cell_index, occurrences] = hdng.utilities.compute_unique_values(linear_index);
             frequencies = cellfun(@(x) numel(x), occurrences);
+
             marker_sizes = frequencies ./ max(frequencies);
-
-            %N = 10;
-            %q = quantile(frequencies, N - 1);
-            %marker_sizes = N - sum(frequencies <= q', 1);
-            
-            %cell_size = options.marker_scale * options.max_pixel_size / max(options.grid_size);
-
-            %marker_size_by_symbol = containers.Map('KeyType', 'char', 'ValueType', 'double');
-            %marker_size_by_symbol('x') = 4;
-            %marker_size_by_symbol('o') = 2;
-            %marker_size_by_symbol('.') = 16;
-            %marker_size_by_symbol('s') = 4;
-            %marker_size_by_symbol('+') = 0.5;
-
             marker_symbol = 'o';
-            
-            %marker_sizes = marker_sizes .* cell_size * cell_size;
             
             [u, v] = ind2sub(grid.resolution(1:2), cell_index);
             
@@ -466,11 +458,11 @@ classdef BaseSpatialIndex < geospm.TabularData
         function resolution_factor = render_frame_in_figure_and_write_to_file(obj, point1, point2, variant, file_path, file_format, varargin)
             
             if isempty(point1)
-                point1 = obj.min_xy;
+                point1 = obj.min_xyz;
             end
             
             if isempty(point2)
-                point2 = obj.max_xy;
+                point2 = obj.max_xyz;
             end
             
             options = hdng.utilities.parse_struct_from_varargin(varargin{:});
@@ -501,8 +493,8 @@ classdef BaseSpatialIndex < geospm.TabularData
 
         function [origin, frame_size] = span_frame(point1, point2)
             
-            min_point = [min(point1(1), point2(1)), min(point1(2), point2(2))];
-            max_point = [max(point1(1), point2(1)), max(point1(2), point2(2))];
+            min_point = [min(point1(1), point2(1)), min(point1(2), point2(2)), min(point1(3), point2(3))];
+            max_point = [max(point1(1), point2(1)), max(point1(2), point2(2)), max(point1(3), point2(3))];
             
             origin = min_point;
             frame_size = max_point - min_point;
