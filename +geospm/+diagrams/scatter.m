@@ -14,6 +14,15 @@
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
 function result = scatter(x, y, origin, frame_size, varargin)
+
+    %{
+
+        The following name-value arguments are supported:
+        -------------------------------------------------------------------
+        
+        marker_sizes - A scalar or array of marker sizes.
+
+    %}
     
     result = struct();
     result.corrective_scale_factor = 1.0;
@@ -62,28 +71,25 @@ function result = scatter(x, y, origin, frame_size, varargin)
         error('geospm.diagrams.scatter(): X and Y size do not match.');
     end
     
-    %if N ~= size(categories, 1)
-    %    error('geospm.diagrams.scatter(): X and categories size do not match.');
-    %end
-
     if ~isscalar(options.marker_sizes) && N ~= size(options.marker_sizes, 1)
         error('geospm.diagrams.scatter(): X and marker_sizes size do not match.');
     end
     
     diagram_size = options.max_pixel_size * (frame_size ./ max(frame_size));
-    cell_size = options.marker_scale * options.max_pixel_size / max(frame_size);
-
+    cell_size = options.max_pixel_size / max(frame_size) * options.marker_scale;
+    
     f = gcf;
     ax = gca;
 
 
-    set(f, 'MenuBar', 'none', 'ToolBar', 'none');
-    set(f, 'Units', 'points');
-    set(f, 'PaperUnits', 'points');
+    set(f, 'MenuBar', 'none', ...
+           'ToolBar', 'none', ...
+           'Units', 'points' );
+
+    set(f, 'Position', [0, 0, diagram_size]);
 
     set(ax, 'Units','points');
     
-
     try
         set(ax,'PositionConstraint', 'innerposition');
     catch
@@ -92,6 +98,7 @@ function result = scatter(x, y, origin, frame_size, varargin)
     set(ax, 'Position', [0 0 diagram_size]);
 
     set(ax,'DataAspectRatio', [1, 1, 1]);
+
     axis(ax, 'equal', 'manual', [origin(1), origin(1) + frame_size(1), ...
                                  origin(2), origin(2) + frame_size(2)]);
     
@@ -99,7 +106,7 @@ function result = scatter(x, y, origin, frame_size, varargin)
     set(ax,'visible','off');
     set(ax,'xtick',[], 'ytick', []);
     set(ax,'XColor', 'none','YColor','none');
-
+    
     hold on;
     
     if ~options.no_background
@@ -136,81 +143,45 @@ function result = scatter(x, y, origin, frame_size, varargin)
         arguments = ['filled', arguments];
     end
     
-    cell_size = cell_size - scatter_options.LineWidth;
+    scatter_size = cell_size - scatter_options.LineWidth / 2;
 
     props = scatter(x, y, arguments{:});
-    props.SizeData = options.marker_sizes * cell_size * cell_size * scale_factor;
-    
-    %marker_colours = define_colours(N, categories);
-    %props.CData = marker_colours;
+    props.SizeData = options.marker_sizes * scatter_size * scatter_size * scale_factor;
     
     
     hold off;
-    
-    %margin = mark_size / 2;
-    %set(ax,'Position', [margin, margin, pixel_size, pixel_size * ratio]);
-    %set(f, 'PaperPositionMode', 'auto', 'PaperSize', [f.PaperPosition(3), f.PaperPosition(4)]);
-    
-    set(f, 'Position', [0, 0, diagram_size]);
     
     %If we don't pause here the window might not yet have been displayed by
     %the time we check f.Position(3:4) below and we won't detect changes
     %in window size properly.
     
     state = pause('on');
-    pause(5);
+    pause(2);
+    
+    actual_size = f.Position(3:4);
 
-    if ~isequal(f.Position(3:4), diagram_size)
+    if ~isequal(actual_size, diagram_size)
+
         % diagram size might be smaller than minimum figure window size...
-        sprintf('geospm.diagrams.scatter(): Figure position deviates from set position');
+        %fprintf('geospm.diagrams.scatter(): Figure position deviates from set position.\n');
         
-        scale_factor = ceil(max(f.Position(3:4) ./ diagram_size));
-        diagram_size = diagram_size * scale_factor;
-
+        corrective_scale_factor = ceil(max(actual_size ./ diagram_size));
+        diagram_size = diagram_size * corrective_scale_factor;
         
         set(f, 'Position', [0, 0, diagram_size]);
         set(ax, 'Position', [0, 0, diagram_size]);
         
-        props.LineWidth = props.LineWidth * sqrt(scale_factor);
+        props.LineWidth = props.LineWidth * corrective_scale_factor;
+        scatter_size = cell_size * corrective_scale_factor - props.LineWidth / 2;
+        props.SizeData = options.marker_sizes * scatter_size * scatter_size;
         
-        cell_size = cell_size * scale_factor - props.LineWidth;
-
-        props.SizeData = options.marker_sizes * cell_size * cell_size;
-
-        result.corrective_scale_factor = scale_factor;
+        result.corrective_scale_factor = corrective_scale_factor;
     end
-
+    
     pause(state);
-
-    set(f, 'PaperPositionMode', 'manual');
-    set(f, 'PaperSize', diagram_size);
-    set(f, 'PaperPosition', [0, 0, diagram_size]);
-    %set(f, 'Position', [0, 0, f.PaperSize]);
-end
-
-function marker_colours = define_colours(N, categories)
-
-    colours = {
-        [153, 153, 153], ...
-        [255, 102, 51], ...
-        [0, 204, 153], ...
-        [0, 204, 255], ...
-        [255, 217,  100], ...
-        [148, 96, 208], ...
-        [69, 208, 59]
-        };
-
     
-    N_categories = 7;
-    
-    marker_colours = zeros(N, 3);
-    
-    for k=1:N_categories
-        
-        selector = categories == k;
-        colour = repmat(colours{k}, sum(selector), 1);
-        marker_colours(categories == k, :) = colour;
-    end
-    
-    marker_colours = marker_colours ./ 255.0;
+    set(f, 'PaperUnits', 'points', ...
+           'PaperPositionMode', 'manual', ...
+           'PaperSize', diagram_size, ...
+           'PaperPosition', [0, 0, diagram_size]);
 end
