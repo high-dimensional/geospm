@@ -102,7 +102,7 @@ classdef NumericData < geospm.TabularData
             result = obj.covariance_;
         end
         
-        function obj = NumericData(observations, N, check_nans)
+        function obj = NumericData(observations, check_nans)
             %Construct a NumericData object from a matrix of observations.
             % observations ? A matrix which is checked for NaN values, which will cause an error to be thrown. 
             
@@ -120,10 +120,6 @@ classdef NumericData < geospm.TabularData
                 if has_nans
                     error(message);
                 end
-            end
-            
-            if ~exist('N', 'var') || isempty(N)
-                N = size(observations, 1);
             end
             
             obj = obj@geospm.TabularData();
@@ -365,31 +361,25 @@ classdef NumericData < geospm.TabularData
                 options = struct();
             end
             
-            if ~isfield(options, 'include_categories')
-                options.include_categories = true;
-            end
-            
             if ~isfield(options, 'include_labels')
                 options.include_labels = true;
             end
             
-            if ~isfield(options, 'categories_name')
-                options.categories_name = 'categories';
+            if ~isfield(options, 'include_categories')
+                options.include_categories = true;
             end
             
             if ~isfield(options, 'labels_name')
                 options.labels_name = 'labels';
             end
+
+            if ~isfield(options, 'categories_name')
+                options.categories_name = 'categories';
+            end
             
             N_cols = 0;
             col_names = [];
             p = {};
-            
-            if options.include_categories
-                p = [p class(obj.categories)];
-                N_cols = N_cols + 1;
-                col_names = [col_names {options.categories_name}];
-            end
             
             if options.include_labels
                 p = [p class(obj.labels)];
@@ -397,6 +387,12 @@ classdef NumericData < geospm.TabularData
                 col_names = [col_names {options.labels_name}];
             end
             
+            if options.include_categories
+                p = [p class(obj.categories)];
+                N_cols = N_cols + 1;
+                col_names = [col_names {options.categories_name}];
+            end
+
             p = [p repelem({class(obj.observations)}, obj.P)];
             
             N_cols = N_cols + obj.P;
@@ -538,9 +534,7 @@ classdef NumericData < geospm.TabularData
 
         function result = create_clone_from_specifier(obj, specifier)
             
-            result = geospm.NumericData(specifier.data, ...
-                                        [], ...
-                                        specifier.check_for_nans);
+            result = geospm.NumericData(specifier.data, specifier.check_for_nans);
             
             result.set_variable_names(specifier.per_column.variable_names);
             result.set_labels(specifier.per_row.labels);

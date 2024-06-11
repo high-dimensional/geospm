@@ -39,10 +39,6 @@ function run_parallel_data_schedule(study_random_seed, study_directory, ...
         options.do_debug = false;
     end
 
-    if ~isfield(options, 'do_summary_only')
-        options.do_summary_only = false;
-    end
-
     if ~isfield(options, 'study_name')
         [~, options.study_name, ~] = fileparts(study_directory);
     end

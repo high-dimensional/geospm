@@ -102,7 +102,7 @@ classdef SpatialExperiment < handle
     methods
 
         function result = get.model_spatial_resolution(obj)
-            result = model.spatial_resolution;
+            result = obj.model.spatial_resolution;
 
             if numel(result) == 2
                 result = [result 1];

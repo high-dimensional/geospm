@@ -128,8 +128,8 @@ classdef DataEvaluator < geospm.validation.Evaluator
             
             [image, alpha] = geospm.utilities.generate_map_image(...
                 context.spatial_index.crs, ...
-                context.grid_min_location, ...
-                context.grid_max_location, ...
+                context.grid_min_location(1:2), ...
+                context.grid_max_location(1:2), ...
                 context.grid_spatial_resolution(1:2) * layer.pixel_density, ...
                 layer.layer, ...
                 layer.service_identifier);
@@ -258,7 +258,7 @@ classdef DataEvaluator < geospm.validation.Evaluator
                     grid_options_copy.max_location = spatial_data_specifier.max_location;
                 end
                 
-                [spatial_data, spatial_index] = geospm.schedules.load_data_specifier(spatial_data_specifier, obj.spatial_data_cache_);
+                [spatial_data, spatial_index] = geospm.load_data_specifier(spatial_data_specifier, obj.spatial_data_cache_);
             else
                 error('Invalid value for ''spatial_data_specifier''. Expected struct.');
             end
@@ -296,8 +296,26 @@ classdef DataEvaluator < geospm.validation.Evaluator
                 grid_max_location = grid_options_copy.grid.cell_size(1:2) .* grid_options_copy.grid.resolution(1:2);
                 grid_spatial_resolution = grid_options_copy.grid.resolution;
             end
+            
+            %{
+            function specifier = standardise_data(specifier, modifier)
+                data = specifier.data;
+                per_row = specifier.per_row;
+                specifier = modifier.delete_op(specifier, (1:size(data, 1))', []);
 
-            [spatial_model, domain_expr] = obj.create_dummy_model(spatial_data, spatial_index, grid_options_copy.grid.resolution(1:2), 'direct', false);
+                data_mean = mean(data, 'omitnan');
+                data_std = std(data, 'omitnan');
+
+                data = data - data_mean;
+                data = data ./ data_std;
+
+                specifier = modifier.insert_rows_op(specifier, 1, data, per_row);
+            end
+
+            spatial_data = spatial_data.select([], [], @(specifier, modifier) standardise_data(specifier, modifier));
+            %}
+
+            [spatial_model, domain_expr] = obj.create_wrapper_model(spatial_data, spatial_index, grid_options_copy.grid.resolution, 'direct', false);
             
             sampling_strategy = geospm.models.sampling.Subsampling(grid_options_copy.grid);
             
@@ -362,7 +380,7 @@ classdef DataEvaluator < geospm.validation.Evaluator
             end
         end
         
-        function [result, domain_expr] = create_dummy_model(obj, spatial_data, spatial_index, resolution, encoding, ignore_constant)
+        function [result, domain_expr] = create_wrapper_model(obj, spatial_data, spatial_index, resolution, encoding, ignore_constant)
             
             result = struct();
             result.model = [];
