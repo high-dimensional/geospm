@@ -82,20 +82,17 @@ function [result, spatial_index] = load_spatial_data(file_path, varargin)
         default hdng.utilitiesValueOptions for variables of the
         corresponding type.
         
-        add_constant – Adds a column of all ones. Defaults to false.
-        
-        map_variables – A cell array with 2 columns. The first column
-        specifies a variable name, the second column specifies a handler
-        function, that transforms the data for that variable:
-        
-        handler(variable_name, column_index, variable_matrix, variable_name_map)
-        handler(variable, index)
-
         skip_rows_with_missing_values – Ignore rows with missing values.
         Defaults to true.
 
         skip_columns_with_missing_values – Ignore columns with missing
         values. Defaults to true.
+
+        map_variables – A cell array with 2 columns. The first column
+        specifies a variable name, the second column specifies a handler
+        function, that transforms the data for that variable:
+        
+        handler(variable, index)
 
         Also see geospm.auxiliary.parse_spatial_load_options().
     %}
@@ -168,24 +165,7 @@ function [result, spatial_index] = load_spatial_data(file_path, varargin)
     
     data_variables = variables(role_map(''));
 
-    %{
-    data_variables = define_data_variables(data_variables, N_rows, options.add_constant);
-    
-    if options.skip_rows_with_missing_values
-        row_selector = ~any(data_variables.missing_values, 2);
-        N_available_rows = sum(row_selector);
-
-        if N_rows ~= N_available_rows
-            N_rows = N_available_rows;
-            data_variables.matrix = data_variables.matrix(row_selector, :);
-            data_variables.missing_values = data_variables.missing_values(row_selector, :);
-            row_labels = row_labels(row_selector);
-            spatial_index = spatial_index.select_by_segment(row_selector);
-        end
-    end
-    %}
-
-    [data_variables, row_selector] = define_data_variables(data_variables, N_rows, options.add_constant, options.skip_rows_with_missing_values);
+    [data_variables, row_selector] = define_data_variables(data_variables, N_rows, options);
 
     if ~isempty(row_selector)
         N_available_rows = sum(row_selector);
@@ -380,7 +360,7 @@ function result = create_variable_map(variables)
     end
 end
 
-function [result, row_selector] = define_data_variables(data_variables, N_rows, add_constant, skip_rows_with_missing_values)
+function [result, row_selector] = define_data_variables(data_variables, N_rows, options)
     
     result = struct();
     
@@ -420,23 +400,25 @@ function [result, row_selector] = define_data_variables(data_variables, N_rows, 
     result.matrix = result.matrix(:, 1:num_data_variables);
     result.missing_values = result.missing_values(:, 1:num_data_variables);
     
-    if skip_rows_with_missing_values
+    if options.skip_rows_with_missing_values
         row_selector = ~any(result.missing_values, 2);
         N_available_rows = sum(row_selector);
 
         if N_rows ~= N_available_rows
             N_rows = N_available_rows; %#ok<NASGU>
-            data_variables.matrix = data_variables.matrix(row_selector, :);
-            data_variables.missing_values = data_variables.missing_values(row_selector, :);
+            result.matrix = result.matrix(row_selector, :);
+            result.missing_values = result.missing_values(row_selector, :);
         end
     end
 
+    %{
     if add_constant
         result.matrix = [ones(size(result.matrix, 1), 1), result.matrix];
         result.missing_values = [zeros(size(result.missing_values, 1), 1), result.missing_values];
         result.names = ['constant', result.names];
         result.types = ['int64', result.types];
     end
+    %}
 end
 
 function specifiers = define_spatial_variables(options)

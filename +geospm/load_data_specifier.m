@@ -33,32 +33,54 @@ function [spatial_data, spatial_index] = load_data_specifier(data_specifier, cac
         data_specifier.group_label = data_specifier.group_identifier;
     end
     
-    if ~isfield(data_specifier, 'variables')
-        data_specifier.variables = {};
+    if ~isfield(data_specifier, 'variable_selection')
+        data_specifier.variable_selection = {};
     end
     
+    if ~isfield(data_specifier, 'min_location')
+        data_specifier.min_location = [];
+    end
+
+    if ~isfield(data_specifier, 'max_location')
+        data_specifier.max_location = [];
+    end
+
+    if ~isfield(data_specifier, 'min_cutoff')
+        data_specifier.min_cutoff = [];
+    end
+    
+    if ~isfield(data_specifier, 'max_cutoff')
+        data_specifier.max_cutoff = [];
+    end
+
+    if ~isfield(data_specifier, 'cutoff_variables')
+        data_specifier.cutoff_variables = {};
+    end
+
     if ~isfield(data_specifier, 'standardise')
-        data_specifier.standardise = true;
+        data_specifier.standardise = false;
     end
     
     if ~isfield(data_specifier, 'interactions')
         data_specifier.interactions = [];
     end
     
-    if ~isfield(data_specifier, 'min_location')
-        error('data_specifier is missing ''min_location'' field.');
+    if ~isfield(data_specifier, 'add_constant')
+        data_specifier.add_constant = false;
     end
 
-    if isempty(data_specifier.min_location)
-        error('data_specifier.min_location cannot be empty.');
-    end
-    
-    if ~isfield(data_specifier, 'max_location')
-        error('data_specifier is missing ''max_location'' field.');
+    if isfield(data_specifier.file_options, 'skip_rows_with_missing_values')
+        skip_rows_with_missing_values = data_specifier.file_options.skip_rows_with_missing_values;
+        data_specifier.file_options = rmfield(data_specifier.file_options, 'skip_rows_with_missing_values');
+    else
+        skip_rows_with_missing_values = true;
     end
 
-    if isempty(data_specifier.max_location)
-        error('data_specifier.max_location cannot be empty.');
+    if isfield(data_specifier.file_options, 'skip_columns_with_missing_values')
+        skip_columns_with_missing_values = data_specifier.file_options.skip_columns_with_missing_values;
+        data_specifier.file_options = rmfield(data_specifier.file_options, 'skip_columns_with_missing_values');
+    else
+        skip_columns_with_missing_values = true;
     end
     
     arguments = hdng.utilities.struct_to_name_value_sequence(data_specifier.file_options);
@@ -67,7 +89,7 @@ function [spatial_data, spatial_index] = load_data_specifier(data_specifier, cac
 
     if isfield(data_specifier.file_options, 'spatial_index_file') ...
             && ~isempty(data_specifier.file_options.spatial_index_file)
-        cache_key = [cache_key ':' data_specifier.file_options.spatial_index_file];
+        cache_key = [cache_key '::' data_specifier.file_options.spatial_index_file];
     end
     
     variable_labels = get_variable_label_map(data_specifier.file_options.variables);
@@ -90,70 +112,106 @@ function [spatial_data, spatial_index] = load_data_specifier(data_specifier, cac
         [spatial_data, spatial_index] = cache(cache_key);
     end
 
+    missing_values = spatial_data.attachments.missing_values;
+
+    % clipping
+
     min_location = data_specifier.min_location;
-
-    if isempty(min_location)
-        min_location = [-Inf, -Inf, -Inf];
-    end
-
     max_location = data_specifier.max_location;
 
-    if isempty(max_location)
-        max_location = [Inf, Inf, Inf];
+    if isempty(min_location) ~= isempty(max_location)
+        error('Both min_location and max_location must be non-empty when specified.');
     end
 
-    grid = geospm.Grid();
-    grid.span_frame(min_location, max_location, [1, 1, 1]);
-
-    [~, segment_indices] = spatial_index.project(grid);
+    if ~isempty(min_location) && ~isempty(max_location)
+        grid = geospm.Grid();
+        grid.span_frame(min_location, max_location, [1, 1, 1]);
     
-
-    if ~isequal(segment_indices, (1:spatial_index.S)')
-        spatial_index = spatial_index.select_by_segment(segment_indices);
-        spatial_data = spatial_data.select(segment_indices, []);
+        [~, segment_indices] = spatial_index.project(grid);
+        
+        if ~isequal(segment_indices, (1:spatial_index.S)')
+            spatial_index = spatial_index.select_by_segment(segment_indices);
+            spatial_data = spatial_data.select(segment_indices, []);
+            missing_values = missing_values(segment_indices, :);
+        end
     end
 
-    if ~isfield(data_specifier.file_options, 'skip_rows_with_missing_values')
-        data_specifier.file_options.skip_rows_with_missing_values = true;
-    end
-
-    if ~isfield(data_specifier.file_options, 'skip_columns_with_missing_values')
-        data_specifier.file_options.skip_columns_with_missing_values = true;
-    end
+    min_cutoff = data_specifier.min_cutoff;
+    max_cutoff = data_specifier.max_cutoff;
     
-    % selection
+    if ~isempty(min_cutoff) || ~isempty(max_cutoff)
+
+        if isempty(min_cutoff)
+            min_cutoff = 0;
+        end
+
+        if isempty(max_cutoff)
+            max_cutoff = 1;
+        end
+
+        cutoff_columns = [];
+        
+        for i=1:numel(data_specifier.cutoff_variables)
+            name = data_specifier.variable_selection{i};
+            index = find(strcmp(name, spatial_data.variable_names));
+    
+            if isempty(index)
+                error('Column ''%s'' not defined in data.', name);
+            end
+    
+            cutoff_columns = [cutoff_columns, index]; %#ok<AGROW>
+        end
+        
+        [spatial_data, cutoff_selection] = spatial_data.remove_outliers(min_cutoff, max_cutoff, cutoff_columns);
+        cutoff_selection = find(cutoff_selection);
+        spatial_index = spatial_index.select_by_segment(cutoff_selection);
+    end
+
+    % filtering
     
     identified_columns = [];
     
-    for i=1:numel(data_specifier.variables)
-        variable = data_specifier.variables(i);
-        name = variable.resolve_name();
+    for i=1:numel(data_specifier.variable_selection)
+        name = data_specifier.variable_selection{i};
         index = find(strcmp(name, spatial_data.variable_names));
 
         if isempty(index)
-            error('Column ''%s'' not defined in table.', variable.resolve_name());
+            error('Column ''%s'' not defined in data.', name);
         end
 
         identified_columns = [identified_columns, index]; %#ok<AGROW>
     end
     
-    missing_values = spatial_data.attachments.missing_values(:, identified_columns);
-    rows = ~any(missing_values, 2);
+    missing_values = missing_values(:, identified_columns);
     
+    if skip_rows_with_missing_values
+        rows = ~any(missing_values, 2);
+    else
+        rows = [];
+    end
+
     columns = [];
 
-    for i=1:numel(identified_columns)
-        index = identified_columns(i);
-        
-        if ~any(missing_values(:, i))
-            columns = [columns, index]; %#ok<AGROW>
+    if skip_columns_with_missing_values
+        for i=1:numel(identified_columns)
+            index = identified_columns(i);
+            
+            if ~any(missing_values(:, i))
+                columns = [columns, index]; %#ok<AGROW>
+            end
         end
+    else
+        columns = identified_columns;
     end
 
     spatial_data = spatial_data.select(rows, columns, ...
         @(specifier, modifier) transform_spatial_data(specifier, modifier, data_specifier));
+
+    if ~isempty(rows)
+        missing_values = missing_values(rows, :);
+    end
     
-    % interactions
+    % if interactions were added, update variable_labels
 
     if ~isempty(data_specifier.interactions)
         
@@ -169,6 +227,7 @@ function [spatial_data, spatial_index] = load_data_specifier(data_specifier, cac
     spatial_data.attachments.group_identifier = data_specifier.group_identifier;
     spatial_data.attachments.group_label = data_specifier.group_label;
     spatial_data.attachments.variable_labels = variable_labels;
+    spatial_data.attachments.missing_values = missing_values;
 end
 
 function result = get_variable_names(variables)
@@ -197,14 +256,24 @@ function specifier = transform_spatial_data(specifier, modifier, data_specifier)
     specifier.check_for_nans = true;
 
     if data_specifier.standardise
-        for index=1:numel(data_specifier.variables)
-            variable = data_specifier.variables(index);
+        
+        variables = data_specifier.file_options.variables;
+        variable_names = arrayfun(@(x) x.resolve_name(), variables, 'UniformOutput', false);
 
+        for index=1:numel(data_specifier.variable_selection)
+            name = data_specifier.variable_selection{index};
+            variable_index = find(strcmp(name, variable_names), 1);
+
+            if isempty(variable_index)
+                continue
+            end
+
+            variable = variables(variable_index);
+            
             if strcmp(variable.type, 'logical')
                 continue;
             end
             
-            name = variable.resolve_name();
             variable_index = find(strcmp(name, specifier.per_column.variable_names), 1);
             
             if isempty(variable_index)
