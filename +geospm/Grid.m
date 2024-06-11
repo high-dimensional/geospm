@@ -484,19 +484,29 @@ classdef Grid < handle
             % Define the grid to span a rectangle defined by point1 and
             % point2, and a maximum resolution of max_units.
             
+            %{
             if (numel(point1) == 2) && (numel(point2) == 2)
-                point1 = [point1 0];
-                point2 = [point2 0];
+                point1 = [point1 1];
+                point2 = [point2 1];
             elseif (numel(point1) == 3) && (numel(point2) == 2)
                 point2 = [point2 point1(3)];
             elseif (numel(point1) == 2) && (numel(point2) == 3)
                 point1 = [point1 point2(3)];
             end
+            %}
             
             if numel(resolution) == 2
                 resolution = [resolution 1];
             end
             
+            if numel(point1) ~= 3
+                error('First point must consist of three coordinates.');
+            end
+            
+            if numel(point2) ~= 3
+                error('Second point must consist of three coordinates.');
+            end
+
             min_point = [min(point1(1), point2(1)), min(point1(2), point2(2)), min(point1(3), point2(3))];
             max_point = [max(point1(1), point2(1)), max(point1(2), point2(2)), max(point1(3), point2(3))];
             
