@@ -19,7 +19,7 @@ function stddev = stddev_from_p_diameter(p, diameter, dimensions)
         dimensions = 1;
     end
 
-    if ~any(dimensions == [1, 2])
+    if ~any(dimensions == [1, 2, 3])
         error('geospm.utilities.stddev_from_p_diameter(): dimensions must be from {1, 2}');
     end
     
@@ -38,7 +38,7 @@ function stddev = stddev_from_p_diameter(p, diameter, dimensions)
     else
         
         radius = diameter / 2;
-        p_radius = sqrt(spm_invXcdf(p, 2));
+        p_radius = sqrt(spm_invXcdf(p, dimensions));
         stddev = radius / p_radius;
     end
     

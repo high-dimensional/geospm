@@ -304,7 +304,7 @@ classdef BaseGenerator < SyntheticVolumeGenerator
                     
                     if obj.debug
                         
-                        file_path = fullfile(obj.session_volume_directory, 'debug', [identifier '.nii']);
+                        file_path = fullfile(obj.session_volume_directory, 'debug', [specifier.text '.nii']);
                         obj.save_volume(file_path, V_data);
                     end
 

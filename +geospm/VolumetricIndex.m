@@ -154,9 +154,12 @@ classdef VolumetricIndex < geospm.BaseSpatialIndex
                 metadata = obj.get_segment_metadata(index);
 
                 intersect_min = hdng.utilities.intersect_boxes(...
-                    grid_range(1, :), grid_range(2, :) - 1, ...
-                    metadata.min_xyz, metadata.max_xyz);
+                    grid_range(1, :), grid_range(2, :), ...
+                    metadata.min_xyz, metadata.max_xyz + 1);
                 
+                % if the minimum of the intersection is empty there is no
+                % intersection
+
                 if isempty(intersect_min)
                     continue;
                 end
@@ -186,7 +189,7 @@ classdef VolumetricIndex < geospm.BaseSpatialIndex
             data = zeros(obj.effective_resolution);
             
             for index=1:size(locations, 1)
-                data(locations(index, 1), locations(index, 2), locations(:, 3)) = count(index);
+                data(locations(index, 1), locations(index, 2), locations(index, 3)) = count(index);
             end
 
 

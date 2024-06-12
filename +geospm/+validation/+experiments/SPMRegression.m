@@ -281,23 +281,23 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 obj.regression_stage.optional_mask = obj.compute_geographic_mask();
             end
             
-            if obj.smoothing_levels_as_z_dimension
-                if strcmp(obj.run_mode, geospm.validation.SpatialExperiment.REGULAR_MODE) || ...
-                     strcmp(obj.run_mode, geospm.validation.SpatialExperiment.RESUME_MODE)
-                    
-                    geospm.stages.SPMApplyThresholds(analysis, [], 'output_prefix', 'th_');
-                    
-                    render_image_stage = geospm.stages.SPMRenderImages(analysis);
-                    render_image_stage.render_intercept_separately = obj.render_intercept_separately;
-                    render_image_stage.volume_renderer.colour_map = obj.colour_map;
-                    render_image_stage.volume_renderer.colour_map_mode = obj.colour_map_mode;
-                    render_image_stage.ignore_crs = true;
-                    render_image_stage.centre_pixels = obj.centre_pixels;
-                    
-                    if ~obj.render_images
-                        render_image_stage.gather_volumes_only = true;
-                    end
-    
+            if strcmp(obj.run_mode, geospm.validation.SpatialExperiment.REGULAR_MODE) || ...
+                 strcmp(obj.run_mode, geospm.validation.SpatialExperiment.RESUME_MODE)
+                
+                geospm.stages.SPMApplyThresholds(analysis, [], 'output_prefix', 'th_');
+                
+                render_image_stage = geospm.stages.SPMRenderImages(analysis);
+                render_image_stage.render_intercept_separately = obj.render_intercept_separately;
+                render_image_stage.volume_renderer.colour_map = obj.colour_map;
+                render_image_stage.volume_renderer.colour_map_mode = obj.colour_map_mode;
+                render_image_stage.ignore_crs = true;
+                render_image_stage.centre_pixels = obj.centre_pixels;
+                
+                if ~obj.render_images
+                    render_image_stage.gather_volumes_only = true;
+                end
+                
+                if obj.smoothing_levels_as_z_dimension
                     if obj.add_georeference_to_images
                         render_image_stage_2 = geospm.stages.SPMRenderImages(analysis, 'geo_');
                         render_image_stage_2.render_intercept_separately = obj.render_intercept_separately;
@@ -315,12 +315,6 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                         threshold_stage = geospm.stages.SPMTraceThresholdRegions(analysis);
                         threshold_stage.centre_pixels = obj.centre_pixels;
                     end
-                end
-            else
-                if strcmp(obj.run_mode, geospm.validation.SpatialExperiment.REGULAR_MODE) || ...
-                     strcmp(obj.run_mode, geospm.validation.SpatialExperiment.RESUME_MODE)
-                    
-                    geospm.stages.SPMApplyThresholds(analysis, [], 'output_prefix', 'th_');
                 end
             end
             
@@ -696,6 +690,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
             %residuals = obj.build_volume_reference(spm_contrasts.scalars{c_index}, spm, obj.volume_slice_names);
             
             records = image_records.unsorted_records;
+            no_mask_traces = isempty(image_records.attribute_map.attribute_for_name('mask_traces'));
             
             for index=1:numel(records)
                 
@@ -708,9 +703,15 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 spm_masked_contrasts = obj.unpack_volume_value(record('masked_contrasts'));
                 spm_masked_maps = obj.unpack_volume_value(record('masked_maps'));
                 spm_masks = obj.unpack_volume_value(record('masks'));
-                spm_mask_traces = obj.unpack_volume_value(record('mask_traces'));
-                mask_summaries = record('mask_summaries').content;
-                
+
+                if ~no_mask_traces
+                    spm_mask_traces = obj.unpack_volume_value(record('mask_traces'));
+                    mask_summaries = record('mask_summaries').content;
+                else
+                    spm_mask_traces = {};
+                    mask_summaries = {};
+                end
+
                 is_unmasked = strcmp(threshold_value.type_identifier, 'builtin.null' );
                 
                 if is_unmasked
@@ -825,7 +826,12 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                         masked_contrast_image_path = spm_masked_contrasts.images{c_index};
                         masked_map_image_path = spm_masked_maps.images{c_index};
                         mask_image_path = spm_masks.images{c_index};
-                        mask_trace_layer_paths = spm_mask_traces.images{c_index};
+
+                        if ~no_mask_traces
+                            mask_trace_layer_paths = spm_mask_traces.images{c_index};
+                        else
+                            mask_trace_layer_paths = [];
+                        end
                     else
                         contrast_image_path = [];
                         map_image_path = [];
@@ -842,15 +848,19 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                     mask = obj.build_volume_reference(spm_masks.scalars{c_index}, mask_image_path, obj.volume_slice_names);
                     slice_shapes = obj.build_slice_shapes(mask_trace_layer_paths, obj.volume_slice_names);
                     
-                    contrast_mask_summaries = mask_summaries{c_index};
-                    
-                    summary_name = contrast_mask_summaries{1};
-                    summary_name = regexprep(summary_name, '\s*\[contrast\]\s*$', '');
-
-                    if ~strcmp(summary_name, term_name)
-                        contrast_mask_summaries = hdng.experiments.Value.empty_with_label('Not Available');
+                    if ~no_mask_traces
+                        contrast_mask_summaries = mask_summaries{c_index};
+                        
+                        summary_name = contrast_mask_summaries{1};
+                        summary_name = regexprep(summary_name, '\s*\[contrast\]\s*$', '');
+    
+                        if ~strcmp(summary_name, term_name)
+                            contrast_mask_summaries = hdng.experiments.Value.empty_with_label('Not Available');
+                        else
+                            contrast_mask_summaries = hdng.experiments.Value.from(contrast_mask_summaries(2:end));
+                        end
                     else
-                        contrast_mask_summaries = hdng.experiments.Value.from(contrast_mask_summaries(2:end));
+                        contrast_mask_summaries = hdng.experiments.Value.empty_with_label('Not Available');
                     end
                     
                     new_record('contrast') = hdng.experiments.Value.from(contrast);
