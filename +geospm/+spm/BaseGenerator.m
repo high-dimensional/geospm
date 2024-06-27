@@ -387,7 +387,8 @@ classdef BaseGenerator < SyntheticVolumeGenerator
             
             parameters = rmfield(parameters, 'gaussian_method');
             
-            smoothing_stddevs = geospm.utilities.stddev_from_p_diameter(obj.smoothing_levels_p_value, obj.smoothing_levels, 2);
+            spatial_dims = 2 + ~obj.smoothing_levels_as_z_dimension;
+            smoothing_stddevs = geospm.utilities.stddev_from_p_diameter(obj.smoothing_levels_p_value, obj.smoothing_levels, spatial_dims);
             smoothing_variances = smoothing_stddevs .* smoothing_stddevs;
             
             if obj.smoothing_levels_as_z_dimension

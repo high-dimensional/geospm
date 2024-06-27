@@ -690,7 +690,7 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
             %residuals = obj.build_volume_reference(spm_contrasts.scalars{c_index}, spm, obj.volume_slice_names);
             
             records = image_records.unsorted_records;
-            no_mask_traces = isempty(image_records.attribute_map.attribute_for_name('mask_traces'));
+            %no_mask_traces = isempty(image_records.attribute_map.attribute_for_name('mask_traces'));
             
             for index=1:numel(records)
                 
@@ -704,13 +704,13 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                 spm_masked_maps = obj.unpack_volume_value(record('masked_maps'));
                 spm_masks = obj.unpack_volume_value(record('masks'));
 
-                if ~no_mask_traces
+                %if ~no_mask_traces
                     spm_mask_traces = obj.unpack_volume_value(record('mask_traces'));
                     mask_summaries = record('mask_summaries').content;
-                else
-                    spm_mask_traces = {};
-                    mask_summaries = {};
-                end
+                %else
+                %    spm_mask_traces = {};
+                %    mask_summaries = {};
+                %end
 
                 is_unmasked = strcmp(threshold_value.type_identifier, 'builtin.null' );
                 
@@ -827,7 +827,8 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                         masked_map_image_path = spm_masked_maps.images{c_index};
                         mask_image_path = spm_masks.images{c_index};
 
-                        if ~no_mask_traces
+                        %if ~no_mask_traces
+                        if ~isempty(spm_mask_traces.images)
                             mask_trace_layer_paths = spm_mask_traces.images{c_index};
                         else
                             mask_trace_layer_paths = [];
@@ -848,7 +849,8 @@ classdef SPMRegression < geospm.validation.SpatialExperiment
                     mask = obj.build_volume_reference(spm_masks.scalars{c_index}, mask_image_path, obj.volume_slice_names);
                     slice_shapes = obj.build_slice_shapes(mask_trace_layer_paths, obj.volume_slice_names);
                     
-                    if ~no_mask_traces
+                    %if ~no_mask_traces
+                    if ~isempty(mask_summaries)
                         contrast_mask_summaries = mask_summaries{c_index};
                         
                         summary_name = contrast_mask_summaries{1};

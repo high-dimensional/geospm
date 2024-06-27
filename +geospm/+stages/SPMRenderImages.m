@@ -326,6 +326,10 @@
 
             image_record('masked_maps') = masked_maps_value;
             image_record('masked_contrasts') = masked_contrasts_value;
+
+            image_record('mask_traces') = hdng.experiments.Value.empty_with_label('Mask trace not available.');
+            image_record('mask_summaries') = hdng.experiments.Value.empty_with_label('Not available.');
+            image_record('mask_summary_path') = hdng.experiments.Value.empty_with_label('Not available.');
         end
         
         function [pseudo_contrasts, pseudo_maps] = define_beta_pseudo_contrasts_and_maps(~, session, beta_volumes)
