@@ -300,6 +300,7 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
         
         function result = row_indices_from_segment_indices(obj, segment_indices)
             
+            %{
             row_selection = zeros(obj.N, 1, 'logical');
 
             for index=1:numel(segment_indices)
@@ -312,6 +313,23 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
             end
 
             result = find(row_selection);
+            %}
+
+
+            result = zeros(obj.N, 1);
+            offset = 0;
+
+            for index=1:numel(segment_indices)
+                segment = segment_indices(index);
+                
+                k = obj.segment_sizes(segment);
+                first = obj.segment_offsets(segment);
+                last = first + k - 1;
+                
+                result(offset + 1:offset + k) = first:last;
+
+                offset = offset + k;
+            end
         end
 
         function result = segment_indices_from_row_indices(obj, row_indices)

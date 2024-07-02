@@ -63,8 +63,10 @@ classdef Subsampling < geospm.models.SamplingStrategy
             
             [projected_index, row_indices] = spatial_index.project(obj.grid);
 
-            spatial_data = spatial_data.select(row_indices, []);
-            %spatial_index = spatial_index.select_by_segment(row_indices);
+            if ~isequal(row_indices, (1:spatial_index.S)')
+                spatial_data = spatial_data.select(row_indices, []);
+                %spatial_index = spatial_index.select_by_segment(row_indices);
+            end
 
             if ischar(N_samples)
                 if strcmp(N_samples, 'data')
@@ -77,7 +79,7 @@ classdef Subsampling < geospm.models.SamplingStrategy
             jitter_x = mod(rng.rand([N_samples 1]), 1);
             jitter_y = mod(rng.rand([N_samples 1]), 1);
             
-            sample_indices = randperm(rng, spatial_data.N, N_samples);
+            sample_indices = randperm(rng, spatial_data.N, N_samples)';
             
             %{
             u = spatial_index.x;
