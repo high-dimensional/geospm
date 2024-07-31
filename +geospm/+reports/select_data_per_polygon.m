@@ -13,7 +13,7 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function grid_cell_values = select_coordinated_data_per_polygon(group, grid_env, cell_value_fn)
+function grid_cell_values = select_data_per_polygon(group, grid_env, cell_value_fn)
     
 
     grid_cells = group.grid_cells;

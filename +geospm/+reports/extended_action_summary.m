@@ -48,7 +48,7 @@ function extended_action_summary(base_directory, output_name, render_options, gr
     
     studies = scan_regional_directories(base_directory, options.suffix);
 
-    studies = studies(1);
+    %studies = studies(1);
     
     tmp_dir = hdng.utilities.make_timestamped_directory(base_directory);
     

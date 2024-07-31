@@ -129,7 +129,7 @@ classdef Builtins < hdng.experiments.ValueLoader
                 for index=1:numel(keys)
                     key = keys{index};
                     value = serialised_value(key);
-                    content(key) = hdng.experiments.decode_json_proxy(value);
+                    content(key) = hdng.experiments.decode_json_proxy(value).content;
                 end
                 
                 return;
@@ -144,7 +144,7 @@ classdef Builtins < hdng.experiments.ValueLoader
                 for index=1:numel(keys)
                     key = keys{index};
                     value = serialised_value(key);
-                    content.(key) = hdng.experiments.decode_json_proxy(value);
+                    content.(key) = hdng.experiments.decode_json_proxy(value).content;
                 end
                 
                 return;

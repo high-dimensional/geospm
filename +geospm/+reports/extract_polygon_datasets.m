@@ -37,14 +37,13 @@ function polygon_datasets = extract_polygon_datasets(values, grid_cell, grid_env
     
     update_volume_generators(volume_generators, spm_input_path, record);
 
-    spatial_data_specifier = record('configuration.spatial_data_specifier');
-    spatial_data_specifier = spatial_data_specifier.content;
+    spatial_data_specifier = record('configuration.spatial_data_specifier').unpack();
 
-    min_location = cell2mat(spatial_data_specifier.min_location.content);
-    max_location = cell2mat(spatial_data_specifier.max_location.content);
-    cell_size = (max_location - min_location) ./ size(mask_slice)';
+    min_location = cell2mat(spatial_data_specifier.min_location);
+    max_location = cell2mat(spatial_data_specifier.max_location);
+    cell_size = (max_location(1:2) - min_location(1:2)) ./ size(mask_slice)';
 
-    dataset_path = spatial_data_specifier.file_path.content;
+    dataset_path = spatial_data_specifier.file_path;
     dataset = load_dataset(dataset_path, dataset_cache, dataset_aliases);
     
     polygon_datasets = generate_polygon_datasets(polygons, dataset, min_location, max_location, cell_size, size(mask_slice), slice_index, record);
@@ -57,11 +56,11 @@ function update_volume_generators(volume_generators, key, record)
         
         specifier = struct();
         
-        specifier.smoothing_levels = record('configuration.smoothing_levels').content;
+        specifier.smoothing_levels = record('configuration.smoothing_levels').unpack();
         specifier.smoothing_levels = cell2mat(specifier.smoothing_levels);
-        specifier.smoothing_levels_p_value = record('configuration.smoothing_levels_p_value').content;
-        specifier.smoothing_method = record('configuration.smoothing_method').content;
-
+        specifier.smoothing_levels_p_value = record('configuration.smoothing_levels_p_value').unpack();
+        specifier.smoothing_method = record('configuration.smoothing_method').unpack();
+        
         volume_generators(key) = specifier;
     end
 end
@@ -137,8 +136,8 @@ function polygon_datasets = generate_polygon_datasets(polygons, dataset, min_loc
 
             polygon_dataset.data = polygon_dataset.data(selection, :); %selection(p, :), :);
             polygon_dataset.polygon = polygon;
-            polygon_dataset.min_location = min_location;
-            polygon_dataset.max_location = max_location;
+            polygon_dataset.min_location = min_location(1:2);
+            polygon_dataset.max_location = max_location(1:2);
             polygon_dataset.cell_size = cell_size;
             polygon_dataset.slice_index = slice_index;
             polygon_dataset.record = record;
@@ -146,7 +145,7 @@ function polygon_datasets = generate_polygon_datasets(polygons, dataset, min_loc
             coordinates = [polygon_dataset.polygon.vertices.x';
                            polygon_dataset.polygon.vertices.y'];
 
-            coordinates = (coordinates - min_location) ./ cell_size + 1;
+            coordinates = (coordinates - min_location(1:2)) ./ cell_size + 1;
             
             vertices = hdng.geometry.Vertices.define(coordinates');
             polygon = polygon_dataset.polygon.substitute_vertices(vertices);
@@ -195,12 +194,16 @@ function result = load_dataset(file_path, cache, aliases)
     
     if ~cache.holds_key(file_path)
         
+        [file_directory, file_name, file_ext] = fileparts(file_path);
+
         actual_file_path = file_path;
 
         if aliases.holds_key(file_path)
             actual_file_path = aliases(file_path);
+        elseif aliases.holds_key(file_directory)
+            actual_file_path = fullfile(aliases(file_directory), [file_name, file_ext]);
         end
-
+        
         data_opts = detectImportOptions(actual_file_path, 'VariableNamingRule', 'preserve');
         data_variable_names = data_opts.VariableNames';
     

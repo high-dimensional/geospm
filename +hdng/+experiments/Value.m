@@ -132,6 +132,15 @@ classdef Value < hdng.experiments.ValueDirective
             result('content') = obj.serialised;
             result('label') = obj.label;
         end
+
+        function result = unpack(obj, with)
+
+            if ~exist('with', 'var') || isempty(with)
+                with = hdng.experiments.Builtins();
+            end
+            
+            result = with.from_serialised_value_and_type(obj.serialised, obj.type_identifier);
+        end
     end
     
     methods (Access=protected)
