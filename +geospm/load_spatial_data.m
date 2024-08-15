@@ -98,37 +98,20 @@ function [result, spatial_index] = load_spatial_data(file_path, varargin)
     %}
 
     [options, unused_options] = geospm.auxiliary.parse_spatial_load_options(varargin{:});
-    
     assert_no_unused_options(unused_options);
-    
-    crs_or_crs_identifier = get_crs(options, file_path);
-    
+
     spatial_index = [];
     spatial_variables = [];
 
     if ~isempty(options.spatial_index_file)
-        [spatial_index_directory, spatial_index_name, ext] = fileparts(options.spatial_index_file);
         
-        spatial_index_name = [spatial_index_name ext];
-
-        if isempty(spatial_index_directory)
-            spatial_index_directory = fileparts(file_path);
-        end
-
-        spatial_index_path = fullfile(spatial_index_directory, spatial_index_name);
-
-        switch lower(ext)
-            case '.mat'
-                spatial_index = geospm.BaseSpatialIndex.load_from_matlab(spatial_index_path);
-            
-            case '.csv'
-                spatial_index = load_spatial_index_from_csv(spatial_index_path, crs_or_crs_identifier, options);
-
-            otherwise
-                error('Unknown file extension ''%s'' for spatial index.', ext);
-        end
+        [spatial_index_path, ~] = normalise_spatial_index_path(options.spatial_index_file, file_path);
+        
+        spatial_index = geospm.load_spatial_index(spatial_index_path, varargin{:});
+        crs_or_crs_identifier = spatial_index.crs;
     else
         spatial_variables = define_spatial_variables(options);
+        crs_or_crs_identifier = get_crs(options, file_path);
     end
     
     loader = hdng.utilities.VariableLoader();
@@ -139,6 +122,7 @@ function [result, spatial_index] = load_spatial_data(file_path, varargin)
     [N_rows, variables, selected_specifiers] = ...
         loader.load_from_file( ...
             file_path, [spatial_variables(:); options.variables(:)]);
+    
 
     role_map = create_role_map(variables);
 
@@ -422,7 +406,7 @@ function [result, row_selector] = define_data_variables(data_variables, N_rows, 
 end
 
 function specifiers = define_spatial_variables(options)
-
+    
     %opts = str2func('hdng.utilities.ValueOptions');
     var = str2func('hdng.utilities.VariableSpecifier.from');
     
@@ -441,8 +425,6 @@ function specifiers = define_spatial_variables(options)
             'name_or_index_in_file', options.z_coordinate, ...
             'type', 'double', 'role', 'coordinate');
     end
-
-
 end
 
 function result = create_spatial_index_from_variables(variables, crs_or_crs_identifier, row_labels)
@@ -458,75 +440,19 @@ function result = create_spatial_index_from_variables(variables, crs_or_crs_iden
     result = geospm.SpatialIndex(x, y, z, [], row_labels, crs_or_crs_identifier);
 end
 
-function [result, order] = load_spatial_index_from_csv(file_path, options)
+function [spatial_index_path, ext] = normalise_spatial_index_path(spatial_index_file, file_path)
 
-    loader = hdng.utilities.VariableLoader();
-    
-    loader.csv_delimiter = options.csv_delimiter;
-    loader.value_options_by_type = options.value_options_by_type;
-    
-    specifiers = define_spatial_variables(options);
-
-    if ~isempty(options.segment_label)
-        specifiers(end + 1) = var(...
-            options.segment_label, ...
-            '', ...
-            'int64');
-    else
-        
-        if isempty(options.segment_index)
-            error('Either one of segment_index or segment_label needs to be defined.');
-        end
-
-        specifiers(end + 1) = var(...
-            options.segment_index, ...
-            '', ...
-            'int64');
-    end
-    
-    [~, variables, selected] = loader.load_from_file(file_path, crs_or_crs_identifier, specifiers);
-
-    if sum(selected) ~= numel(specifiers)
-        unavailable = specifiers(~selected);
-        identifiers = {};
-        
-
-        for index=1:numel(unavailable)
-            identifier = unavailable.name_or_index_in_file;
-            if isnumeric(identifier)
-                identifier = sprintf('%d', identifier);
-            end
-
-            identifiers{index} = identifier; %#ok<AGROW>
-        end
-
-        identifiers = join(identifiers, ', ');
-        identifier = identifiers{1};
-        [~, file_name, ext] = fileparts(file_path);
-        file_name = [file_name, ext];
-
-        error('The following columns are not defined in ''%s'': %s.', ...
-            file_name, identifier);
+    if isempty(spatial_index_file)
+        spatial_index_file = file_path;
     end
 
-    x = variables{1};
-    y = variables{2};
-    z = [];
+    [spatial_index_directory, spatial_index_name, ext] = fileparts(spatial_index_file);
+    
+    spatial_index_name = [spatial_index_name ext];
 
-    if ~isempty(options.z_coordinate)
-        z = variables{3};
+    if isempty(spatial_index_directory)
+        spatial_index_directory = fileparts(file_path);
     end
 
-    x = cast(x, 'double');
-    y = cast(y, 'double');
-    z = cast(z, 'double');
-
-    segment_index = variables{end};
-    segment_index = segment_index.data;
-    
-    % make sure the segments are arranged in ascending order
-    [segment_index, order] = sort(segment_index);
-
-    segments = geospm.SpatialIndex.segment_indices_to_segment_sizes(segment_index);
-    result = geospm.SpatialIndex(x, y, z, segments, [], crs_or_crs_identifier);
+    spatial_index_path = fullfile(spatial_index_directory, spatial_index_name);
 end

@@ -103,9 +103,7 @@ classdef TabularDataModifier < handle
 
             [row_indices, column_indices] = obj.normalise_selection(N, C, row_selection, column_selection);
             
-            if ~isempty(specifier.data)
-                specifier.data = specifier.data(row_indices, column_indices);
-            end
+            specifier.data = specifier.data(row_indices, column_indices);
 
             names = fieldnames(specifier.per_row);
             

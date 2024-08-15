@@ -23,8 +23,10 @@ classdef VolumetricIndex < geospm.BaseSpatialIndex
 
     properties
 
-        grid_ % The resolution of this grid always matches the native
-              % resolution of the underlying volumes.
+        grid_ % The space of the grid is the coordinate space of the 
+              % locations represented by this index. Its resolution
+              % always matches the native resolution of the underlying 
+              % volumes. 
     end
 
     properties (GetAccess = private, SetAccess = private)
@@ -170,10 +172,12 @@ classdef VolumetricIndex < geospm.BaseSpatialIndex
 
             segment_indices = segment_indices(1:S_projected);
             
+            % Drop the CRS when creating the projected index
+
             spatial_index = geospm.VolumetricIndex(...
                                 obj.segment_paths(segment_indices), ...
                                 obj.segment_labels(segment_indices), ...
-                                obj.crs, projected_grid);
+                                [], projected_grid);
             
             spatial_index.attachments.assigned_grid = assigned_grid;
         end
@@ -185,13 +189,19 @@ classdef VolumetricIndex < geospm.BaseSpatialIndex
             
             [x, y, z] = obj.grid_.grid_to_space(locations(:, 1), locations(:, 2), locations(:, 3));
             locations = cast(floor([x, y, z]), 'int64');
+            
+            %{
 
             data = zeros(obj.effective_resolution);
-            
+
             for index=1:size(locations, 1)
                 data(locations(index, 1), locations(index, 2), locations(index, 3)) = count(index);
             end
+            %}
 
+            data = zeros(obj.effective_resolution);
+            indices = sub2ind(size(data), locations(:, 1), locations(:, 2), locations(:, 3));
+            data(indices) = count;
 
             voxel_start = floor(span_origin);
             voxel_end = floor(span_limit - 1);

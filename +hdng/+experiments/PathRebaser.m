@@ -183,8 +183,9 @@ classdef PathRebaser < hdng.experiments.ValueModifier
             for index=1:numel(keys)
                 key = keys{index};
                 key_value = value.content(key);
+                key_value = hdng.experiments.Value.from(key_value);
                 key_value = obj.apply(key_value);
-                modified(key) = key_value;
+                modified(key) = key_value.content;
             end
             
             result = hdng.experiments.Value.from(modified, value.label);

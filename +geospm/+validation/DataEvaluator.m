@@ -244,80 +244,29 @@ classdef DataEvaluator < geospm.validation.Evaluator
             
             configuration = evaluation.configuration;
             
-            grid_options_copy = obj.grid_options;
-            
             spatial_data_specifier = configuration('spatial_data_specifier');
-            
-            if isstruct(spatial_data_specifier)
-            
-                if isfield(spatial_data_specifier, 'min_location')
-                    grid_options_copy.min_location = spatial_data_specifier.min_location;
-                end
 
-                if isfield(spatial_data_specifier, 'max_location')
-                    grid_options_copy.max_location = spatial_data_specifier.max_location;
-                end
-                
-                [spatial_data, spatial_index] = geospm.load_data_specifier(spatial_data_specifier, obj.spatial_data_cache_);
+            [spatial_data, spatial_index] = geospm.load_data_specifier(spatial_data_specifier, obj.spatial_data_cache_);
+            
+            grid_specifier = obj.grid_options;
+
+            if isfield(spatial_data_specifier, 'min_location')
+                grid_specifier.min_location = spatial_data_specifier.min_location;
             else
-                error('Invalid value for ''spatial_data_specifier''. Expected struct.');
+                grid_specifier.min_location = spatial_index.min_xyz;
             end
-            
-            if ~isfield(grid_options_copy, 'grid')
-                grid_options_copy = geospm.auxiliary.parse_spatial_resolution(spatial_index, grid_options_copy);
 
-                if ~isfield(grid_options_copy, 'cell_marker_alignment')
-                    grid_options_copy.cell_marker_alignment = [0.5, 0.5];
-                end
-                
-                if ~isfield(grid_options_copy, 'cell_marker_scale')
-                    grid_options_copy.cell_marker_scale = [1, 1];
-                end
-                
-                grid_options_copy.grid = geospm.Grid();
-
-                grid_options_copy.grid.span_frame( ...
-                    grid_options_copy.min_location, ...
-                    grid_options_copy.max_location, ...
-                    grid_options_copy.spatial_resolution);
-
-                grid_options_copy.grid.cell_marker_alignment = ...
-                    grid_options_copy.cell_marker_alignment;
-
-                grid_options_copy.grid.cell_marker_scale = ...
-                    grid_options_copy.cell_marker_scale;
-
-                grid_min_location = grid_options_copy.min_location;
-                grid_max_location = grid_options_copy.max_location;
-                grid_spatial_resolution = grid_options_copy.spatial_resolution;
+            if isfield(spatial_data_specifier, 'max_location')
+                grid_specifier.max_location = spatial_data_specifier.max_location;
             else
-                grid_options_copy.grid = grid_options_copy.grid.clone();
-                grid_min_location = grid_options_copy.grid.origin(1:2);
-                grid_max_location = grid_options_copy.grid.cell_size(1:2) .* grid_options_copy.grid.resolution(1:2);
-                grid_spatial_resolution = grid_options_copy.grid.resolution;
+                grid_specifier.max_location = spatial_index.max_xyz;
             end
             
-            %{
-            function specifier = standardise_data(specifier, modifier)
-                data = specifier.data;
-                per_row = specifier.per_row;
-                specifier = modifier.delete_op(specifier, (1:size(data, 1))', []);
-
-                data_mean = mean(data, 'omitnan');
-                data_std = std(data, 'omitnan');
-
-                data = data - data_mean;
-                data = data ./ data_std;
-
-                specifier = modifier.insert_rows_op(specifier, 1, data, per_row);
-            end
-
-            spatial_data = spatial_data.select([], [], @(specifier, modifier) standardise_data(specifier, modifier));
-            %}
-
-            [spatial_model, domain_expr] = obj.create_wrapper_model(spatial_data, spatial_index, grid_options_copy.grid.resolution, 'direct', false);
+            grid = geospm.create_grid(grid_specifier);
             
-            sampling_strategy = geospm.models.sampling.Subsampling(grid_options_copy.grid);
+            [spatial_model, domain_expr] = obj.create_wrapper_model(spatial_data, spatial_index, grid.resolution, 'direct', false);
+            
+            sampling_strategy = geospm.models.sampling.Subsampling();
             
             if configuration.values.holds_key('coincident_observations_mode')
                 coincident_observations_mode = configuration('coincident_observations_mode');
@@ -332,19 +281,20 @@ classdef DataEvaluator < geospm.validation.Evaluator
             configuration.values(geospm.validation.Constants.SPATIAL_MODEL) = hdng.experiments.Value.from(spatial_model);
             configuration.values(geospm.validation.Constants.SAMPLING_STRATEGY) = hdng.experiments.Value.from(sampling_strategy);
             configuration.values(geospm.validation.Constants.DOMAIN_EXPRESSION) = hdng.experiments.Value.from(domain_expr, char(domain_expr), missing, 'builtin.missing');
-            
+            configuration.values('grid') = hdng.experiments.Value.from(grid);
+
             apply@geospm.validation.Evaluator(obj, evaluation, options);
             
             image_layers = {};
 
             if ~isempty(obj.presentation_layers)
-
+            
                 context = hdng.one_struct( ...
                     'spatial_data', spatial_data, ...
                     'spatial_index', spatial_index, ...
-                    'grid_min_location', grid_min_location, ...
-                    'grid_max_location', grid_max_location, ...
-                    'grid_spatial_resolution', grid_spatial_resolution, ...
+                    'grid_min_location', grid_specifier.min_location, ...
+                    'grid_max_location', grid_specifier.max_location, ...
+                    'grid_spatial_resolution', grid.resolution, ...
                     'source_ref', evaluation.source_ref, ...
                     'canonical_base_path', evaluation.canonical_base_path, ...
                     'results', evaluation.results);
@@ -401,10 +351,13 @@ classdef DataEvaluator < geospm.validation.Evaluator
             end
         end
         
-        function created_experiment(obj, experiment)
+        function created_experiment(obj, experiment, evaluation, ~)
             
             if (obj.add_georeference_to_images || obj.set_model_grid) && isprop(experiment, 'model_grid')
-                experiment.model_grid = experiment.sampling_strategy.grid;
+                configuration = evaluation.configuration;
+                grid = configuration('grid');
+                experiment.model_grid = grid;
+                %experiment.model_grid = experiment.sampling_strategy.grid;
             end
         end
     end

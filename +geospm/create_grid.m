@@ -13,29 +13,43 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function diameter = diameter_from_p_stddev(p, stddev, dimensions)
+function result = create_grid(options)
 
-    if ~exist('dimensions', 'var')
-        dimensions = 1;
+    %{
+        
+        Also see geospm.configure_grid_specifier().
+    %}
+
+    if ~isfield(options, 'min_location') || isempty(options.min_location)
+        error('min_location must be defined and non-empty.');
     end
 
-    if ~any(dimensions == [1, 2, 3])
-        error('geospm.utilities.diameter_from_p_stddev(): dimensions must be from {1, 2, 3}');
+    if ~isfield(options, 'max_location') || isempty(options.max_location)
+        error('max_location must be defined and non-empty.');
+    end
+
+    if ~isfield(options, 'cell_marker_alignment')
+        error('cell_marker_alignment must be defined.');
     end
     
-    if dimensions == 1
-        k = (p + 1) / 2; % Calculate the equivalent cdf probability 
-                         % for a two-tailed region of probablity p.
-
-        cv = norminv(k, 0, stddev); % Compute the critical value of k for 
-                                   % a distribution with the given standard
-                                   % variation.
-
-        diameter = 2 * cv; % The diameter is twice the critical value as the
-                           % corresponding interval extends from -cv to +cv.
-    else
-        
-        p_radius = sqrt(spm_invXcdf(p, dimensions));
-        diameter = stddev * p_radius * 2;
+    if ~isfield(options, 'cell_marker_scale')
+        error('cell_marker_scale must be defined.');
     end
+
+    range = options.max_location - options.min_location;
+
+    spatial_resolution = geospm.auxiliary.compute_spatial_resolution(range, options);    
+
+    result = geospm.Grid();
+
+    result.span_frame( ...
+        options.min_location, ...
+        options.max_location, ...
+        spatial_resolution);
+
+    result.cell_marker_alignment = ...
+        options.cell_marker_alignment;
+
+    result.cell_marker_scale = ...
+        options.cell_marker_scale;
 end

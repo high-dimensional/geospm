@@ -27,27 +27,16 @@ classdef Subsampling < geospm.models.SamplingStrategy
     end
     
     properties
-        grid
-        grid_options
-        
         coincident_observations_mode
     end
     
     methods
         
-        function obj = Subsampling(grid, varargin)
+        function obj = Subsampling(varargin)
             
             options = hdng.utilities.parse_struct_from_varargin(varargin{:});
             
-            if ~isfield(options, 'grid_options')
-                options.grid_options = struct();
-                options.grid_options.spatial_resolution_max = 200;
-            end
-            
             obj = obj@geospm.models.SamplingStrategy();
-            
-            obj.grid_options = options.grid_options;
-            obj.grid = grid;
             
             obj.coincident_observations_mode = geospm.models.sampling.Subsampling.JITTER_MODE;
         end
@@ -61,12 +50,14 @@ classdef Subsampling < geospm.models.SamplingStrategy
             
             attachments = spatial_data.attachments;
             
+            %{
             [projected_index, row_indices] = spatial_index.project(obj.grid);
 
             if ~isequal(row_indices, (1:spatial_index.S)')
                 spatial_data = spatial_data.select(row_indices, []);
                 %spatial_index = spatial_index.select_by_segment(row_indices);
             end
+            %}
 
             if ischar(N_samples)
                 if strcmp(N_samples, 'data')
@@ -99,7 +90,8 @@ classdef Subsampling < geospm.models.SamplingStrategy
 
                 case geospm.models.sampling.Subsampling.IDENTITY_MODE
                     result = spatial_data.select(sample_indices, []);
-                    spatial_index = projected_index.select_by_segment(sample_indices);
+                    %spatial_index = projected_index.select_by_segment(sample_indices);
+                    spatial_index = spatial_index.select_by_segment(sample_indices);
                 
                 %{
                 

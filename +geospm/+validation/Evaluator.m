@@ -203,7 +203,7 @@ classdef Evaluator < hdng.experiments.Evaluator
                                 n_samples, ...
                                 extra_requirements{:});
                 
-                obj.created_experiment(experiment);
+                obj.created_experiment(experiment, evaluation, options);
                             
                 obj.last_experiment = experiment;
                             
@@ -329,7 +329,7 @@ classdef Evaluator < hdng.experiments.Evaluator
     
     methods (Access=protected)
         
-        function created_experiment(obj, experiment) %#ok<INUSD>
+        function created_experiment(obj, experiment, evaluation, options) %#ok<INUSD>
         end
         
     end
