@@ -88,7 +88,7 @@ classdef BaseSpatialIndex < geospm.TabularData
             error('project() must be implemented by a subclass.');
         end
         
-        function result = convolve_segment(obj, segment_index, span_origin, span_limit, kernel) %#ok<STOUT,INUSD>
+        function result = convolve_segment(obj, segment_index, span_origin, span_limit, kernel, kernel_key) %#ok<STOUT,INUSD>
             error('convolve_segment() must be implemented by a subclass.');
         end
         
@@ -488,6 +488,7 @@ classdef BaseSpatialIndex < geospm.TabularData
             close;
         end
     end
+
 
     methods (Static)
 

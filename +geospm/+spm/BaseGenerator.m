@@ -51,6 +51,7 @@ classdef BaseGenerator < SyntheticVolumeGenerator
         
         have_smooth_map
         smooth_map
+        smooth_map_cache_key
         
         smooth_sample
     end
@@ -153,7 +154,7 @@ classdef BaseGenerator < SyntheticVolumeGenerator
             smooth_map_size = obj.window_resolution * 2 - 1;
             sample_location = obj.window_resolution;
             
-            obj.smooth_map = obj.smooth_sample(sample_location, smooth_map_size);
+            [obj.smooth_map, obj.smooth_map_cache_key] = obj.smooth_sample(sample_location, smooth_map_size);
             obj.have_smooth_map = true;
             
             if obj.smoothing_levels_as_z_dimension
@@ -232,14 +233,14 @@ classdef BaseGenerator < SyntheticVolumeGenerator
                     V_data(:, :, index) = specifier.spatial_index.convolve_segment( ...
                         specifier.segment_number, ...
                         [1, 1, 1], [obj.window_resolution(1:2), 1] + [1, 1, 1], ...
-                        obj.smooth_map(:, :, index));
+                        obj.smooth_map(:, :, index), [obj.smooth_map_cache_key, ':' num2str(index)]);
                 end
             else
 
                 V_data = specifier.spatial_index.convolve_segment( ...
                     specifier.segment_number, ...
                     [1, 1, 1], obj.window_resolution + [1, 1, 1], ...
-                    obj.smooth_map);
+                    obj.smooth_map, obj.smooth_map_cache_key);
             end
         end
 
@@ -325,6 +326,7 @@ classdef BaseGenerator < SyntheticVolumeGenerator
     
     methods (Access=protected)
         
+        %{
         function V_data = render_volume(obj, sample_location)
             
             if obj.have_smooth_map
@@ -348,6 +350,7 @@ classdef BaseGenerator < SyntheticVolumeGenerator
                 V_data = obj.smooth_sample(sample_location, obj.window_resolution);
             end
         end
+        %}
 
         function save_volume(obj, file_path, data)
             
@@ -375,7 +378,7 @@ classdef BaseGenerator < SyntheticVolumeGenerator
             result = fullfile(obj.session_volume_directory, 'global_mask.synth');
         end
         
-        function V_data = smooth_sample_default(obj, sample_location, map_size, parameters)
+        function [V_data, cache_key] = smooth_sample_default(obj, sample_location, map_size, parameters)
             
             N_smoothing_levels = numel(obj.smoothing_levels);
             
@@ -387,9 +390,15 @@ classdef BaseGenerator < SyntheticVolumeGenerator
             
             parameters = rmfield(parameters, 'gaussian_method');
             
+            cache_key = sprintf('%s;', gaussian_method);
+
             spatial_dims = 2 + ~obj.smoothing_levels_as_z_dimension;
             smoothing_stddevs = geospm.utilities.stddev_from_p_diameter(obj.smoothing_levels_p_value, obj.smoothing_levels, spatial_dims);
             smoothing_variances = smoothing_stddevs .* smoothing_stddevs;
+
+            for i=1:numel(smoothing_variances)
+                cache_key = [cache_key sprintf('%.2f;', smoothing_variances(i))]; %#ok<AGROW>
+            end
             
             if obj.smoothing_levels_as_z_dimension
             

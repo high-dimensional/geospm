@@ -182,33 +182,46 @@ classdef VolumetricIndex < geospm.BaseSpatialIndex
             spatial_index.attachments.assigned_grid = assigned_grid;
         end
         
-        function result = convolve_segment(obj, segment_index, span_origin, span_limit, kernel)
+        function result = convolve_segment(obj, segment_index, span_origin, span_limit, kernel, kernel_key)
+
+            if ~exist('kernel_key', 'var')
+                kernel_key = '';
+            end
             
             path = obj.segment_paths{segment_index};
+
+            voxel_start = floor(span_origin);
+            voxel_end = floor(span_limit - 1);
+            cache_key = '';
+            cache_directory = '';
+            was_cached = false;
+
+            if ~isempty(kernel_key)
+                cache_key = obj.convolution_cache_key(path, obj.effective_resolution, voxel_start, voxel_end, kernel_key);
+                cache_directory = fullfile(fileparts(path), 'cache');
+
+                [was_cached, result] = obj.retrieve_value_from_cache(cache_key, cache_directory);
+                
+                if was_cached
+                    return
+                end
+            end
+            
             [locations, count, ~, ~] = geospm.utilities.recover_points_from_nifti(path);
             
             [x, y, z] = obj.grid_.grid_to_space(locations(:, 1), locations(:, 2), locations(:, 3));
             locations = cast(floor([x, y, z]), 'int64');
             
-            %{
-
-            data = zeros(obj.effective_resolution);
-
-            for index=1:size(locations, 1)
-                data(locations(index, 1), locations(index, 2), locations(index, 3)) = count(index);
-            end
-            %}
-
             data = zeros(obj.effective_resolution);
             indices = sub2ind(size(data), locations(:, 1), locations(:, 2), locations(:, 3));
             data(indices) = count;
 
-            voxel_start = floor(span_origin);
-            voxel_end = floor(span_limit - 1);
-
-
             selected = data(voxel_start(1):voxel_end(1), voxel_start(2):voxel_end(2), voxel_start(3):voxel_end(3));
             result = convn(selected, kernel, 'same');
+            
+            if ~was_cached && ~isempty(cache_key)
+                obj.commit_value_to_cache(cache_key, result, cache_directory);
+            end
         end
 
         function result = as_json_struct(obj, varargin)
@@ -265,6 +278,116 @@ classdef VolumetricIndex < geospm.BaseSpatialIndex
     end
     
     methods (Access=protected)
+
+        function result = convolution_cache_key(~, path, effective_resolution, voxel_start, voxel_end, kernel_key)
+            
+            effective_resolution = sprintf('%d,%d,%d', effective_resolution(1), effective_resolution(2), effective_resolution(3));
+            
+            voxel_start = sprintf('%d,%d,%d', voxel_start(1), voxel_start(2), voxel_start(3));
+            voxel_end = sprintf('%d,%d,%d', voxel_end(1), voxel_end(2), voxel_end(3));
+
+            [directory, name, ext] = fileparts(path);
+            [~, directory_name, directory_ext] = fileparts(directory);
+
+            result = [directory_name directory_ext ':' name ext ';' kernel_key ';' effective_resolution ';' voxel_start ';' voxel_end];
+        end
+
+        function result = hash_key_for_cache(~, key)
+            result = hdng.utilities.hash_strings({key}, 'uint64');
+            result = num2str(result, '%x');
+        end
+
+        function [was_cached, result] = retrieve_value_from_cache(obj, key, directory)
+           was_cached = false;
+           result = [];
+
+           hashed_key = obj.hash_key_for_cache(key);
+
+           hash_directory = fullfile(directory, hashed_key);
+
+           if ~exist(hash_directory, 'dir')
+               return;
+           end
+           
+
+           keys_path = fullfile(hash_directory, 'keys');
+           
+           try
+                key_list = hdng.utilities.load_text(keys_path);
+           catch 
+               return;
+           end
+
+           key_list = split(key_list, '\n');
+           key_list = cellfun(@(x) strip(x), key_list, 'UniformOutput', false);
+           empty = cellfun(@(x) isempty(x), key_list);
+           key_list = key_list(~empty);
+
+           entry_index = find(strcmp(key, key_list));
+           
+           if isempty(entry_index)
+               return;
+           end
+           
+            entry_directory = fullfile(hash_directory, sprintf('%d', entry_index));
+            contents_file = fullfile(entry_directory, 'contents');
+
+            try
+                contents = load(contents_file);
+            catch
+                return;
+            end
+
+            result = contents.value;
+            was_cached = true;
+        end
+        
+        function commit_value_to_cache(obj, key, value, directory)
+
+
+            hashed_key = obj.hash_key_for_cache(key);
+
+            hash_directory = fullfile(directory, hashed_key);
+
+            if ~exist(hash_directory, 'dir')
+                mkdir(hash_directory);
+            end
+           
+
+            keys_path = fullfile(hash_directory, 'keys');
+
+            try
+                key_list = hdng.utilities.load_text(keys_path);
+            catch
+                key_list = '';
+            end
+            
+            key_list = split(key_list, '\n');
+            key_list = cellfun(@(x) strip(x), key_list, 'UniformOutput', false);
+            empty = cellfun(@(x) isempty(x), key_list);
+            key_list = key_list(~empty);
+
+            entry_index = find(strcmp(key, key_list));
+           
+            if isempty(entry_index)
+                key_list = [key_list; {key}];
+                entry_index = numel(key_list);
+
+                key_list = join(key_list, '\n');
+                key_list = key_list{1};
+                hdng.utilities.save_text(key_list, keys_path);
+            end
+            
+            entry_directory = fullfile(hash_directory, sprintf('%d', entry_index));
+
+            if ~exist(entry_directory, 'dir')
+                mkdir(entry_directory);
+            end
+
+            contents_file = fullfile(entry_directory, 'contents');
+            
+            save(contents_file, 'value');
+        end
         
         function result = render_in_figure(obj, origin, frame_size, variant, varargin) %#ok<INUSD>
             
@@ -459,6 +582,5 @@ classdef VolumetricIndex < geospm.BaseSpatialIndex
 
             result = geospm.VolumetricIndex(order_args.segment_paths(order), order_args.segment_names(order), crs, grid);
         end
-        
     end
 end

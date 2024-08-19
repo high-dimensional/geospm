@@ -385,8 +385,12 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
             spatial_index.attachments.assigned_grid = assigned_grid;
         end
         
-        function result = convolve_segment(obj, segment_index, span_origin, span_limit, kernel)
+        function result = convolve_segment(obj, segment_index, span_origin, span_limit, kernel, kernel_key) %#ok<INUSD>
 
+            if ~exist('kernel_key', 'var')
+                kernel_key = ''; %#ok<NASGU>
+            end
+            
             [x_segment, y_segment, z_segment] = obj.xyz_coordinates_for_segment(segment_index);
             
             selector = x_segment >= span_origin(1) & x_segment < span_limit(1) & y_segment >= span_origin(2) & y_segment < span_limit(2) & z_segment >= span_origin(3) & z_segment < span_limit(3);
