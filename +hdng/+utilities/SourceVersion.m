@@ -24,6 +24,7 @@ classdef SourceVersion < handle
         path
         
         date
+        branch
         build_number
         hash
         release
@@ -64,7 +65,7 @@ classdef SourceVersion < handle
             active_path = obj.search_path;
                 
             while ~isempty(active_path)
-                obj.commit_directory = fullfile(active_path, 'commit');
+                obj.commit_directory = fullfile(active_path, 'version');
                 
                 if exist(obj.commit_directory, 'dir')
                     obj.path = active_path;
@@ -84,7 +85,8 @@ classdef SourceVersion < handle
             
             hash_path = fullfile(obj.commit_directory, 'hash');
             date_path = fullfile(obj.commit_directory, 'date');
-            build_number_path = fullfile(obj.commit_directory, 'number');
+            branch_path = fullfile(obj.commit_directory, 'branch');
+            build_number_path = fullfile(obj.commit_directory, 'build_number');
             release_path = fullfile(obj.commit_directory, 'release');
             string_path = fullfile(obj.commit_directory, 'string');
             
@@ -92,6 +94,12 @@ classdef SourceVersion < handle
                 obj.hash = strip(hdng.utilities.load_text(hash_path));
             else
                 obj.hash = '';
+            end
+            
+            if exist(date_path, 'file') ~= 0
+                obj.branch = strip(hdng.utilities.load_text(branch_path));
+            else
+                obj.branch = '';
             end
             
             if exist(date_path, 'file') ~= 0
