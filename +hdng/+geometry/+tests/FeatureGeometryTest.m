@@ -30,7 +30,7 @@ classdef FeatureGeometryTest < matlab.unittest.TestCase & hdng.geometry.Handler
             parts = split(directory, filesep);
             directory = join(parts(1:end-1), filesep);
             directory = directory{1};
-            obj.polygons_path = fullfile(directory, '+utilities', 'polygonshapes', 'polygonshapes.shp');
+            obj.polygons_path = fullfile(directory, '+utilities', '+tests', 'polygonshapes', 'polygonshapes.shp');
         end
     end
  

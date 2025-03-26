@@ -13,20 +13,18 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function p = p_from_stddev_diameter(stddev, diameter, dimensions)
-
-    if ~exist('dimensions', 'var')
-        dimensions = 1;
-    end
-
-    if ~any(dimensions == [1, 2, 3])
-        error('geospm.utilities.p_from_stddev_diameter(): dimensions must be from {1, 2, 3}');
-    end
+function locations = cdf_mesh(dimensions)
+    % Computes the mesh node locations for a grid of the specified 
+    % dimensions.
     
-    if dimensions == 1
-        p = 2 * normcdf(diameter / 2, 0, stddev) - 1;
+    N_locations = prod(dimensions + 1);
+    [X, Y, Z] = ind2sub(dimensions + 1, 1:N_locations);
+    
+    if numel(dimensions) == 3
+        locations = [X', Y', Z'];
+    elseif numel(dimensions) == 2
+        locations = [X', Y'];
     else
-        p_radius = diameter / (2 * stddev);
-        p = chi2cdf(p_radius^2, dimensions);
+        error('cdf_mesh(): dimensions must specify 2 or 3 elements.')
     end
 end

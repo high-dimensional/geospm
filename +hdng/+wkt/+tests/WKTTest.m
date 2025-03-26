@@ -43,7 +43,7 @@ classdef WKTTest < matlab.unittest.TestCase
         function [result] = test_crs_from_web(~)
 
             source1 = @(code) strcat('https://spatialreference.org/ref/epsg/', code, '/ogcwkt/');
-            source2 = @(code) strcat('https://epsg.io/', code, '.wkt?download');
+            source2 = @(code) strcat('https://epsg.io/', code, '.wkt?download=1');
             
             codes = [27700, 26191, 23030];
             sources = {source1, source2};

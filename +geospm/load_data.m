@@ -115,7 +115,8 @@ function [result, spatial_index] = load_data(file_path, varargin)
         crs_or_crs_identifier = hdng.SpatialCRS.empty;
         warning(['geospm.load_data(): No CRS identifier was explicitly' ...
                  ' specified ' newline 'and there appears to be no' ...
-                 ' auxiliary ''' basename '.prj'' file.']); 
+                 ' auxiliary ''' basename '.prj'' file.\nCo-ordinates' ...
+                 ' will not be geographically registered.']); 
     end
     
     variable_columns = ones(size(additional_columns), 'logical');

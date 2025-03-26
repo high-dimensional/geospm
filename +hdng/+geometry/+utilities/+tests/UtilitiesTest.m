@@ -27,9 +27,13 @@ classdef UtilitiesTest < matlab.unittest.TestCase
         function create_shapes(obj)
             
             [directory, ~, ~] = fileparts(mfilename('fullpath'));
+            
+            %{
             parts = split(directory, filesep);
             directory = join(parts(1:end-1), filesep);
             directory = directory{1};
+            %}
+            
             file_path = fullfile(directory, 'polygonshapes', 'polygonshapes.shp');
             obj.polygonshapes = shaperead(file_path);
         end

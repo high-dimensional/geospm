@@ -24,6 +24,8 @@ classdef VariableSpecifier
         label
         
         type
+        load_type
+
         value_options
         
         role
@@ -42,6 +44,9 @@ classdef VariableSpecifier
         has_index
 
         has_type
+        has_load_type
+
+        applicable_load_type
     end
     
     properties (GetAccess = private, SetAccess = private)
@@ -82,8 +87,22 @@ classdef VariableSpecifier
             result = ~isempty(obj.type);
         end
 
+        function result = get.has_load_type(obj)
+            
+            result = ~isempty(obj.load_type);
+        end
+
+        function result = get.applicable_load_type(obj)
+
+            result = obj.type;
+
+            if obj.has_load_type
+                result = obj.load_type;
+            end
+        end
+
         function obj = VariableSpecifier(name_or_index_in_file, rename_as, ...
-                label, type, value_options, role, handlers)
+                label, type, load_type, value_options, role, handlers)
             
             if ~exist('rename_as', 'var')
                 rename_as = '';
@@ -95,6 +114,10 @@ classdef VariableSpecifier
 
             if ~exist('type', 'var')
                 type = 'double';
+            end
+
+            if ~exist('load_type', 'var')
+                load_type = '';
             end
 
             if ~exist('value_options', 'var')
@@ -113,6 +136,7 @@ classdef VariableSpecifier
             obj.rename_as = rename_as;
             obj.label = label;
             obj.type = type;
+            obj.load_type = load_type;
             obj.value_options = value_options;
             obj.role = role;
             obj.handlers = handlers;
@@ -147,7 +171,7 @@ classdef VariableSpecifier
 
         function options = apply(obj, options, index, value_options_by_type)
 
-            options = setvartype(options, index, obj.type);
+            options = setvartype(options, index, obj.applicable_load_type);
 
             applicable_options = hdng.utilities.ValueOptions.empty;
 
@@ -175,9 +199,7 @@ classdef VariableSpecifier
                     out = handler(variables(k));
                     tmp = [tmp; out(:)]; %#ok<AGROW>
                 end
-
-                %variable = handler(variable);
-
+                
                 variables = tmp;
             end
         end
@@ -236,6 +258,10 @@ classdef VariableSpecifier
                 options.type = 'double';
             end
 
+            if ~isfield(options, 'load_type')
+                options.load_type = '';
+            end
+
             if ~isfield(options, 'value_options')
                 options.value_options = hdng.utilities.ValueOptions.empty;
             end
@@ -257,10 +283,20 @@ classdef VariableSpecifier
                 options.rename_as, ...
                 options.label, ...
                 options.type, ...
+                options.load_type, ...
                 options.value_options, ...
                 options.role, ...
                 options.handlers ...
             );
+        end
+
+        function variable = update_type_flags(variable)
+
+            variable.is_char = isa(variable.data, 'char');
+            variable.is_real = isa(variable.data, 'double');
+            variable.is_boolean = isa(variable.data, 'logical');
+            variable.is_integer = ...
+                ~variable.is_char && ~variable.is_real && ~variable.is_boolean;
         end
 
     end

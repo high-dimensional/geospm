@@ -55,7 +55,7 @@ classdef NumericDataTest < matlab.unittest.TestCase
             
             obj.variable_names = obj.rand_unique_words(obj.P);
 
-            word_list = webread('https://random-word-api.herokuapp.com/word');
+            word_list = geospm.tests.NumericDataTest.randomwords(1);
             word = word_list{1};
 
             obj.labels = cell(obj.N, 1);
@@ -92,8 +92,8 @@ classdef NumericDataTest < matlab.unittest.TestCase
             result_index = 1;
 
             while result_index <= numel(result)
-
-                word_list = webread(sprintf('https://random-word-api.herokuapp.com/word?number=%d', N));
+                
+                word_list = geospm.tests.NumericDataTest.randomwords(N);
                 
                 for index=1:numel(word_list)
                     
@@ -115,6 +115,28 @@ classdef NumericDataTest < matlab.unittest.TestCase
             end
         end
 
+    end
+
+    methods (Static)
+        
+        function result = wordlist()
+        
+            persistent wordlist;
+
+            if isempty(wordlist)
+                wordlist = webread('https://raw.githubusercontent.com/bevacqua/correcthorse/refs/heads/master/wordlist.json', weboptions('ContentType', 'json'));
+            end
+            
+            result = wordlist;
+        end
+
+        function result = randomwords(N)
+            
+            words = geospm.tests.NumericDataTest.wordlist();
+            select = randperm(numel(words), N);
+            result = words(select);
+        end
+    
     end
     
     methods(Test)

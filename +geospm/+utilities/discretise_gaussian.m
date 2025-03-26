@@ -32,6 +32,10 @@ function result = discretise_gaussian(dimensions, mean, covariance, ...
         method = 'matic2';
     end
     
+    if ~exist('parameters', 'var')
+        parameters = struct();
+    end
+
     if ~exist('show_result', 'var')
         show_result = false;
     end

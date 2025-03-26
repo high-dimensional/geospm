@@ -316,7 +316,7 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
             %}
 
 
-            result = zeros(obj.N, 1);
+            result = []; %zeros(obj.N, 1);
             offset = 0;
 
             for index=1:numel(segment_indices)
@@ -330,6 +330,8 @@ classdef SpatialIndex < geospm.BaseSpatialIndex
 
                 offset = offset + k;
             end
+
+            result = result';
         end
 
         function result = segment_indices_from_row_indices(obj, row_indices)

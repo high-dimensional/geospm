@@ -24,7 +24,7 @@ classdef ScheduleTest < matlab.unittest.TestCase
         
         function initialise(obj)
             
-            dataset_url = '/Users/work/UCL/Projects/regra/data/ukb42604_covid.csv';
+            dataset_url = '/Users/work/UCL/ukb42604/old/exports/ukb42604_covid.csv';
 
             obj.schedule = hdng.experiments.Schedule();
 

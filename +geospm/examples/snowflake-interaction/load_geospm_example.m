@@ -13,15 +13,15 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function [spatial_data, options] = load_geospm_example
+function [data, spatial_index, options] = load_geospm_example
     
-    spatial_data = geospm.load_data('spatial_data.csv', 'row_identifier_index', []);
+    [data, spatial_index] = geospm.load_data('spatial_data.csv', 'row_identifier_index', []);
     
     options = struct();
     options.smoothing_levels = 40.0;
     options.apply_density_mask = false;
-    options.min_location = floor(spatial_data.min_xyz);
-    options.max_location = ceil(spatial_data.max_xyz);
+    options.min_location = floor(spatial_index.min_xyz);
+    options.max_location = ceil(spatial_index.max_xyz);
     options.spatial_resolution_max = 220;
     options.thresholds = { 'T[1, 2]: p<0.05 (FWE)' };
     options.add_georeference_to_images = false;

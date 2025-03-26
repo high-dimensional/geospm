@@ -118,14 +118,17 @@ classdef VariableLoader < handle
                 variable.type = specifier.type;
                 variable.role = specifier.role;
 
-                variable.is_char = isa(variable.data, 'char');
-                variable.is_real = isa(variable.data, 'double');
-                variable.is_boolean = isa(variable.data, 'logical');
-                variable.is_integer = ~variable.is_char && ~variable.is_real && ~variable.is_boolean;
+                variable = hdng.utilities.VariableSpecifier.update_type_flags(variable);
+
                 variable.is_missing = obj.find_null_strings(raw_column);
                 variable.has_missing_values = any(variable.is_missing);
 
                 transformed = specifier.transform_variable(variable);
+
+                if numel(transformed) == 1 && specifier.has_load_type
+                    transformed(1).data = cast(transformed(1).data, transformed.type);
+                    transformed(1) = hdng.utilities.VariableSpecifier.update_type_flags(transformed(1));
+                end
                 
                 for k=1:numel(transformed)
                     variables{output_index} = transformed(k); %#ok<AGROW>

@@ -167,12 +167,23 @@
                     movefile(file_path, results_directory);
                 end
                 
+                %{
                 for c=1:numel(contrasts)
                     p_values_table = computation.batch_results{c}.TabDatvar;
                     obj.write_p_values_table(p_values_table, ...
                         contrasts(c), grid, crs, results_directory);
                 end
+                %}
                 
+                p_values_table = [];
+
+                for c=1:numel(contrasts)
+                    p_values_table = [p_values_table; computation.batch_results{c}.TabDatvar]; %#ok<AGROW>
+                end
+
+                obj.write_p_values_table(p_values_table, ...
+                    contrasts, grid, crs, results_directory);
+
                 match_result = session.match_statistic_threshold_files(...
                     testing_threshold.distribution, results_directory);
                 
@@ -387,13 +398,13 @@
         end
         
         
-        function write_p_values_table(obj, p_values_table, fixed_contrast_index, grid, crs, directory)
+        function write_p_values_table(obj, p_values_table, contrast_indices, grid, crs, directory)
             
             tables_by_statistic = containers.Map('KeyType', 'char', 'ValueType', 'any');
             
-            for contrast_index=1:numel(p_values_table)
+            for c=1:numel(p_values_table)
                 
-                contrast_p_values = p_values_table(contrast_index);
+                contrast_p_values = p_values_table(c);
                 
                 if ~obj.check_p_values_header(contrast_p_values)
                     continue;
@@ -406,7 +417,7 @@
                 end
                 
                 indices = tables_by_statistic(statistic);
-                tables_by_statistic(statistic) = [indices, {contrast_index}];
+                tables_by_statistic(statistic) = [indices, {c}];
                 
                 if isempty(contrast_p_values.dat)
                     % Do not skip insignificant contrasts
@@ -448,17 +459,9 @@
                 
                 extra_values = obj.extra_values_from_contrast_p_values(contrast_p_values);
                 
-                index = contrast_index;
-                
-                if fixed_contrast_index
-                    index = fixed_contrast_index;
-                end
+                index = contrast_indices(c);
                 
                 obj.write_contrast_p_values(directory, statistic, index, row_values, row_xyz, extra_values, crs);
-                
-                if fixed_contrast_index
-                    break;
-                end
             end
             
             statistics = keys(tables_by_statistic);
@@ -473,7 +476,7 @@
                 p_values = p_values_table(indices);
                 
                 for j=1:numel(indices)
-                    p_values(j).contrast_index = indices(j);
+                    p_values(j).contrast_index = contrast_indices(indices(j));
                 end
                 
                 file_path = fullfile(directory, ['spm' statistic '_p_values.mat']);

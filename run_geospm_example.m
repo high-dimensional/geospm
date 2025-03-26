@@ -96,13 +96,13 @@ function varargout = run_geospm_example(id)
             
             [~] = which('load_geospm_example');
 
-            [spatial_data, options] = load_geospm_example;
+            [data, spatial_index, options] = load_geospm_example;
 
             arguments = hdng.utilities.struct_to_name_value_sequence(options);
 
             cd(cwd);
 
-            result = geospm.compute('', spatial_data, true, arguments{:});
+            result = geospm.compute('', data, spatial_index, true, arguments{:});
             
             hdng.utilities.save_text([example_name newline], ...
                 fullfile(result.directory, [example_name '_example']));
