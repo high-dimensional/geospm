@@ -1,4 +1,4 @@
-# GeoSPM v2.0.0
+# GeoSPM v2.0.1
 
 ## Introduction
 
@@ -6,7 +6,7 @@ GeoSPM allows the spatial analysis of diverse geographic point data. It draws up
 
 The core idea is to transform sparse spatial signals into a form suited to mass-univariate statistical testing on a chosen point grid: for example, testing that the spatially or regionally expression of a particular variable is greater than would be expected, under the null hypothesis of no regional effect. The probability of observing topological features in the observed map, such as peaks or clusters (i.e., level sets above some threshold), can then be evaluated, and used to ascribe a p-value to spatially organised effects.
 
-An in-depth paper describing the method behind GeoSPM is available in [preprint](http://arxiv.org/abs/2204.02354).
+An in-depth paper describing the method behind GeoSPM has been [published](https://doi.org/10.1016/j.patter.2022.100656).
 
 GeoSPM was developed at the High Dimensional Neurology Group, University Collge London, and made available under the GNU General Public License Version 3.
 
