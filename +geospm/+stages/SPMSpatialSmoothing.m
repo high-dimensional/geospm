@@ -166,11 +166,7 @@
 
             if obj.compute_density
 
-                tic;
                 [density, volume_mask_path] = volume_generator.compute_volume_density(index_number);
-                elapsedSecs = toc;
-                
-                fprintf('Density computation took %.2f seconds for %d volumes.\n', elapsedSecs, grid_spatial_index.S);
 
                 if obj.write_density
                     density_path = fullfile(arguments.directory, 'density.nii');

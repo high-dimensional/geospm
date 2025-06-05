@@ -1,4 +1,4 @@
-# GeoSPM v2.0.1
+# GeoSPM v2.0.2
 
 ## Introduction
 

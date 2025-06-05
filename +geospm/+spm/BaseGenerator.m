@@ -244,12 +244,17 @@ classdef BaseGenerator < SyntheticVolumeGenerator
             end
         end
 
-        %{
         function V_data = synthesize_by_addition(obj, specifier)
             
+            path = specifier.spatial_index.segment_paths{specifier.segment_number};
+
+            tic;
 
             [x, y, z] = specifier.spatial_index.xyz_coordinates_for_segment(specifier.segment_number);
 
+            x = floor(x);
+            y = floor(y);
+            z = floor(z);
 
             V_data = [];
             N_locations = size(x, 1);
@@ -264,8 +269,10 @@ classdef BaseGenerator < SyntheticVolumeGenerator
                     V_data = V_data + S_data;
                 end
             end
+
+            elapsedSecs= toc;
+            fprintf('Adition-based synthesis took %.2f seconds for %s\n', elapsedSecs, path);
         end
-        %}
 
         function V_data = synthesize(obj, specifier)
             
@@ -290,10 +297,8 @@ classdef BaseGenerator < SyntheticVolumeGenerator
                         case {'default', 'convolution'}
                             V_data = obj.synthesize_by_convolution(specifier);
 
-                        %{
-                        case 'addition'
+                        case {'addition'}
                             V_data = obj.synthesize_by_addition(specifier);
-                        %}
                         
                         otherwise
                             error('Unknown synthesis variant: %s', obj.synthesis_variant);
@@ -326,7 +331,6 @@ classdef BaseGenerator < SyntheticVolumeGenerator
     
     methods (Access=protected)
         
-        %{
         function V_data = render_volume(obj, sample_location)
             
             if obj.have_smooth_map
@@ -350,7 +354,6 @@ classdef BaseGenerator < SyntheticVolumeGenerator
                 V_data = obj.smooth_sample(sample_location, obj.window_resolution);
             end
         end
-        %}
 
         function save_volume(obj, file_path, data)
             

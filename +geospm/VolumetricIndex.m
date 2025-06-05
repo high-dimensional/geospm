@@ -19,6 +19,9 @@ classdef VolumetricIndex < geospm.BaseSpatialIndex
     
     properties (GetAccess = public, SetAccess = immutable)
         segment_paths
+        use_convolution_cache
+        use_gpu
+        gpu_precision
     end
 
     properties
@@ -86,6 +89,10 @@ classdef VolumetricIndex < geospm.BaseSpatialIndex
 
             obj.grid_ = grid;
             obj.segment_metadata_ = cell(numel(segment_paths), 1);
+
+            obj.use_convolution_cache = false;
+            obj.use_gpu = false;
+            obj.gpu_precision = 'single';
         end
         
 
@@ -196,7 +203,7 @@ classdef VolumetricIndex < geospm.BaseSpatialIndex
             cache_directory = '';
             was_cached = false;
 
-            if ~isempty(kernel_key)
+            if ~isempty(kernel_key) && obj.use_convolution_cache
                 cache_key = obj.convolution_cache_key(path, obj.effective_resolution, voxel_start, voxel_end, kernel_key);
                 cache_directory = fullfile(fileparts(path), 'cache');
 
@@ -217,9 +224,52 @@ classdef VolumetricIndex < geospm.BaseSpatialIndex
             data(indices) = count;
 
             selected = data(voxel_start(1):voxel_end(1), voxel_start(2):voxel_end(2), voxel_start(3):voxel_end(3));
-            result = convn(selected, kernel, 'same');
             
-            if ~was_cached && ~isempty(cache_key)
+            if obj.use_gpu && canUseGPU()
+            
+                kernel_span = ceil((size(kernel) + 1) / 2);
+                kernel_origin = ceil(kernel_span / 2);
+                kernel_limit = kernel_origin + kernel_span - 1;
+                selected_kernel = kernel(kernel_origin(1):kernel_limit(1), ...
+                                         kernel_origin(2):kernel_limit(2), ...
+                                         kernel_origin(3):kernel_limit(3));
+
+                %{
+                tic;
+                selected = gpuArray(cast(selected, obj.gpu_precision));
+                selected_kernel = gpuArray(cast(selected_kernel, obj.gpu_precision));
+
+                result = convn(selected, selected_kernel, 'same');
+
+                result = gather(result);
+                result = cast(result, 'double');
+                elapsedSecs = toc;
+                %}
+                
+                
+                tic;
+                result = CUDAconvolution3D(selected, selected_kernel);
+                result = cast(result, 'double');
+                elapsedSecs = toc;
+
+                fprintf('GPU-based convn took %.2f seconds for %s\n', elapsedSecs, path);
+            
+            else
+            
+                kernel_span = ceil((size(kernel) + 1) / 2);
+                kernel_origin = ceil(kernel_span / 2);
+                kernel_limit = kernel_origin + kernel_span - 1;
+                selected_kernel = kernel(kernel_origin(1):kernel_limit(1), ...
+                                         kernel_origin(2):kernel_limit(2), ...
+                                         kernel_origin(3):kernel_limit(3));
+
+                tic;
+                result = convn(selected, selected_kernel, 'same');
+                elapsedSecs = toc;
+                fprintf('CPU-based convn took %.2f seconds for %s\n', elapsedSecs, path);
+            end
+
+            if ~was_cached && ~isempty(cache_key) && obj.use_convolution_cache
                 obj.commit_value_to_cache(cache_key, result, cache_directory);
             end
         end
