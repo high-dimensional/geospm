@@ -42,7 +42,9 @@ classdef Builtins < hdng.experiments.ValueLoader
                 'builtin.float', ...
                 'builtin.float.symbolic', ...
                 'builtin.int', ...
+                'builtin.int.symbolic', ...
                 'builtin.bool', ...
+                'builtin.bool.symbolic', ...
                 'builtin.list', ...
                 'builtin.dict', ...
                 'builtin.struct', ...
@@ -87,6 +89,11 @@ classdef Builtins < hdng.experiments.ValueLoader
                     return;
                 end
                 
+                if strcmp(serialised_value, 'Empty')
+                    content = cast([], 'double');
+                    return;
+                end
+                
                 if strcmp(serialised_value, 'NaN')
                     content = NaN;
                     return;
@@ -100,11 +107,39 @@ classdef Builtins < hdng.experiments.ValueLoader
                 serialised_value = content;
                 return;
             end
+
+            if strcmp(type_identifier, 'builtin.int.symbolic')
+                
+                if ~ischar(serialised_value)
+                    error('hdng.experiments.Builtins.from_serialised_value_and_type(): Expected a char value for ''builtin.int.symbolic''.');
+                end
+                
+                if strcmp(serialised_value, 'Empty')
+                    content = cast([], 'int64');
+                    return;
+                end
+                
+                error('hdng.experiments.Builtins.from_serialised_value_and_type(): Unknown constant ''%s'' for ''builtin.int.symbolic''.', serialised_value);
+            end
             
             if strcmp(type_identifier, 'builtin.bool')
                 content = cast(serialised_value, 'logical');
                 serialised_value = content;
                 return;
+            end
+
+            if strcmp(type_identifier, 'builtin.bool.symbolic')
+                
+                if ~ischar(serialised_value)
+                    error('hdng.experiments.Builtins.from_serialised_value_and_type(): Expected a char value for ''builtin.bool.symbolic''.');
+                end
+                
+                if strcmp(serialised_value, 'Empty')
+                    content = cast([], 'logical');
+                    return;
+                end
+                
+                error('hdng.experiments.Builtins.from_serialised_value_and_type(): Unknown constant ''%s'' for ''builtin.bool.symbolic''.', serialised_value);
             end
             
             if strcmp(type_identifier, 'builtin.list')

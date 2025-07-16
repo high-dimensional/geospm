@@ -29,7 +29,11 @@ function [serialised_value, type_identifier] = as_serialised_value_and_type(cont
     end
     
     if isa(content, 'logical')
-        if numel(content) == 1
+        if isempty(content)
+            serialised_value = 'Empty';
+            type_identifier = 'builtin.bool.symbolic';
+            return
+        elseif iscalar(content)
             serialised_value = content;
             type_identifier = 'builtin.bool';
             return
@@ -39,7 +43,11 @@ function [serialised_value, type_identifier] = as_serialised_value_and_type(cont
     end
     
     if isinteger(content)
-        if numel(content) == 1
+        if isempty(content)
+            serialised_value = 'Empty';
+            type_identifier = 'builtin.int.symbolic';
+            return
+        elseif isscalar(content)
             serialised_value = content;
             type_identifier = 'builtin.int';
             return
@@ -49,7 +57,11 @@ function [serialised_value, type_identifier] = as_serialised_value_and_type(cont
     end
     
     if isfloat(content)
-        if numel(content) == 1
+        if isempty(content)
+            serialised_value = 'Empty';
+            type_identifier = 'builtin.float.symbolic';
+            return
+        elseif isscalar(content)
             
             if isinf(content)
                 if content > 0
