@@ -13,35 +13,27 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function grid_cell_values = select_data_per_polygon(group, grid_env, cell_value_fn)
-    
+function cells = select_values_from_cell_records(cells, field_names)
 
-    grid_cells = group.grid_cells;
-    grid_cell_values = group.grid_cell_values;
-    column_values = group.column_values;
-    row_values = group.row_values;
+    for index=1:numel(cells)
 
-    fn_state = [];
-    
-    for row_index=1:size(grid_cell_values, 1)
+        cell_records = cells{index};
 
-        for col_index=1:size(grid_cell_values, 2)
-            
-            grid_cell = grid_cells{row_index, col_index};
-            
-            if isempty(grid_cell)
-                continue;
-            end
-            
-            [values, fn_state] = cell_value_fn(grid_cell_values, row_index, col_index, row_values, column_values, fn_state);
-
-            if isempty(values)
-                continue;
-            end
-            
-            polygon_datasets = geospm.reports.extract_polygon_datasets(values, grid_cell, grid_env);
-
-            grid_cell_values{row_index, col_index} = polygon_datasets;
+        if isempty(cell_records)
+            continue;
         end
+        
+        cell_values = cell(cell_records.length, numel(field_names));
+        
+        for record_index=1:cell_records.length
+            record = cell_records.records{record_index};
+
+            for field_index=1:numel(field_names)
+                field_name = field_names{field_index};
+                cell_values{record_index, field_index} = record(field_name);
+            end
+        end
+        
+        cells{index} = cell_values;
     end
 end

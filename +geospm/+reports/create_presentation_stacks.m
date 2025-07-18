@@ -13,20 +13,21 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function grid_cell_values = create_presentation_stacks(grid_cell_values, ...
+function cell_values = create_presentation_stacks(cell_values, layer_value_paths, ...
     renderer, selected_layer_categories, resources, clear_source_refs, ...
     path_prefix, render_options)
     
 
-    for index=1:numel(grid_cell_values)
-        values = grid_cell_values{index};
+    for index=1:numel(cell_values)
+        values = cell_values{index};
 
         if isempty(values)
             continue;
         end
         
-        layers = unpack_values(values);
+        %layers = unpack_values(values);
 
+        layers = unpack_layer_values(values, layer_value_paths);
         layers = convert_values_to_layers(layers, clear_source_refs, path_prefix);
         
         stack = geospm.validation.PresentationStack(layers, selected_layer_categories, render_options.magnification);
@@ -36,10 +37,11 @@ function grid_cell_values = create_presentation_stacks(grid_cell_values, ...
 
         renderer.gather_layer_resources(stack.selected_layers, context, resources);
 
-        grid_cell_values{index} = context;
+        cell_values{index} = context;
     end
 end
 
+%{
 function result = unpack_values(values)
     
     result = {};
@@ -54,6 +56,25 @@ function result = unpack_values(values)
             result{end + 1} = value.content; %#ok<AGROW>
         end
     end
+end
+%}
+
+function result = unpack_layer_values(values, layer_value_paths)
+    
+    result = {};
+
+    for index=1:numel(layer_value_paths)
+        layer_value_path = layer_value_paths{index};
+
+        value = hdng.utilities.struct_get_value_at_path(values, layer_value_path, []);
+
+        if iscell(value.content)
+            result = [result; value.content(:)]; %#ok<AGROW>
+        else
+            result{end + 1} = value.content; %#ok<AGROW>
+        end
+    end
+
 end
 
 function layers = convert_values_to_layers(values, clear_source_refs, path_prefix)

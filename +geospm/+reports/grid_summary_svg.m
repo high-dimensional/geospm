@@ -13,8 +13,8 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function grid_summary_svg(records, row_field, column_field, cell_selector, cell_fields, output_file, render_options, varargin)
-
+function grid_summary_svg(base_directory, output_name, render_options, grid_options, varargin)
+    
     options = hdng.utilities.parse_struct_from_varargin(varargin{:});
 
     if ~isfield(options, 'host_name')
@@ -25,241 +25,170 @@ function grid_summary_svg(records, row_field, column_field, cell_selector, cell_
         options.clear_source_refs = false;
     end
 
-    [parent_dir, output_name, ~] = fileparts(output_file);
+    if ~isfield(options, 'dataset_aliases')
+        options.dataset_aliases = hdng.utilities.Dictionary();
+    end
 
-    tmp_dir = hdng.utilities.make_timestamped_directory(parent_dir);
+    if ~isfield(options, 'force_preprocessing')
+        options.force_preprocessing = false;
+    end
+
+    if ~isfield(options, 'layer_value_paths')
+        options.layer_value_paths = {...
+            'configuration.image_layers', ...
+            'result.terms.contrast', ...
+            'result.terms.mask_traces', ...
+        };
+    end
+
+    if ~isfield(options, 'adjust_colour_mapping')
+        options.adjust_colour_mapping = false;
+    end
+
+    if ~isfield(options, 'colour_mapping')
+        options.colour_mapping = hdng.one_struct('batch', 'per_column');
+        options.colour_mapping.selected_column_values = {...
+        };
+    end
+    
+    studies = geospm.reports.scan_regional_directories(base_directory, options.suffix);
+    
+    tmp_dir = hdng.utilities.make_timestamped_directory(base_directory);
 
     renderer = geospm.validation.SVGRenderer();
-
     renderer.host_name = options.host_name;
-    renderer.resource_identifier_expr = '.*(?<identifier>/presentation/(map_background.png|map_foreground.png))$';
-    
-    clear_source_refs = options.clear_source_refs;
+    renderer.resource_identifier_expr = sprintf('.*(?<identifier>%spresentation%s(map_background.png|map_foreground.png))$', filesep);
 
-    options = rmfield(options, 'host_name');
-    options = rmfield(options, 'clear_source_refs');
-
-    arguments = hdng.utilities.struct_to_name_value_sequence(options);
-
-    [groups, group_values, row_values, column_values] = ...
-        geospm.reports.grid_cells_from_records(records, row_field, column_field, arguments{:});
-    
     selected_layer_categories = {'underlay', 'content', 'overlay'};
     
     label_attributes = hdng.utilities.Dictionary();
     label_attributes('font-family') = 'Barlow, sans';
     label_attributes('font-weight') = '600';
     
+    preprocessing_identifier = '_poly';
 
-    %slice_names = render_options.slice_names;
-    %for slice_index=1:numel(slice_names)
-        %render_options.slice_name = slice_names{slice_index};
+    geospm.reports.build_record_grids_for_studies(studies, ...
+        preprocessing_identifier, ...
+        grid_options.row_field, grid_options.column_field, grid_options, ...
+        'do_debug', options.do_debug, ...
+        'force_preprocessing', options.force_preprocessing, ...
+        'output_dir', tmp_dir);
 
-        grid_rows = struct.empty;
-        combined_resources = hdng.utilities.Dictionary();
+    shared_variables = geospm.reports.SharedVariables([], options.dataset_aliases);
 
-        for index=1:numel(groups)
-            
-            group_value = group_values{index};
+    context_attachment = 'render_contexts';
+    file_paths_attachment = 'grid_volume_file_paths';
+
+    [studies, group_widths, group_heights] = ...
+        geospm.reports.build_render_contexts(studies, preprocessing_identifier, ...
+        'preprocessed_values', context_attachment, file_paths_attachment, ...
+        shared_variables, options.layer_value_paths, options.clear_source_refs, renderer, ...
+        selected_layer_categories, render_options);
+
+    [combined_cells, grid_column_values] = combine_study_groups(studies, group_heights, group_widths, {context_attachment, file_paths_attachment});
+
+    grid_cell_contexts = combined_cells.(context_attachment);
+    grid_volume_file_paths = combined_cells.(file_paths_attachment);
+
+    if options.adjust_colour_mapping
+        apply_column_wise_colour_maps( ...
+            grid_cell_contexts, ...
+            grid_volume_file_paths, ...
+            tmp_dir, host_name, resources, render_options);
+    end
     
-            service = hdng.resources.ResourceService();
-            resources = hdng.utilities.Dictionary();
+    if ~isempty(options.colour_mapping)
+        batch_fn = str2func(['batch_' options.colour_mapping.batch]);
+        batches = batch_fn(grid_cell_contexts, grid_volume_file_paths, grid_column_values, tmp_dir, options.colour_mapping);
+        apply_colour_maps(batches, renderer.host_name, shared_variables.resources, render_options);
+    end
+
+
+    grid_rows = struct.empty;
+    grid_row_index = 1;
+
+    service = hdng.resources.ResourceService();
+    requests = renderer.launch_resource_requests(service, shared_variables.resources); %#ok<NASGU>
     
-            group = groups{index};
-    
-            grid_cells = group.grid_cells(group.row_value_selector, group.column_value_selector);
-            
-            group_row_values = row_values(group.row_value_selector);
-            group_column_values = column_values(group.column_value_selector);
-    
-            grid_cells = geospm.reports.match_cell_records(grid_cells, cell_selector);
-            grid_cell_values = geospm.reports.select_cell_values(grid_cells, cell_fields);
-            
-            grid_cell_contexts = geospm.reports.create_presentation_stacks(grid_cell_values, renderer, selected_layer_categories, resources, clear_source_refs, '', render_options);
-            
-            if render_options.collapse_empty_cells
-                tmp_grid_cell_contexts = ...
-                    collapse_empty_cells(grid_cell_contexts, group_row_values, group_column_values);
+    % Not running asynchronously, so all requests should have stopped
+    if service.total_requests == service.stopped_requests
+        
+        for study_index=1:numel(studies)
                 
-                apply_column_wise_colour_maps(tmp_grid_cell_contexts, tmp_dir, renderer.host_name, resources, render_options);
-            end
-
-            requests = renderer.launch_resource_requests(service, resources);
+            study = studies(study_index);
+            groups = study.record_grid.groups;
             
-            % Not running asynchronously, so all requests should have stopped
-            if service.total_requests == service.stopped_requests
-                
-                for row_index=1:size(grid_cell_contexts, 1)
-                    grid_row = geospm.reports.render_grid_row(grid_cell_contexts(row_index, :), group_row_values(row_index), group_column_values, renderer, label_attributes, render_options);
+            for index=1:numel(groups)
+                group = groups{index};
+                group_cell_contexts = group.cell_attachments.(context_attachment);
+
+                for row_index=1:size(group_cell_contexts, 1)
+        
+                    grid_row = geospm.reports.render_grid_row(group_cell_contexts(row_index, :), group.row_values(row_index), group.column_values(row_index, :), renderer, label_attributes, render_options);
                     
                     render_options.origin(2) = render_options.origin(2) + render_options.cell_spacing(2) + grid_row.grid_size(2);
                     
                     grid_rows = [grid_rows; grid_row]; %#ok<AGROW>
+                    grid_row_index = grid_row_index + 1;
                 end
             end
-    
-            requests = [];
-            
-            if render_options.collapse_empty_cells
-                
-                [status, msg] = rmdir(tmp_dir, 's');
-                
-                if ~status
-                    error(msg);
-                end
-                
-                [status, msg] = mkdir(tmp_dir);
-
-                if ~status
-                    error(msg);
-                end
-                
-            end
-
-            % groups{index} = grid_cell_contexts;
-    
-            resources.copy(combined_resources);
         end
+
+    end
+
+    requests = []; %#ok<NASGU>
     
-        grid_svg = geospm.reports.render_combined_grid(grid_rows, renderer, combined_resources, render_options);
-        hdng.utilities.save_text(grid_svg, fullfile(parent_dir, [output_name '.svg']));
+    %[status, msg] = rmdir(tmp_dir, 's');
+    
+    %if ~status
+    %    error(msg);
     %end
+    
+    grid_svg = geospm.reports.render_combined_grid(grid_rows, renderer, shared_variables.resources, render_options);
+    hdng.utilities.save_text(grid_svg, fullfile(tmp_dir, [output_name '.svg']));
+
 end
 
-function result = ...
-    collapse_empty_cells(grid_cell_contexts, row_values, column_values)
+function [combination, column_values] = combine_study_groups(studies, group_heights, group_widths, attachments)
 
-    result = cell(size(grid_cell_contexts));
+    combination_size = [sum(group_heights), max(group_widths)];
 
-    for index=1:size(grid_cell_contexts, 1)
-        cell_selector = cellfun(@(x) ~isempty(x), grid_cell_contexts(index, :));
-        result(index, 1:sum(cell_selector)) = grid_cell_contexts(index, cell_selector);
-    end
+    column_values = cell(combination_size);
 
-    empty_cell_selector = cellfun(@(x) isempty(x), result);
-    
-    available_columns = ~all(empty_cell_selector, 1);
-    available_rows = ~all(empty_cell_selector, 2);
+    combination = struct();
 
-    result = result(available_rows, available_columns);
-    
-    %{
-    column_values = column_values(available_columns);
-    row_values = row_values(available_rows);
-    %}
-end
-
-function url = get_url_for_volume_layer(layer, context, use_scalar)
-
-    url = '';
-
-    if isfield(context, 'host_name')
-        url = context.host_name;
+    for k=1:numel(attachments)
+        attachment = attachments{k};
+        combination.(attachment) = cell(combination_size);
     end
     
-    if use_scalar
-        url = join({url, layer.scalars.source_ref, layer.scalars.path}, '/');
-    else
-        url = join({url, layer.image.source_ref, layer.image.path}, '/');
-    end
+    group_index = 1;
+    pos = 1;
 
-    url = url{1};
-    url = replace(url, '//', '/');
-end
-
-function volume_set = create_volume_set_from_volume_layers(grid_cell_contexts, render_options)
-
-    volume_set = geospm.volumes.VolumeSet();
-    volume_set.file_paths = {};
-
-    for index=1:numel(grid_cell_contexts)
-    
-        cell_context = grid_cell_contexts{index};
-
-        if isempty(cell_context)
-            continue
-        end
-
-        layers = cell_context.stack.selected_layers;
-
-        for k=1:numel(layers)
-            layer = layers{k};
-
-            if ~isa(layer, 'geospm.validation.VolumeLayer')
-                continue;
-            end
-            
-            url = get_url_for_volume_layer(layer, render_options, true);
-            url = regexprep(url, '^file:', '');
-            volume_set.file_paths{end + 1} = url;
-        end
-    end
-end
-
-function define_unique_output_names_for_volume_set(volume_set)
-    
-    N = numel(volume_set.file_paths);
-    unique_names = cell(N, 1);
-
-    prefixes = cell(N, 1);
-    names = cell(N, 1);
-
-    for index=1:N
-        [path, name, ~] = fileparts(volume_set.file_paths{index});
-        path = regexprep(path, sprintf('%s%s+', filesep, filesep), filesep);
-        parts = split(path, filesep);
-        prefixes{index} = [parts; {''}];
-        names{index} = name;
-    end
-
-    do_loop = true;
-    found_unique_names = false;
-    
-    while do_loop
+    for study_index=1:numel(studies)
         
-        current_set = containers.Map('KeyType', 'char', 'ValueType', 'logical');
+        study = studies(study_index);
+        groups = study.record_grid.groups;
         
-        for index=1:N
+        for index=1:numel(groups)
+            group = groups{index};
 
-            parts = prefixes{index};
-            prefixes{index} = parts(1:end - 1);
-            
-            prefix = '';
+            column_values(pos:pos + group_heights(group_index) - 1, 1:group_widths(group_index)) = group.column_values;
 
-            if ~isempty(parts)
-                prefix = regexprep(lower(parts{end}), '\s+', '_');
-            else
-                do_loop = false;
+            for k=1:numel(attachments)
+                attachment = attachments{k};
+
+                combination.(attachment)(pos:pos + group_heights(group_index) - 1, 1:group_widths(group_index)) = ...
+                    group.cell_attachments.(attachment);
             end
 
-            if ~isempty(prefix)
-                prefix = [prefix '_']; %#ok<AGROW>
-            end
-            
-            key = [prefix names{index}];
-
-            unique_names{index} = '';
-
-            if ~isKey(current_set, key)
-                current_set(key) = true;
-                unique_names{index} = key;
-            end
-        end
-
-        if length(current_set) == N
-            found_unique_names = true;
-            do_loop = false;
+            pos = pos + group_heights(group_index);
+            group_index = group_index + 1;
         end
     end
-
-    if ~found_unique_names
-        error('Couldn''t determine unique names.');
-    end
-    
-    volume_set.optional_output_names = unique_names;
 end
 
-function assign_volume_layer_image_paths(grid_cell_contexts, image_paths, resources, context)
+function update_resource_paths(grid_cell_contexts, image_paths, resources, url_prefix)
 
     path_index = 1;
 
@@ -280,62 +209,33 @@ function assign_volume_layer_image_paths(grid_cell_contexts, image_paths, resour
                 continue;
             end
             
-            identifier = regexprep(layer.image.path, '^\/|\/$', '');
+            [~, identifier] = geospm.validation.PresentationRenderer.build_resource_url_and_identifier(url_prefix, layer.image.source_ref, layer.image.path); 
+            
+            %identifier = image_identifiers{path_index};
             resource = resources(identifier);
+            
+            if isa(resource, 'hdng.utilities.DictionaryError')
+                error('Implementation error: Incorrect resource identifier');
+            end
+            
             resources.remove(identifier);
-
 
             layer.image.path = image_paths{path_index};
             layer.image.source_ref = '';
             
-            identifier = regexprep(layer.image.path, '^\/|\/$', '');
+            [url, identifier] = geospm.validation.PresentationRenderer.build_resource_url_and_identifier(url_prefix, layer.image.source_ref, layer.image.path); 
+            
             resource.identifier = identifier;
-            resource.url = get_url_for_volume_layer(layer, context, false);
+            resource.url = url;
 
-            resources(identifier) = resource;
+            resources(resource.identifier) = resource;
 
             path_index = path_index + 1;
         end
     end
 end
 
-
-function rerender_colour_maps(grid_cell_contexts, tmp_dir, render_options)
-    
-    renderer = geospm.volumes.ColourMapping();
-
-    settings = geospm.volumes.RenderSettings();
-    
-    settings.formats = {'tif'};
-    %settings.grid = grid;
-    %settings.crs = hdng.SpatialCRS.empty;
-    settings.centre_pixels = true;
-    
-
-    col_dir = fullfile(tmp_dir, sprintf('rerendered_images'));
-    [status,msg] = mkdir(col_dir);
-
-    if ~status
-        error(msg);
-    end
-
-    volume_set = create_volume_set_from_volume_layers(grid_cell_contexts, render_options);
-    
-    context = geospm.volumes.RenderContext();
-    context.render_settings = settings;
-
-    context.image_volumes = volume_set;
-    context.alpha_volumes = [];
-    context.output_directory = col_dir;
-
-    image_paths = renderer.render(context);
-    image_paths = cellfun(@(x) x{1}, image_paths, 'UniformOutput', false);
-
-    assign_volume_layer_image_paths(col_contexts, image_paths);
-
-end
-
-function apply_column_wise_colour_maps(grid_cell_contexts, tmp_dir, host_name, resources, render_options)
+function apply_column_wise_colour_maps(grid_cell_contexts, grid_volume_file_paths, tmp_dir, host_name, resources, render_options)
     
     render_options.host_name = host_name;
 
@@ -343,7 +243,13 @@ function apply_column_wise_colour_maps(grid_cell_contexts, tmp_dir, host_name, r
         host_name = host_name(numel('file:') + 1:end);
     end
 
+    if ~isfield(render_options, 'colour_map')
+        render_options.colour_map = hdng.colour_mapping.GenericColourMap.twilight_27();
+        render_options.colour_map.colour_map_mode = hdng.colour_mapping.ColourMap.LAYER_MODE;
+    end
+
     renderer = geospm.volumes.ColourMapping();
+    renderer.colour_map = render_options.colour_map;
 
     settings = geospm.volumes.RenderSettings();
     
@@ -362,8 +268,10 @@ function apply_column_wise_colour_maps(grid_cell_contexts, tmp_dir, host_name, r
         end
 
         col_contexts = grid_cell_contexts(:, col_index);
-        volume_set = create_volume_set_from_volume_layers(col_contexts, render_options);
-        define_unique_output_names_for_volume_set(volume_set);
+        
+        volume_set = geospm.volumes.VolumeSet();
+        volume_set.file_paths = grid_volume_file_paths(:, col_index);
+        volume_set.optional_output_names = geospm.reports.derive_unique_output_names(volume_set.file_paths);
 
         context = geospm.volumes.RenderContext();
         context.render_settings = settings;
@@ -372,7 +280,7 @@ function apply_column_wise_colour_maps(grid_cell_contexts, tmp_dir, host_name, r
         context.alpha_volumes = [];
         context.output_directory = col_dir;
 
-        image_paths = renderer.render(context);
+        [image_paths, metadata] = renderer.render(context);
         image_paths = cellfun(@(x) x{1}, image_paths, 'UniformOutput', false);
         
         for index=1:numel(image_paths)
@@ -385,7 +293,143 @@ function apply_column_wise_colour_maps(grid_cell_contexts, tmp_dir, host_name, r
             image_paths{index} = path;
         end
 
+        slice_legends = metadata{1}.slice_legends;
 
-        assign_volume_layer_image_paths(col_contexts, image_paths, resources, render_options);
+        for index=1:numel(slice_legends)
+            legend = slice_legends{index};
+            %legend.render_and_save_as(300, fullfile(col_dir, sprintf('legend_z%04d.png', index)), 'Effects');
+            legend_file_name = fullfile(col_dir, sprintf('legend_z%04d.svg', index));
+            legend_svg = legend.as_svg(300, 20);
+            hdng.utilities.save_text(legend_svg, legend_file_name);
+        end
+        
+        update_resource_paths(col_contexts, image_paths, resources, render_options.host_name);
+    end
+end
+
+
+function result = batch_per_column(grid_cell_contexts, grid_volume_file_paths, grid_column_values, tmp_dir, options)
+
+    result = cell(size(grid_cell_contexts, 2), 1);
+
+    for col_index=1:size(grid_cell_contexts, 2)
+
+        col_dir = fullfile(tmp_dir, sprintf('column_%d_images', col_index));
+        [status,msg] = mkdir(col_dir);
+
+        if ~status
+            error(msg);
+        end
+
+        volume_set = geospm.volumes.VolumeSet();
+        volume_set.file_paths = grid_volume_file_paths(:, col_index);
+        volume_set.optional_output_names = geospm.reports.derive_unique_output_names(volume_set.file_paths);
+
+        volume_set.addprop('output_directory');
+        volume_set.output_directory = col_dir;
+        
+        volume_set.addprop('cell_contexts');
+        volume_set.cell_contexts = grid_cell_contexts(:, col_index);
+        
+        result{col_index} = volume_set;
+    end
+end
+
+
+
+function result = batch_bipartite(grid_cell_contexts, grid_volume_file_paths, grid_column_values, tmp_dir, options)
+
+    %selector = zeros(size(grid_cell_contexts), 'logical');
+    
+    selector = cellfun(@(x) any(strcmp(x.label, options.selected_column_values)), grid_column_values);
+    selectors = {selector, ~selector};
+    result = {[], []};
+    
+    for index=1:numel(result)
+
+        selector = selectors{index};
+
+        batch_dir = fullfile(tmp_dir, sprintf('batch_%d_images', index));
+        [status,msg] = mkdir(batch_dir);
+
+        if ~status
+            error(msg);
+        end
+
+        volume_set = geospm.volumes.VolumeSet();
+        volume_set.file_paths = grid_volume_file_paths(selector(:));
+        volume_set.optional_output_names = geospm.reports.derive_unique_output_names(volume_set.file_paths);
+
+        volume_set.addprop('output_directory');
+        volume_set.output_directory = batch_dir;
+        
+        volume_set.addprop('cell_contexts');
+        volume_set.cell_contexts = grid_cell_contexts(selector(:));
+        
+        result{index} = volume_set;
+    end
+end
+
+
+
+function apply_colour_maps(batches, host_name, resources, render_options)
+    
+    render_options.host_name = host_name;
+
+    if startsWith(host_name, 'file:')
+        host_name = host_name(numel('file:') + 1:end);
+    end
+
+    if ~isfield(render_options, 'colour_map')
+        render_options.colour_map = hdng.colour_mapping.GenericColourMap.twilight_27();
+    end
+
+    renderer = geospm.volumes.ColourMapping();
+    renderer.colour_map = render_options.colour_map;
+    renderer.colour_map_mode = hdng.colour_mapping.ColourMap.LAYER_MODE;
+
+    settings = geospm.volumes.RenderSettings();
+    
+    settings.formats = {'tif'};
+    %settings.grid = grid;
+    %settings.crs = hdng.SpatialCRS.empty;
+    settings.centre_pixels = true;
+    
+    %for col_index=1:size(grid_cell_contexts, 2)
+    for batch_index=1:numel(batches)
+        
+        volume_set = batches{batch_index};
+
+        context = geospm.volumes.RenderContext();
+        context.render_settings = settings;
+
+        context.image_volumes = volume_set;
+        context.alpha_volumes = [];
+        context.output_directory = volume_set.output_directory;
+
+        [image_paths, metadata] = renderer.render(context);
+        image_paths = cellfun(@(x) x{1}, image_paths, 'UniformOutput', false);
+        
+        for index=1:numel(image_paths)
+            path = image_paths{index};
+
+            if startsWith(path, host_name)
+                path = path(numel(host_name) + 1:end);
+            end
+
+            image_paths{index} = path;
+        end
+
+        slice_legends = metadata{1}.slice_legends;
+
+        for index=1:numel(slice_legends)
+            legend = slice_legends{index};
+            %legend.render_and_save_as(300, fullfile(volume_set.output_directory, sprintf('legend_z%04d.png', index)), 'Effects');
+            legend_file_name = fullfile(volume_set.output_directory, sprintf('legend_z%04d.svg', index));
+            legend_svg = legend.as_svg(300, 20);
+            hdng.utilities.save_text(legend_svg, legend_file_name);
+        end
+        
+        update_resource_paths(volume_set.cell_contexts, image_paths, resources, render_options.host_name);
     end
 end

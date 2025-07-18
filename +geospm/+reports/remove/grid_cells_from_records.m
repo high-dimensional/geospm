@@ -15,7 +15,24 @@
 
 function [groups, group_values, row_values, column_values] = ...
     grid_cells_from_records(records, row_field, column_field, varargin)
-    
+% Arrange an array of records into a grid based on the values of a 
+% designated row and column field.
+%
+% (Optional) Name – Value arguments:
+% group_field – An optional field name to arrange the grid into
+%               distinct groups of rows. Defaults to '', which produces
+%               a single group.
+%
+% unnest_field – An optional field name for a record array to be unnested
+%                and individually joined with the parent record.
+%
+% column_order – A cell array specifying the order of column names.
+% 
+% groups – A cell array of group structures, with the following fields:
+%          group_index – The numerical index of the group
+%          group_value – The value of the group
+
+
     options = hdng.utilities.parse_struct_from_varargin(varargin{:});
     
     if ~isfield(options, 'group_field')
@@ -25,13 +42,22 @@ function [groups, group_values, row_values, column_values] = ...
     if ~isfield(options, 'unnest_field')
         options.unnest_field = '';
     end
-    
-    if ~isfield(options, 'cell_selector')
-        options.cell_selector = [];
-    end
 
     if ~isfield(options, 'column_order')
         options.column_order = {};
+    end
+
+    if ~isfield(options, 'exclude_column_labels')
+        options.exclude_column_labels = {};
+    end
+
+    exclude_column_labels = hdng.utilities.Dictionary();
+
+    if ~isempty(options.exclude_column_labels)
+        for index=1:numel(options.exclude_column_labels)
+            label = options.exclude_column_labels{index};
+            exclude_column_labels(label) = true;
+        end
     end
     
     if ~isempty(options.unnest_field)
@@ -135,6 +161,10 @@ function [groups, group_values, row_values, column_values] = ...
         row_value = record(row_field);
         column_value = record(column_field);
         
+        if exclude_column_labels.holds_key(column_value.label)
+            continue;
+        end
+
         row_index = row_indices(row_value.label);
         column_index = column_indices(column_value.label);
         

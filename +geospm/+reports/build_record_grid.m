@@ -13,27 +13,57 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function [grid_cells] = select_cell_values(grid_cells, field_names)
+function build_record_grid(directory, identifier, ...
+    row_field, column_field, grid_options)
+    
+    grid_arguments = hdng.utilities.struct_to_name_value_sequence(grid_options);
 
-    for index=1:numel(grid_cells)
+    records_path = fullfile(directory, 'records.json.gz');
 
-        cell_records = grid_cells{index};
+    grid = geospm.reports.RecordGrid.from_records_at(records_path, row_field, column_field, grid_arguments{:});
+    
+    for index=1:numel(grid.groups)
+        
+        group = grid.groups{index};
+        
+        cell_records = group.match_cell_records(grid_options.cell_selector);
+
+        selected_values = select_values_from_cell_records(cell_records, grid_options.cell_fields);
+
+        group.cell_attachments.preprocessed_values = selected_values;
+    end
+    
+    filename = fullfile(directory, [identifier '_preprocessed.mat']);
+
+    grid.save(filename);
+end
+
+function result = select_values_from_cell_records(cells, field_paths)
+    
+    result = cell(size(cells));
+
+    for index=1:numel(cells)
+
+        cell_records = cells{index};
 
         if isempty(cell_records)
             continue;
         end
         
-        cell_values = cell(cell_records.length, numel(field_names));
+        cell_values = struct();
         
         for record_index=1:cell_records.length
+
             record = cell_records.records{record_index};
 
-            for field_index=1:numel(field_names)
-                field_name = field_names{field_index};
-                cell_values{record_index, field_index} = record(field_name);
+            for field_index=1:numel(field_paths)
+
+                field_path = field_paths{field_index};
+                cell_values = hdng.utilities.struct_set_value_at_path(cell_values, field_path, record(field_path));
             end
         end
         
-        grid_cells{index} = cell_values;
+        result{index} = cell_values;
     end
 end
+

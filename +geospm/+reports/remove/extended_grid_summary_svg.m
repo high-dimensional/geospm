@@ -26,34 +26,12 @@ function extended_grid_summary_svg(base_directory, output_name, render_options, 
     end
 
     if ~isfield(options, 'adjust_colour_mapping')
-        options.adjust_colour_mapping = true;
+        options.adjust_colour_mapping = false;
     end
 
     if ~isfield(options, 'colour_mapping')
         options.colour_mapping = hdng.one_struct('batch', 'per_column');
         options.colour_mapping.selected_column_values = {...
-        'Pair Matching Completion Time 1', ...
-        'Reaction Time', ...
-        'Nitrogen Dioxide Pollution', ...
-        'Nitrogen Oxide Pollution', ...
-        'PM < 2.5µm Absorb.', ...
-        'PM < 2.5µm', ...
-        'PM < 10µm', ...
-        'PM 2.5µm – 10µm', ...
-        ...
-        'Nitrogen Dioxide Pollution x Reaction Time', ...
-        'Nitrogen Oxide Pollution x Reaction Time', ...
-        'PM < 2.5µm Absorb. x Reaction Time', ...
-        'PM < 2.5µm x Reaction Time', ...
-        'PM < 10µm x Reaction Time', ...
-        'PM 2.5µm – 10µm x Reaction Time', ...
-        ...
-        'Nitrogen Dioxide Pollution x Pair Matching Completion Time 1', ...
-        'Nitrogen Oxide Pollution x Pair Matching Completion Time 1', ...
-        'PM < 2.5µm Absorb. x Pair Matching Completion Time 1', ...
-        'PM < 2.5µm x Pair Matching Completion Time 1', ...
-        'PM < 10µm x Pair Matching Completion Time 1', ...
-        'PM 2.5µm – 10µm x Pair Matching Completion Time 1' ...
         };
     end
 
@@ -61,7 +39,7 @@ function extended_grid_summary_svg(base_directory, output_name, render_options, 
         options.force_preprocessing = false;
     end
     
-    studies = scan_regional_directories(base_directory, options.suffix);
+    studies = geospm.reports.scan_regional_directories(base_directory, options.suffix);
     
     tmp_dir = hdng.utilities.make_timestamped_directory(base_directory);
 
@@ -81,8 +59,6 @@ function extended_grid_summary_svg(base_directory, output_name, render_options, 
     options = rmfield(options, 'adjust_colour_mapping');
     options = rmfield(options, 'colour_mapping');
     options = rmfield(options, 'force_preprocessing');
-
-    options.do_debug = false;
     
     selected_layer_categories = {'underlay', 'content', 'overlay'};
     
@@ -135,16 +111,15 @@ function extended_grid_summary_svg(base_directory, output_name, render_options, 
 
         [~, study_directory_name, ~] = fileparts(study_directory);
 
-        load(study_file, 'groups', 'group_values');
+        load(study_file, 'groups');
         
         for index=1:numel(groups)
     
             group = groups{index};
-            % group_value = group_values{index};
             
             group.grid_cell_contexts = geospm.reports.create_presentation_stacks(group.grid_cell_values, renderer, selected_layer_categories, resources, clear_source_refs, study_directory_name, render_options);
             
-            [group.grid_cell_contexts, group.column_values] = collapse_columns(group.grid_cell_contexts, group.column_values);
+            group = geospm.reports.collapse_group_columns(group);
              
             group.grid_volume_file_paths = get_file_paths_from_volume(group.grid_cell_contexts, renderer.host_name, true);
 
@@ -182,9 +157,9 @@ function extended_grid_summary_svg(base_directory, output_name, render_options, 
         end
     end
     
-    %if adjust_colour_mapping
-    %    apply_column_wise_colour_maps(grid_cell_contexts, grid_volume_file_paths, tmp_dir, host_name, resources, render_options);
-    %end
+    if adjust_colour_mapping
+        apply_column_wise_colour_maps(grid_cell_contexts, grid_volume_file_paths, tmp_dir, host_name, resources, render_options);
+    end
     
     if ~isempty('colour_mapping')
         batch_fn = str2func(['batch_' colour_mapping.batch]);
@@ -234,28 +209,6 @@ function extended_grid_summary_svg(base_directory, output_name, render_options, 
     grid_svg = geospm.reports.render_combined_grid(grid_rows, renderer, resources, render_options);
     hdng.utilities.save_text(grid_svg, fullfile(tmp_dir, [output_name '.svg']));
 
-end
-
-function [result_cell_contexts, result_column_values] = ...
-            collapse_columns(grid_cell_contexts, column_values)
-
-    result_cell_contexts = cell(size(grid_cell_contexts));
-    result_column_values = cell(size(grid_cell_contexts));
-
-    for index=1:size(grid_cell_contexts, 1)
-        cell_selector = cellfun(@(x) ~isempty(x), grid_cell_contexts(index, :));
-        C = sum(cell_selector);
-        
-        result_cell_contexts(index, 1:C) = grid_cell_contexts(index, cell_selector);
-        result_column_values(index, 1:C) = column_values(cell_selector);
-    end
-
-    empty_cell_selector = cellfun(@(x) isempty(x), result_cell_contexts);
-    
-    available_columns = ~all(empty_cell_selector, 1);
-
-    result_cell_contexts = result_cell_contexts(:, available_columns);
-    result_column_values = result_column_values(:, available_columns);
 end
 
 
