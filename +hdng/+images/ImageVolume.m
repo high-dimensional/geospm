@@ -549,9 +549,13 @@ classdef ImageVolume < handle
                         end
                     end
                     
-                    raster_ref = grid.compute_raster_reference_for_w(j, centre_pixels);
-                    R = (raster_ref * C)';
+                    %raster_ref = grid.compute_raster_reference_for_w(j, centre_pixels);
+                    %R = (raster_ref * C)';
+                    
                     %R = refmatToGeoRasterReference(R, grid.resolution(1:2));
+                    %R = maprasterref(R, grid.resolution(1:2), 'cells');
+
+                    R = grid.compute_map_raster_ref(j, centre_pixels);
                     
                     warning('off', 'map:geotiff:refvecmat');
 

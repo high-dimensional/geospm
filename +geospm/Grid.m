@@ -362,6 +362,45 @@ classdef Grid < handle
             end
             
         end
+
+        function result = compute_map_raster_ref(obj, w, centre_pixels, flip_y)
+
+
+            if ~exist('centre_pixels', 'var') || isempty(centre_pixels)
+                centre_pixels = true;
+            end
+            
+            if ~exist('flip_y', 'var')
+                flip_y = false;
+            end
+            
+            %R = obj.compute_raster_reference_for_w(w, centre_pixels, flip_y);
+
+
+            T = obj.grid_to_space_transform;
+            
+            R = [T(1, 1), T(1, 2), w * T(1, 3) + T(1, 4)
+                 T(2, 1), T(2, 2), w * T(2, 3) + T(2, 4)];
+
+            if obj.rotation_z ~= 0.0 || R(1, 2) ~= 0.0 || R(2, 1) ~= 0.0
+                error('Grid transformation has a rotation component that is not compatible with creating a rectilinear map raster reference.');
+            end
+
+            if centre_pixels
+                R(1, 3) = R(1, 3) + obj.cell_size_(1) * 0.5;
+                R(2, 3) = R(2, 3) + obj.cell_size_(2) * 0.5;
+            end
+            
+            if flip_y
+                R(2, 2) = -R(2, 2);
+                R(2, 3) = R(2, 3) + (obj.resolution(2) - 1) * obj.cell_size(2);
+            end
+
+
+            result = maprefcells([R(1, 3), R(1, 3) + obj.cell_size(1) * obj.resolution(1)], ...
+                                 [R(2, 3), R(2, 3) + obj.cell_size(2) * obj.resolution(2)], ...
+                                 obj.resolution(1:2));
+        end
         
         function define(obj, varargin)
             %Defines the computational grid to be used.

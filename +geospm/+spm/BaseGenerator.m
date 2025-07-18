@@ -390,6 +390,14 @@ classdef BaseGenerator < SyntheticVolumeGenerator
             else
                 gaussian_method = parameters.gaussian_method;
             end
+
+            if isempty(gaussian_method)
+                
+                % This is to alleviate the problem of legacy serialised values 
+                % written as an empty cell array
+
+                gaussian_method = [];
+            end
             
             parameters = rmfield(parameters, 'gaussian_method');
             
