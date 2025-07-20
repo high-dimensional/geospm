@@ -13,7 +13,7 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function grid_summary_svg(base_directory, output_name, render_options, grid_options, varargin)
+function grid_summary_svg_2(base_directory, output_name, render_options, grid_options, varargin)
     
     options = hdng.utilities.parse_struct_from_varargin(varargin{:});
 
@@ -29,10 +29,18 @@ function grid_summary_svg(base_directory, output_name, render_options, grid_opti
         options.dataset_aliases = hdng.utilities.Dictionary();
     end
 
+    if ~isfield(options, 'dataset_aliases')
+        options.dataset_aliases = hdng.utilities.Dictionary();
+    end
+
     if ~isfield(options, 'force_preprocessing')
         options.force_preprocessing = false;
     end
 
+    if ~isfield(options, 'cell_layer_fn')
+        options.cell_layer_fn = @get_cell_values;
+    end
+    
     if ~isfield(options, 'layer_value_paths')
         options.layer_value_paths = {...
             'configuration.image_layers', ...
@@ -81,7 +89,7 @@ function grid_summary_svg(base_directory, output_name, render_options, grid_opti
 
     [studies, group_widths, group_heights] = ...
         geospm.reports.build_render_contexts(studies, preprocessing_identifier, ...
-        'preprocessed_values', context_attachment, file_paths_attachment, ...
+        'preprocessed_values', context_attachment, options.cell_layer_fn, file_paths_attachment, ...
         shared_variables, options.layer_value_paths, options.clear_source_refs, renderer, ...
         selected_layer_categories, render_options);
 
@@ -138,11 +146,11 @@ function grid_summary_svg(base_directory, output_name, render_options, grid_opti
 
     requests = []; %#ok<NASGU>
     
-    %[status, msg] = rmdir(tmp_dir, 's');
+    [status, msg] = rmdir(tmp_dir, 's');
     
-    %if ~status
-    %    error(msg);
-    %end
+    if ~status
+        error(msg);
+    end
     
     grid_svg = geospm.reports.render_combined_grid(grid_rows, renderer, shared_variables.resources, render_options);
     hdng.utilities.save_text(grid_svg, fullfile(tmp_dir, [output_name '.svg']));

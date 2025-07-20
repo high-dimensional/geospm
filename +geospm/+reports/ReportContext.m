@@ -23,6 +23,8 @@ classdef ReportContext < handle
         base_directory      % the base directory
 
         shared_variables    % shared variables
+
+        render_layer_categories
     end
     
     methods
@@ -37,6 +39,7 @@ classdef ReportContext < handle
             
             obj.base_directory = base_directory;
             obj.shared_variables = shared_variables;
+            obj.render_layer_categories = {};
         end
         
         function [spm_input_path, spm_output_path] = spm_paths_from_record(obj, record)
@@ -92,8 +95,77 @@ classdef ReportContext < handle
         
             polygons = slice_geometry.collection;
         end
+        
+        function results = create_cell_render_contexts(obj, ...
+                group, cell_attachment, ...
+                cell_layer_fn, layer_paths, ...
+                renderer, clear_source_refs, ...
+                path_prefix, render_options)
+            
+            results = cell(size(group.cells));
+            cell_layers = cell(size(group.cells));
 
-        function results = select_dataset_per_cell_mask_polygon(obj, ...
+            cell_values = group.cell_attachments.(cell_attachment);
+        
+            % Unpack all layers from their cell values
+            
+            for row_index=1:group.N_rows
+                
+                for col_index=1:group.N_columns
+
+                    records = group.cells{row_index, col_index};
+                    
+                    if isempty(records)
+                        continue;
+                    end
+                    
+                    selected_layers = cell_values{row_index, col_index};
+
+                    cell_layers{row_index, col_index} = ...
+                        geospm.reports.ReportContext.unpack_layers(selected_layers, layer_paths, clear_source_refs, path_prefix);
+                    
+
+                end
+            end
+
+            % Select layers for each cell
+
+            fn_state = [];
+            
+            for row_index=1:group.N_rows
+                
+                for col_index=1:group.N_columns
+
+                    records = group.cells{row_index, col_index};
+                    
+                    if isempty(records)
+                        continue;
+                    end
+                    
+                    [selected_layers, fn_state] = cell_layer_fn(...
+                        cell_layers, ...
+                        row_index, col_index, ...
+                        group.row_values, group.column_values, fn_state);
+        
+                    if isempty(selected_layers)
+                        continue;
+                    end
+                    
+                    stack = geospm.validation.PresentationStack(selected_layers, ...
+                        obj.render_layer_categories, render_options.magnification);
+                    
+                    context = renderer.create_context_for(stack, [], render_options);
+                    context.resources = obj.shared_variables.resources;
+            
+                    renderer.gather_layer_resources(stack.selected_layers, context, obj.shared_variables.resources);
+            
+                    results{row_index, col_index} = context;
+                end
+            end
+        end
+
+
+        function results = create_cell_datasets(obj, ...
                 group, cell_attachment, ...
                 cell_mask_volume_fn, slice_name, easting, northing)
 
@@ -176,6 +248,91 @@ classdef ReportContext < handle
     end
 
     methods (Static)
+
+        function layers = unpack_layers(values, layer_paths, clear_source_refs, path_prefix)
+            values = geospm.reports.ReportContext.unpack_layer_values(values, layer_paths);
+            layers = geospm.reports.ReportContext.convert_values_to_layers(values, clear_source_refs, path_prefix);
+        end
+
+        function result = unpack_layer_values(values, layer_paths)
+            
+            result = {};
+        
+            for index=1:numel(layer_paths)
+                layer_value_path = layer_paths{index};
+        
+                value = hdng.utilities.struct_get_value_at_path(values, layer_value_path, []);
+        
+                if iscell(value.content)
+                    result = [result; value.content(:)]; %#ok<AGROW>
+                else
+                    result{end + 1} = value.content; %#ok<AGROW>
+                end
+            end
+        
+        end
+        
+        function layers = convert_values_to_layers(values, clear_source_refs, path_prefix)
+            
+            layers = cell(size(values));
+        
+            for index=1:numel(values)
+                value = values{index};
+                
+                if isa(value, 'hdng.experiments.VolumeReference')
+                    layer = geospm.validation.VolumeLayer();
+                    layer.image = value.image;
+                    layer.scalars = value.scalars;
+                    layer.slice_names = value.slice_names;
+                    layer.category = 'content';
+                    layer.blend_mode = 'multiply';
+        
+                    if clear_source_refs
+                        layer.image.source_ref = '';
+                        layer.scalars.source_ref = '';
+                    end
+        
+                    layer.image.path = fullfile(path_prefix, layer.image.path);
+                    layer.scalars.path = fullfile(path_prefix, layer.scalars.path);
+        
+                elseif isa(value, 'hdng.experiments.SliceShapes')
+                    layer = geospm.validation.SliceShapesLayer();
+                    layer.origin = value.origin;
+                    layer.span = value.span;
+                    layer.resolution = value.resolution;
+                    layer.shape_paths = value.shape_paths;
+                    layer.slice_names = value.slice_names;
+                    layer.source_ref = value.source_ref;
+                    layer.category = 'content';
+                    layer.blend_mode = 'normal';
+        
+                    if clear_source_refs
+                        layer.source_ref = '';
+                    end
+        
+                    for p=1:numel(layer.shape_paths)
+                        layer.shape_paths{p} = fullfile(path_prefix, layer.shape_paths{p});
+                    end
+        
+                elseif isa(value, 'geospm.validation.ImageLayer')
+                    layer = copy(value);
+                    layer.image = copy(layer.image);
+                    
+                    if clear_source_refs
+                        layer.image.source_ref = '';
+                    end
+                    
+                    layer.image.path = fullfile(path_prefix, layer.image.path);
+        
+                elseif isa(value, 'geospm.validation.PresentationLayer')
+                    layer = copy(value);
+                else
+                    layer = [];
+                end
+        
+                layers{index} = layer;
+            end
+        end
 
         function result = create_volume_generator(...
                 volume_directory, ...
