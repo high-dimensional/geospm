@@ -52,8 +52,8 @@ classdef RegressionSummary < handle
         
         function [stats, betas] = gather_betas(obj, slice_index, mask)
             
-            stats = geospm.reports.ReportTable;
-            betas = geospm.reports.ReportTable;
+            stats = hdng.utilities.RecordTable;
+            betas = hdng.utilities.RecordTable;
 
             for index=1:numel(obj.variable_names)
 
@@ -66,7 +66,7 @@ classdef RegressionSummary < handle
         
                 beta_values = beta_values(mask(:));
                 
-                summary = geospm.reports.ReportTable(hdng.one_struct(...
+                summary = hdng.utilities.RecordTable(hdng.one_struct(...
                               'name', {name}, ...
                               'mean', mean(beta_values), ...
                               'median', median(beta_values), ...
@@ -80,7 +80,7 @@ classdef RegressionSummary < handle
 
                 stats = stats + summary;
                  
-                betas = betas + geospm.reports.ReportTable(hdng.one_struct(...
+                betas = betas + hdng.utilities.RecordTable(hdng.one_struct(...
                             'name', repmat({name}, numel(beta_values), 1), ...
                             'value', beta_values ...
                             ), numel(beta_values));
@@ -315,8 +315,8 @@ classdef RegressionSummary < handle
 
         function [stats, trend] = plot_diagram(responses, ordinate_values, selectors, polygon_selector, polygon_mask, colours, weighting)
         
-            stats = geospm.reports.ReportTable;
-            trend = geospm.reports.ReportTable;
+            stats = hdng.utilities.RecordTable;
+            trend = hdng.utilities.RecordTable;
 
             hold on;
             
@@ -361,7 +361,7 @@ classdef RegressionSummary < handle
                 fill([X_unique; flip(X_unique)], [Y_min; flip(Y_max)], colours{s_index}, 'FaceAlpha', 0.3, 'EdgeColor', 'none');
                 plot(X_unique, Y_mean, 'Color', colours{s_index});
                 
-                stats = stats + geospm.reports.ReportTable(hdng.one_struct(...
+                stats = stats + hdng.utilities.RecordTable(hdng.one_struct(...
                     'quartile', s_index, ...
                     'x_mean', mean(X_unique), ...
                     'y_mean', mean(Y_unique(:)), ...

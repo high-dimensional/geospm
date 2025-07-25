@@ -50,11 +50,33 @@ end
 function values = fill_values(type, n)
 
     if strcmp(type, 'cell')
+        if n == 0
+            values = cell.empty;
+            return
+        end
+
         values = cell(n, 1);
         return;
     end
 
+    if strcmp(type, 'struct')
+        
+        if n == 0
+            values = struct.empty;
+            return
+        end
+
+        values = struct('unused', num2cell(zeros(n, 1)));
+        values = rmfield(values, 'unused');
+        return;
+    end
+
     if strcmp(type, 'string')
+        if n == 0
+            values = string.empty;
+            return
+        end
+
         values = repmat("", n, 1);
         return;
     end
@@ -62,8 +84,20 @@ function values = fill_values(type, n)
     dummy = zeros(1, 1, type);
     
     if isfloat(dummy)
+
+        if n == 0
+            values = cast([], type);
+            return
+        end
+
         values = nan(n, 1, type);
     elseif isinteger(dummy) || islogical(dummy)
+
+        if n == 0
+            values = cast([], type);
+            return
+        end
+
         values = zeros(n, 1, type);
     else
         error('Cannot fill values for type %s.', type);

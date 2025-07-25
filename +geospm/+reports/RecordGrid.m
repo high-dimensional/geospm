@@ -21,10 +21,10 @@ classdef RecordGrid < handle
     properties (GetAccess=public, SetAccess=public)
         
         groups
-
         group_values
-        row_values
-        column_values
+        
+        %row_values
+        %column_values
     end
 
     properties (Dependent, Transient)
@@ -38,8 +38,9 @@ classdef RecordGrid < handle
             obj.groups = groups;
 
             obj.group_values = group_values;
-            obj.row_values = row_values;
-            obj.column_values = column_values;
+
+            %obj.row_values = row_values;
+            %obj.column_values = column_values;
         end
 
         function save(obj, filename)
@@ -195,7 +196,9 @@ classdef RecordGrid < handle
 
             row_value_selectors = zeros(numel(group_values), numel(row_values), 'logical');
             column_value_selectors = zeros(numel(group_values), numel(column_values), 'logical');
-        
+
+            row_values_per_cell = repmat(row_values, 1, numel(column_values));
+            column_values_per_cell = repmat(column_values', numel(row_values), 1);
         
             for record_index=1:numel(unnested_records.records)
         
@@ -212,7 +215,7 @@ classdef RecordGrid < handle
                 group = groups{group_index};
         
                 if isempty(group)
-                    group = geospm.reports.Group(group_index, group_value, row_values, column_values);
+                    group = geospm.reports.ReportGroup(group_index, group_value, row_values_per_cell, column_values_per_cell);
                     groups{group_index} = group;
                 end
                 

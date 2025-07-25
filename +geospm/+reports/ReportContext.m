@@ -97,11 +97,10 @@ classdef ReportContext < handle
         end
         
         function results = create_cell_render_contexts(obj, ...
-                group, cell_attachment, ...
-                cell_layer_fn, layer_paths, ...
-                renderer, clear_source_refs, ...
-                path_prefix, render_options)
-            
+                group, cell_attachment, cell_layer_fn, layer_paths, ...
+                renderer, clear_source_refs, path_prefix, ...
+                render_options)
+
             results = cell(size(group.cells));
             cell_layers = cell(size(group.cells));
 
@@ -144,12 +143,20 @@ classdef ReportContext < handle
                     
                     [selected_layers, fn_state] = cell_layer_fn(...
                         cell_layers, ...
-                        row_index, col_index, ...
-                        group.row_values, group.column_values, fn_state);
+                        row_index, col_index, group, fn_state);
         
                     if isempty(selected_layers)
                         continue;
                     end
+
+                    % We are selecting the first available record,
+                    % because we assume all records in a cell hail from
+                    % the same dataset.
+
+                    record = records.unsorted_records{1};
+                    
+                    [spm_input_path, ~] = obj.spm_paths_from_record(record);
+                    obj.shared_variables.update_volume_generators(spm_input_path, record);
                     
                     stack = geospm.validation.PresentationStack(selected_layers, ...
                         obj.render_layer_categories, render_options.magnification);
@@ -157,7 +164,7 @@ classdef ReportContext < handle
                     context = renderer.create_context_for(stack, [], render_options);
                     context.resources = obj.shared_variables.resources;
             
-                    renderer.gather_layer_resources(stack.selected_layers, context, obj.shared_variables.resources);
+                    renderer.gather_all_layer_resources(stack.selected_layers, context, obj.shared_variables.resources);
             
                     results{row_index, col_index} = context;
                 end
@@ -193,8 +200,7 @@ classdef ReportContext < handle
                     
                     [values, fn_state] = cell_mask_volume_fn(...
                         cell_values, ...
-                        row_index, col_index, ...
-                        group.row_values, group.column_values, fn_state);
+                        row_index, col_index, group, fn_state);
         
                     if isempty(values)
                         continue;

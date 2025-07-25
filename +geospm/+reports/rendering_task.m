@@ -13,7 +13,7 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function grid_summary_svg_2(base_directory, output_name, render_options, grid_options, varargin)
+function rendering_task(base_directory, output_name, render_options, grid_options, varargin)
     
     options = hdng.utilities.parse_struct_from_varargin(varargin{:});
 
@@ -37,6 +37,14 @@ function grid_summary_svg_2(base_directory, output_name, render_options, grid_op
         options.force_preprocessing = false;
     end
 
+    if ~isfield(options, 'cell_generator_fn')
+        options.cell_generator_fn = [];
+    end
+    
+    if ~isfield(options, 'cell_generator_state')
+        options.cell_generator_state = [];
+    end
+    
     if ~isfield(options, 'cell_layer_fn')
         options.cell_layer_fn = @get_cell_values;
     end
@@ -63,7 +71,7 @@ function grid_summary_svg_2(base_directory, output_name, render_options, grid_op
     
     tmp_dir = hdng.utilities.make_timestamped_directory(base_directory);
 
-    renderer = geospm.validation.SVGRenderer();
+    renderer = geospm.reports.ReportRenderer();
     renderer.host_name = options.host_name;
     renderer.resource_identifier_expr = sprintf('.*(?<identifier>%spresentation%s(map_background.png|map_foreground.png))$', filesep);
 
@@ -89,7 +97,8 @@ function grid_summary_svg_2(base_directory, output_name, render_options, grid_op
 
     [studies, group_widths, group_heights] = ...
         geospm.reports.build_render_contexts(studies, preprocessing_identifier, ...
-        'preprocessed_values', context_attachment, options.cell_layer_fn, file_paths_attachment, ...
+        'preprocessed_values', context_attachment, file_paths_attachment, ...
+        options.cell_layer_fn, options.cell_generator_fn, options.cell_generator_state, ...
         shared_variables, options.layer_value_paths, options.clear_source_refs, renderer, ...
         selected_layer_categories, render_options);
 
@@ -132,7 +141,11 @@ function grid_summary_svg_2(base_directory, output_name, render_options, grid_op
 
                 for row_index=1:size(group_cell_contexts, 1)
         
-                    grid_row = geospm.reports.render_grid_row(group_cell_contexts(row_index, :), group.row_values(row_index), group.column_values(row_index, :), renderer, label_attributes, render_options);
+                    grid_row = geospm.reports.render_grid_row(...
+                        group_cell_contexts(row_index, :), ...
+                        group.row_value_per_cell(row_index, :), ...
+                        group.column_value_per_cell(row_index, :), ...
+                        renderer, label_attributes, render_options);
                     
                     render_options.origin(2) = render_options.origin(2) + render_options.cell_spacing(2) + grid_row.grid_size(2);
                     
@@ -181,7 +194,7 @@ function [combination, column_values] = combine_study_groups(studies, group_heig
         for index=1:numel(groups)
             group = groups{index};
 
-            column_values(pos:pos + group_heights(group_index) - 1, 1:group_widths(group_index)) = group.column_values;
+            column_values(pos:pos + group_heights(group_index) - 1, 1:group_widths(group_index)) = group.column_value_per_cell;
 
             for k=1:numel(attachments)
                 attachment = attachments{k};
@@ -318,9 +331,9 @@ end
 
 function result = batch_per_column(grid_cell_contexts, grid_volume_file_paths, grid_column_values, tmp_dir, options)
 
-    result = cell(size(grid_cell_contexts, 2), 1);
+    result = cell(size(grid_cell_contexts, 2) - 1, 1);
 
-    for col_index=1:size(grid_cell_contexts, 2)
+    for col_index=1:size(grid_cell_contexts, 2) - 1
 
         col_dir = fullfile(tmp_dir, sprintf('column_%d_images', col_index));
         [status,msg] = mkdir(col_dir);

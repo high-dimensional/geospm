@@ -105,9 +105,21 @@ classdef ReportTable
             result = geospm.reports.ReportTable(tmp_contents, len);
         end
 
-        function result = select_matching_rows(obj, match_fn)
+        function result = remove_field(obj, name)
+            
+            result = obj;
+            result.contents = rmfield(result.contents, name);
 
-            selector = match_fn(obj);
+            if isempty(result.fieldnames)
+                result.length = 0;
+            end
+        end
+
+        function result = select_matching_rows(obj, match_fn, selector)
+            
+            if ~isempty(match_fn)
+                selector = match_fn(obj);
+            end
 
             tmp_contents = struct();
             
@@ -120,6 +132,65 @@ classdef ReportTable
 
             result = geospm.reports.ReportTable(tmp_contents);
         end
+        
+        function [result, values] = group_rows_by_field(obj, name, match_values)
+            
+            result = cell(numel(obj), 1);
+            values = cell(numel(obj), 1);
+
+            blank = zeros(numel(obj), 1, 'logical');
+            available = ones(numel(obj), 1, 'logical');
+
+            index = 1;
+            value_index = 1;
+
+            while index <= numel(obj)
+                
+                value = obj.contents.(name)(index);
+
+                selector = blank;
+                
+                if ~iscell(obj.contents.(name))
+                    selector(index:end) = value == obj.contents.(name)(index:end);
+                else
+                    value = value{1};
+                    selector(index:end) = cellfun(@(x) isequal(x, value), obj.contents.(name)(index:end), 'UniformOutput', true);
+                end
+
+                available(index:end) = available(index:end) & ~selector(index:end);
+                
+                result{value_index} = obj.select_matching_rows([], selector);
+                values{value_index} = value;
+
+                value_index = value_index + 1;
+
+                index = index + find(available(index:end), 1) - 1;
+            end
+
+            result = result(1:value_index - 1);
+            values = values(1:value_index - 1);
+
+            if exist('match_values', 'var') && ~isempty(match_values)
+                
+                matched_results = cell.empty;
+
+                for index=1:numel(match_values)
+                    match_value = match_values(index);
+                    
+                    value_index = find(values == match_value, 1);
+                    
+                    if ~isempty(value_index)
+                        matched_results{end + 1} = result{value_index}; %#ok<AGROW>
+                    else
+                        matched_results{end + 1} = []; %#ok<AGROW>
+                    end
+                end
+                
+                result = matched_results;
+                values = match_values;
+            end
+        end
+
 
         function [result, column_names] = as_cells(obj, varargin)
             options = hdng.utilities.parse_struct_from_varargin(varargin{:});
@@ -164,6 +235,50 @@ classdef ReportTable
             [cell_values, column_names] = obj.as_cells('field_order', options.field_order);
 
             writecell([column_names; cell_values], filename);
+        end
+
+        function n = numArgumentsFromSubscript(obj, s, indexingContext)
+           
+            switch s(1).type
+            
+                case {'()'}
+
+                    if indexingContext == matlab.mixin.util.IndexingContext.Expression
+                        n = 1;
+                    else
+                        n = builtin('numArgumentsFromSubscript', obj, s, indexingContext);
+                    end
+
+                otherwise
+                    n = builtin('numArgumentsFromSubscript', obj, s, indexingContext);
+            end
+        end
+        
+        function varargout = subsref(obj,s)
+            
+           switch s(1).type
+               
+              case '()'
+                 
+                 if numel(s(1).subs) > 1
+                     error('geospm.reports.ReportTable: Only one subscript argument is supported.');
+                 end
+
+                 key = s(1).subs{1};
+
+                 result = struct();
+
+                 for index=1:numel(obj.fieldnames)
+                    name = obj.fieldnames{index};
+                    values = obj.contents.(name);
+                    result.(name) = values(key);
+                 end
+
+                 varargout = {result};
+                 
+              otherwise
+              	 [varargout{1:nargout}] = builtin('subsref',obj,s);
+           end
         end
 
     end

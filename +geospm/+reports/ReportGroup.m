@@ -13,26 +13,25 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-classdef Group < handle
+classdef ReportGroup < handle
     
-    %Group
+    %ReportGroup
     %
 
-    properties (GetAccess=public, SetAccess=public)
+    properties (GetAccess=public, SetAccess=private)
         
         number
         value
+    end
 
-        row_values
-        column_values
+    properties (GetAccess=public, SetAccess=public)
         
+        row_value_per_cell
+        column_value_per_cell
+
         cells
         cell_attachments
-
         attachments
-
-        %row_value_selector
-        %column_value_selector
     end
 
     properties (Dependent, Transient)
@@ -44,27 +43,61 @@ classdef Group < handle
     
     methods
 
+        %{
+        function result = get.unique_row_values(obj)
+            result = unique(obj.row_value_per_cell(:));
+        end
+        
+        function result = get.unique_column_values(obj)
+            result = unique(obj.column_value_per_cell(:));
+        end
+        %}
+
         function result = get.N_rows(obj)
-            result = numel(obj.row_values);
+            result = size(obj.cells, 1);
         end
 
         function result = get.N_columns(obj)
-            result = numel(obj.column_values);
+            result = size(obj.cells, 2);
         end
         
-        function obj = Group(number, value, row_values, column_values)
+        function obj = ReportGroup(number, value, row_value_per_cell, column_value_per_cell)
             
+            if ~isequal(size(row_value_per_cell), size(column_value_per_cell))
+                error('The dimensions of row_value_per_cell and column_value_per_cell must match.');
+            end
+
             obj.number = number;
             obj.value = value;
             
-            obj.row_values = row_values;
-            obj.column_values = column_values;
+            obj.row_value_per_cell = row_value_per_cell;
+            obj.column_value_per_cell = column_value_per_cell;
 
-            obj.cells = cell(numel(row_values), numel(column_values));
-
+            obj.cells = cell(size(obj.row_value_per_cell, 1), size(obj.column_value_per_cell, 2));
+            
             obj.cell_attachments = struct();
             obj.attachments = struct();
             
+        end
+
+        function expand(obj, dimension, at, slice_count)
+
+            %slice_count = numel(varargin);
+            %value_slice = cat(dimension, varargin{:});
+            
+            obj.column_value_per_cell = hdng.utilities.insert_slice(obj.column_value_per_cell, dimension, at, [], slice_count);
+            obj.row_value_per_cell = hdng.utilities.insert_slice(obj.row_value_per_cell, dimension, at, [], slice_count);
+            
+            obj.cells = hdng.utilities.insert_slice(obj.cells, dimension, at, [], slice_count);
+            
+            names = fieldnames(obj.cell_attachments);
+
+            for index=1:numel(names)
+                name = names{index};
+                
+                obj.cell_attachments.(name) = ...
+                    hdng.utilities.insert_slice(obj.cell_attachments.(name), dimension, at, [], slice_count);
+            end
         end
 
         function collapse_across_columns(obj)
@@ -74,13 +107,14 @@ classdef Group < handle
             blank = cell(size(obj.cells));
         
             tmp_cells = blank;
-            tmp_column_values = blank;
+            tmp_column_value_per_cell = blank;
+            tmp_row_value_per_cell = blank;
 
             tmp_cell_attachments = struct();
 
             for f=1:numel(names)
                 name = names{f};
-                tmp_cell_attachments.(name) = blank; %obj.initialise_struct_array(size(blank));
+                tmp_cell_attachments.(name) = blank;
             end
 
             for index=1:obj.N_rows
@@ -89,7 +123,8 @@ classdef Group < handle
                 C = sum(cell_selector);
                 
                 tmp_cells(index, 1:C) = obj.cells(index, cell_selector);
-                tmp_column_values(index, 1:C) = obj.column_values(cell_selector);
+                tmp_column_value_per_cell(index, 1:C) = obj.column_value_per_cell(index, cell_selector);
+                tmp_row_value_per_cell(index, 1:C) = obj.row_value_per_cell(index, cell_selector);
 
                 for f=1:numel(names)
                     name = names{f};
@@ -103,7 +138,8 @@ classdef Group < handle
             available_columns = ~all(empty_cell_selector, 1);
             
             obj.cells = tmp_cells(:, available_columns);
-            obj.column_values = tmp_column_values(:, available_columns);
+            obj.column_value_per_cell = tmp_column_value_per_cell(:, available_columns);
+            obj.row_value_per_cell = tmp_row_value_per_cell(:, available_columns);
 
             for f=1:numel(names)
                 name = names{f};
@@ -117,7 +153,8 @@ classdef Group < handle
         function select_columns(obj, column_selector)
             
             obj.cells = obj.cells(:, column_selector);
-            obj.column_values = obj.column_values(column_selector);
+            obj.column_value_per_cell = obj.column_value_per_cell(:, column_selector);
+            obj.row_value_per_cell = obj.row_value_per_cell(:, column_selector);
 
             names = fieldnames(obj.cell_attachments);
 
@@ -131,7 +168,8 @@ classdef Group < handle
         function select_rows(obj, row_selector)
             
             obj.cells = obj.cells(row_selector, :);
-            obj.row_values = obj.row_values(row_selector);
+            obj.column_value_per_cell = obj.column_value_per_cell(row_selector, :);
+            obj.row_value_per_cell = obj.row_value_per_cell(row_selector, :);
 
             names = fieldnames(obj.cell_attachments);
 
