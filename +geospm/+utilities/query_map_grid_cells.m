@@ -49,6 +49,19 @@ function [cells, entity] = query_map_grid_cells(crs, grid, entity, ...
     
     [u, v, ~] = grid.space_to_grid(entity.x, entity.y, zeros(numel(entity.x), 1));
 
+    selector = isequal(u, grid.resolution(1)) || isequal(v, grid.resolution(2));
+
+    u = u(selector);
+    v = v(selector);
+
+    names = fieldnames(entity);
+
+    for index=1:numel(names)
+        name = names{index};
+        values = entity.(name);
+        entity.(name) = values(selector);
+    end
+
     cell_indices = sub2ind(grid.resolution(1:2), u, v);
     
     cells = cell(grid.resolution(1:2));

@@ -50,23 +50,39 @@ classdef RegressionSummary < handle
             obj.fitted_response = [];
         end
         
-        function [stats, betas] = gather_betas(obj, slice_index, mask)
+        function [stats, betas] = gather_betas(obj, slice_index, mask, selected_names)
             
+            if ~exist('selected_names', 'var') || isempty(selected_names)
+                selected_names = obj.variable_names;
+            end
+
             stats = hdng.utilities.RecordTable;
             betas = hdng.utilities.RecordTable;
 
-            for index=1:numel(obj.variable_names)
+            for index=1:numel(selected_names)
 
-                name = obj.variable_names{index};
+                name = selected_names{index};
+
+                variable_index = find(strcmp(name, obj.variable_names), 1);
+
+                if isempty(variable_index)
+                    continue;
+                end
                 
-                beta_values = obj.betas{index};
+                beta_values = obj.betas{variable_index};
 
                 beta_values = beta_values(:, :, slice_index);
                 beta_values = beta_values(:);
         
                 beta_values = beta_values(mask(:));
+
+                observations = cellfun(@(x) numel(x), obj.observation_index_by_cell(mask(:)), 'UniformOutput', true);
                 
+                n = sum(observations);
+
                 summary = hdng.utilities.RecordTable(hdng.one_struct(...
+                              'cells', sum(mask(:)), ...
+                              'n', n, ...
                               'name', {name}, ...
                               'mean', mean(beta_values), ...
                               'median', median(beta_values), ...

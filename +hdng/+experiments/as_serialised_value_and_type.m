@@ -33,7 +33,7 @@ function [serialised_value, type_identifier] = as_serialised_value_and_type(cont
             serialised_value = 'Empty';
             type_identifier = 'builtin.bool.symbolic';
             return
-        elseif iscalar(content)
+        elseif isscalar(content)
             serialised_value = content;
             type_identifier = 'builtin.bool';
             return

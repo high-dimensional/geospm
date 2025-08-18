@@ -311,25 +311,31 @@ classdef PresentationRenderer < handle
             end
         end
 
-        function gather_layer_resources(obj, layers, context, resources)
+        function gather_layer_resources(obj, layer, context, resources)
+            
+            if ~isa(layer, 'geospm.validation.PresentationLayer')
+                return;
+            end
+
+            if isa(layer, 'geospm.validation.VolumeLayer')
+                obj.gather_resources_in_volume_layer(layer, context, resources);
+            elseif isa(layer, 'geospm.validation.SliceShapesLayer')
+                obj.gather_resources_in_slice_shapes_layer(layer, context, resources);
+            elseif isa(layer, 'geospm.validation.ImageLayer')
+                obj.gather_resources_in_image_layer(layer, context, resources);
+            else
+                error('Unknown layer type!');
+            end
+        end
+
+        function gather_all_layer_resources(obj, layers, context, resources)
             
             for index=1:numel(layers)
                 layer = layers{index};
 
-                if ~isa(layer, 'geospm.validation.PresentationLayer')
-                    continue;
-                end
-
-                if isa(layer, 'geospm.validation.VolumeLayer')
-                    obj.gather_resources_in_volume_layer(layer, context, resources);
-                elseif isa(layer, 'geospm.validation.SliceShapesLayer')
-                    obj.gather_resources_in_slice_shapes_layer(layer, context, resources);
-                elseif isa(layer, 'geospm.validation.ImageLayer')
-                    obj.gather_resources_in_image_layer(layer, context, resources);
-                else
-                    error('Unknown layer type!')
-                end
+                obj.gather_layer_resources(layer, context, resources);
             end
+
         end
     end
     

@@ -55,8 +55,9 @@ classdef SliceShapesLayer < geospm.validation.PresentationLayer
 
         function [serialised_value, type_identifier] = as_serialised_value_and_type(obj)
             
-            [serialised_value, ~] = as_serialised_value_and_type@geospm.validation.ImageLayer(obj);
+            [serialised_value, ~] = as_serialised_value_and_type@geospm.validation.PresentationLayer(obj);
             
+            %{
             if ~isempty(obj.scalars)
                 
                 [serialised_scalars, scalars_type] = obj.scalars.as_serialised_value_and_type();
@@ -67,16 +68,13 @@ classdef SliceShapesLayer < geospm.validation.PresentationLayer
                 
                 serialised_value('scalars') = content;
             end
+            %}
 
             type_identifier = 'builtin.slice_shapes_layer';
         end
         
         function result = label_for_content(obj)
         	result = 'Slice Shapes Layer';
-            
-            if ~isempty(obj.image)
-                result = [result ' at ' obj.image.path];
-            end
         end
     end
 

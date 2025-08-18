@@ -54,7 +54,7 @@ function studies = polygon_based_task(base_directory, output_name, render_option
     
     studies = geospm.reports.scan_regional_directories(base_directory, options.suffix);
 
-    studies = studies(1);
+    %studies = studies(1);
     
     tmp_dir = hdng.utilities.make_timestamped_directory(base_directory);
     
@@ -223,7 +223,7 @@ function aggregate(studies, cell_attachment, tmp_dir, action_options)
                     betas{row_index, 1} = interaction_name;
                 end
                 
-                betas{1, 1} = 'interaction';
+                betas{1, 1} = 'variant';
 
                 if ~isempty(all_betas)
                     betas = betas(2:end, :);
@@ -241,7 +241,7 @@ function aggregate(studies, cell_attachment, tmp_dir, action_options)
                     beta_data{row_index, 1} = interaction_name;
                 end
                 
-                beta_data{1, 1} = 'interaction';
+                beta_data{1, 1} = 'variant';
 
                 if ~isempty(all_beta_data)
                     beta_data = beta_data(2:end, :);
