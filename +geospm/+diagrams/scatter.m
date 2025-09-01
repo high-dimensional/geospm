@@ -130,22 +130,29 @@ function result = scatter(x, y, origin, frame_size, varargin)
     scatter_options.Marker = options.marker_symbol;
     scatter_options.LineWidth = options.line_width * scale_factor;
     
+    scatter_size = cell_size - scatter_options.LineWidth;
+
     if options.is_marker_filled
         scatter_options.MarkerEdgeColor = 'none';
+        scatter_options.MarkerFaceColor = 'black';
     else
         scatter_options.MarkerEdgeColor = 'black';
         scatter_options.MarkerFaceColor = 'none';
+        scatter_size = scatter_size - scatter_options.LineWidth;
     end
     
     arguments = hdng.utilities.struct_to_name_value_sequence(scatter_options);
 
     if options.is_marker_filled
-        arguments = ['filled', arguments];
+        arguments = [{'filled'}; arguments];
     end
     
-    scatter_size = cell_size - scatter_options.LineWidth / 2;
 
     props = scatter(x, y, arguments{:});
+
+    %options.marker_sizes = ones(numel(options.marker_sizes), 1);
+    %options.marker_sizes(1:floor(numel(options.marker_sizes) / 2)) = 0.5;
+
     props.SizeData = options.marker_sizes * scatter_size * scatter_size * scale_factor;
     
     

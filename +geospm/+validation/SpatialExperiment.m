@@ -675,14 +675,21 @@ classdef SpatialExperiment < handle
             arguments = {...
                 'frequencies', ...
                 'grid_size', obj.model_spatial_resolution(1:2), ...
-                'max_pixel_size', max(obj.model_spatial_resolution(1:2)) * 24, ...
+                'max_pixel_size', max(obj.model_spatial_resolution(1:2)) * 32, ...
                 'no_background', false, ...
                 'marker_alignment', obj.model_grid.cell_marker_alignment(1:2), ...
-                'marker_scale', max(obj.model_grid.cell_marker_scale(1:2))
+                'marker_scale', max(obj.model_grid.cell_marker_scale(1:2)), ...
+                'is_marker_filled', true, ...
+                'quantiles', 5, ...
+                'line_width', 3
                 };
+            
+            % [1, 1, 1], obj.model_spatial_resolution + 1
+            plot_min = obj.model_grid.origin;
+            plot_max = plot_min + obj.model_grid.span; % + obj.model_grid.cell_size;
 
             if obj.should_write_files()
-                obj.spatial_index.write_as_eps(scatter_plot_path, [1, 1, 1], obj.model_spatial_resolution + 1, arguments{:});
+                obj.spatial_index.write_as_eps(scatter_plot_path, plot_min, plot_max, arguments{:});
             end
             
             file = hdng.experiments.FileReference();
@@ -693,7 +700,7 @@ classdef SpatialExperiment < handle
             scatter_plot_path = fullfile(obj.directory, [model_data_name '.png']);
             
             if obj.should_write_files()
-                obj.spatial_index.write_as_png(scatter_plot_path, [1, 1, 1], obj.model_spatial_resolution + 1, arguments{:});
+                obj.spatial_index.write_as_png(scatter_plot_path, plot_min, plot_max, arguments{:});
             end
             
             file = hdng.experiments.ImageReference();
@@ -704,7 +711,7 @@ classdef SpatialExperiment < handle
             scatter_plot_path = fullfile(obj.directory, [model_data_name '.pdf']);
             
             if obj.should_write_files()
-                obj.spatial_index.write_as_pdf(scatter_plot_path, [1, 1, 1], obj.model_spatial_resolution + 1, arguments{:});
+                obj.spatial_index.write_as_pdf(scatter_plot_path, plot_min, plot_max, arguments{:});
             end
         end
         

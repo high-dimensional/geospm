@@ -431,6 +431,18 @@ classdef BaseSpatialIndex < geospm.TabularData
                 options.marker_scale = 1;
             end
             
+            if ~isfield(options, 'marker_min_size')
+                options.marker_min_size = 0.2;
+            end
+            
+            if ~isfield(options, 'quantiles')
+                options.quantiles = [];
+            end
+            
+            if ~isfield(options, 'line_width')
+                options.line_width = 1;
+            end
+            
             grid = geospm.Grid();
             grid.span_frame(origin, origin + frame_size, options.grid_size);
             
@@ -440,8 +452,19 @@ classdef BaseSpatialIndex < geospm.TabularData
 
             [cell_index, occurrences] = hdng.utilities.compute_unique_values(linear_index);
             frequencies = cellfun(@(x) numel(x), occurrences);
+            
+            if options.quantiles
+                k = options.quantiles;
+                quantiles = quantile(frequencies, (1:k - 1) ./ k);
+                marker_sizes = ((k - sum(frequencies(:) <= quantiles, 2)) / k)';
+            else
+                marker_sizes = frequencies ./ max(frequencies);
+            end
 
-            marker_sizes = frequencies ./ max(frequencies);
+            if options.marker_min_size
+                marker_sizes = 1 - (1 - marker_sizes) * ((1 - options.marker_min_size) / (1 - min(marker_sizes)));
+            end
+
             marker_symbol = 'o';
             
             [u, v] = ind2sub(grid.resolution(1:2), cell_index);
@@ -452,7 +475,7 @@ classdef BaseSpatialIndex < geospm.TabularData
                 options.grid_size, ...
                 'marker_sizes', marker_sizes, ...
                 'marker_symbol', marker_symbol, varargin{:}, ...
-                'line_width', 0.1 * options.marker_scale );
+                'line_width', options.line_width * options.marker_scale );
         end
 
         function resolution_factor = render_frame_in_figure_and_write_to_file(obj, point1, point2, variant, file_path, file_format, varargin)
@@ -473,8 +496,8 @@ classdef BaseSpatialIndex < geospm.TabularData
             
             [origin, frame_size] = obj.span_frame(point1, point2);
             
-            resolution_factor = options.max_pixel_size / max(frame_size);
-            options.max_pixel_size = max(frame_size);
+            resolution_factor = 1; %options.max_pixel_size / max(frame_size);
+            %options.max_pixel_size = max(frame_size);
             
             arguments = hdng.utilities.struct_to_name_value_sequence(options);
             
