@@ -15,7 +15,7 @@
 
 function directory = make_timestamped_directory(parent_directory)
     
-    timestamp = datetime('now', 'TimeZone', 'local', 'Format', 'yyyy_MM_dd_HH_mm_ss');
+    timestamp = hdng.utilities.timestamp();
 
     if ~exist('parent_directory', 'var') || numel(parent_directory) == 0
         parent_directory = pwd;

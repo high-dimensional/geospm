@@ -237,6 +237,18 @@ classdef RecordTable
             writecell([column_names; cell_values], filename);
         end
 
+        function result = row(obj, row_index)
+
+            result = struct();
+            
+            for index=1:numel(obj.fieldnames)
+                name = obj.fieldnames{index};
+                values = obj.contents.(name);
+                value = values(row_index);
+                result.(name) = value;
+            end
+        end
+
         function n = numArgumentsFromSubscript(obj, s, indexingContext)
            
             switch s(1).type
@@ -266,19 +278,182 @@ classdef RecordTable
 
                  key = s(1).subs{1};
 
-                 result = struct();
-
-                 for index=1:numel(obj.fieldnames)
-                    name = obj.fieldnames{index};
-                    values = obj.contents.(name);
-                    result.(name) = values(key);
-                 end
+                 result = obj.row(key);
 
                  varargout = {result};
                  
               otherwise
               	 [varargout{1:nargout}] = builtin('subsref',obj,s);
            end
+        end
+        
+        function result = pivot(obj, header_field, format_header_values, ...
+                match_header_values, row_label_column, merge_identical_columns)
+            
+            if ~exist('format_header_values', 'var')
+                format_header_values = [];
+            end
+
+            if ~exist('match_header_values', 'var') || isempty(match_header_values)
+                match_header_values = {};
+            end
+
+            if ~exist('row_label_column', 'var')
+                row_label_column = 'row_label';
+            end
+
+            if ~exist('merge_identical_columns', 'var') || isempty(merge_identical_columns)
+                merge_identical_columns = true;
+            end
+            
+            header_field_index = find(strcmp(header_field, obj.fieldnames), 1);
+            header_values = obj.fields.(header_field);
+
+            if ~isempty(format_header_values)
+                header_values = format_header_values(header_values);
+            end
+            
+            if ~isempty(match_header_values)
+                header_selector = any(strcmp(header_values(:), match_header_values(:)'), 2);
+            else
+                header_selector = ones(numel(header_values), 1, 'logical');
+            end
+            
+            L = sum(header_selector);
+
+            header_values = header_values(header_selector);
+
+            K = numel(obj.fieldnames);
+
+            row_labels = [obj.fieldnames(1:header_field_index - 1);
+                          obj.fieldnames(header_field_index + 1:end)];
+            
+            if merge_identical_columns
+                
+                map = containers.Map('KeyType', 'char', 'ValueType', 'double');
+                
+                merged_header_values = cell(L, 1);
+
+                group_map = zeros(L, 1);
+
+                for index=1:L
+                    
+                    header_value = header_values{index};
+                    
+                    if map.isKey(header_value)
+                        number = map(header_value);
+                    else
+                        number = map.length + 1;
+                        map(header_value) = number;
+                        merged_header_values{number} = header_value;
+                    end
+
+                    group_map(index) = number;
+                end
+                
+
+                merged_header_values = merged_header_values(1:map.length);
+                merged_columns = cell(map.length, 1);
+                
+                records = obj.select_matching_rows([], header_selector);
+
+                for index=1:L
+
+                    merged_column_index = group_map(index);
+
+                    merge_table = merged_columns{merged_column_index};
+
+                    if isnumeric(merge_table) && isempty(merge_table)
+                        merge_table = hdng.utilities.RecordTable();
+                    end
+
+                    record = records.row(index);
+                    record = hdng.utilities.RecordTable(record, 1);
+                    
+                    merge_table = merge_table + record;
+                    merged_columns{merged_column_index} = merge_table;
+                end
+
+                for index=1:numel(merged_columns)
+                    merge_table = merged_columns{index};
+                    column = cell(numel(row_labels), 1);
+                    
+                    for f_index=1:numel(row_labels)
+                        row_name = row_labels{f_index};
+                        column{f_index} = merge_table.fields.(row_name);
+                    end
+
+                    merged_columns{index} = column;
+                end
+
+                columns = merged_columns;
+                header_values = merged_header_values;
+
+            else
+                
+                columns = cell(L, 1);
+    
+                for index=1:K
+
+                    if index == header_field_index
+                        continue;
+                    end
+
+                    name = obj.fieldnames{index};
+
+                    row_values = obj.contents.(name);
+                    row_values = row_values(header_selector);
+    
+                    for f_index=1:L
+                        columns{f_index} = [columns{f_index}; row_values(f_index)];
+                    end
+                end
+
+            end
+            
+            result = struct();
+
+            if ~isempty(row_label_column)
+                result.(row_label_column) = row_labels;
+            end
+
+            for index=1:numel(header_values)
+               header_value = header_values{index};
+               result.(header_value) = columns{index};
+            end
+
+            result = hdng.utilities.RecordTable(result, K - 1);
+        end
+    end
+
+    methods (Static)
+        
+        function result = load_from_csv(file_path)
+            
+            values = readcell(file_path, 'DatetimeType', 'text', 'DurationType', 'text');
+            
+            header = values(1, :);
+            values = values(2:end, :);
+
+            contents = struct();
+
+            for index=1:numel(header)
+                name = header{index};
+                
+                try
+                    if ~ischar(values{1, index})
+                        field_values = cell2mat(values(:, index));
+                    else
+                        field_values = values(:, index);
+                    end
+                catch
+                    field_values = values(:, index);
+                end
+
+                contents.(name) = field_values;
+            end
+
+            result = hdng.utilities.RecordTable(contents);
         end
 
     end
