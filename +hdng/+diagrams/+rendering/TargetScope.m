@@ -18,7 +18,6 @@ classdef TargetScope < hdng.diagrams.rendering.RenderScope
     %   Detailed description 
     
     properties
-
     end
     
     properties (Dependent, Transient)
@@ -27,7 +26,9 @@ classdef TargetScope < hdng.diagrams.rendering.RenderScope
 
     properties (Access=private)
         saved_target_scope
+        style_definitions
         target_proxy_
+        save_target_proxy_on_exit_
     end
     
     methods
@@ -48,8 +49,18 @@ classdef TargetScope < hdng.diagrams.rendering.RenderScope
             if ~isfield(options, 'target_proxy')
                 options.target_proxy = options.target_proxy_ctor(obj.renderer);
             end
+
+            if ~isfield(options, 'style_definitions')
+                options.style_definitions = {};
+            end
+
+            if ~isfield(options, 'save_target_proxy_on_exit')
+                options.save_target_proxy_on_exit = false;
+            end
             
+            obj.style_definitions = options.style_definitions;
             obj.target_proxy_ = options.target_proxy;
+            obj.save_target_proxy_on_exit_ = options.save_target_proxy_on_exit;
         end
 
         function enter(obj, context)
@@ -60,9 +71,19 @@ classdef TargetScope < hdng.diagrams.rendering.RenderScope
         end
         
         function exit(obj, context)
+            
+            if ~isempty(obj.style_definitions)
+                context.renderer.render_style_definitions(obj.style_definitions, context);
+            end
+            
             exit@hdng.diagrams.rendering.RenderScope(obj, context);
             
             obj.target_proxy_.finalise([], context);
+            
+            if obj.save_target_proxy_on_exit_
+                context.saved_target_proxies(obj.name) = obj.target_proxy_;
+            end
+            
             context.target_scope = obj.saved_target_scope;
         end
 

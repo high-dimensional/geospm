@@ -31,6 +31,7 @@ classdef SVGPseudoTarget < hdng.diagrams.rendering.Target
     methods
         
         function obj = SVGPseudoTarget(varargin)
+            obj = obj@hdng.diagrams.rendering.Target(varargin{:});
 
             options = hdng.utilities.parse_struct_from_varargin(varargin{:});
 
@@ -55,8 +56,8 @@ classdef SVGPseudoTarget < hdng.diagrams.rendering.Target
         function finalise(obj, target, context)
 
             if ~isempty(obj.renderer) && ~isempty(obj.part)
-                text = obj.renderer.format_svg_part(obj.part, context);
-                target.write_text(text);
+                final_text = obj.renderer.format_svg_part(obj.part, [], context);
+                target.write_text(final_text);
             end
         end
     end

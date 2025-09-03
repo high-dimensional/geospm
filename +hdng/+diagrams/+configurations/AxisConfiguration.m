@@ -13,7 +13,8 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-classdef AxisConfiguration < handle
+classdef AxisConfiguration < hdng.diagrams.configurations.Configuration
+            
     %AxisConfiguration Summary.  
     %   Detailed description 
     
@@ -33,6 +34,8 @@ classdef AxisConfiguration < handle
     methods
             
         function obj = AxisConfiguration(varargin)
+            obj = obj@hdng.diagrams.configurations.Configuration(varargin{:});
+            
             options = hdng.utilities.parse_struct_from_varargin(varargin{:});
 
             if ~isfield(options, 'style_class')

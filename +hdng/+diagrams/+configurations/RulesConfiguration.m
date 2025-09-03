@@ -13,7 +13,8 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-classdef RulesConfiguration < handle
+classdef RulesConfiguration < hdng.diagrams.configurations.Configuration
+            
     %RulesConfiguration Summary.  
     %   Detailed description 
     
@@ -32,36 +33,32 @@ classdef RulesConfiguration < handle
     methods
         
         function obj = RulesConfiguration(varargin)
-             options = hdng.utilities.parse_struct_from_varargin(varargin{:});
-
-             if ~isfield(options, 'show')
-                 options.show = true;
-             end
-
-             if ~isfield(options, 'style_class')
-                 options.style_class = true;
-             end
-
-             if ~isfield(options, 'at')
-                 options.at = [];
-             end
-
-             if ~isfield(options, 'show_labels')
-                 options.show_labels = true;
-             end
-
-             if ~isfield(options, 'label_style')
-                 %{
-                 options.label_style = hdng.typesetting.Style();
-                 options.label_style.font_family = 'Barlow';
-                 options.label_style.font_size = 44;
-                 %}
-                 options.label_style = [];
-             end
-
-             if ~isfield(options, 'label_style_class')
-                 options.label_style_class = '';
-             end
+            obj = obj@hdng.diagrams.configurations.Configuration(varargin{:});
+            
+            options = hdng.utilities.parse_struct_from_varargin(varargin{:});
+            if ~isfield(options, 'show')
+                options.show = true;
+            end
+            if ~isfield(options, 'style_class')
+                options.style_class = true;
+            end
+            if ~isfield(options, 'at')
+                options.at = [];
+            end
+            if ~isfield(options, 'show_labels')
+                options.show_labels = true;
+            end
+            if ~isfield(options, 'label_style')
+                %{
+                options.label_style = hdng.typesetting.Style();
+                options.label_style.font_family = 'Barlow';
+                options.label_style.font_size = 44;
+                %}
+                options.label_style = [];
+            end
+            if ~isfield(options, 'label_style_class')
+                options.label_style_class = '';
+            end
 
             obj.show = options.show;
             obj.style_class = options.style_class;

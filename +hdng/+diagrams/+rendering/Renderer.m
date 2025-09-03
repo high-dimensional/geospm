@@ -123,6 +123,10 @@ classdef Renderer < handle
         function end_group(obj, x, y, context, varargin) %#ok<INUSD>
         end
 
+        function define_linear_gradient(obj, id, stops, transform, context) %#ok<INUSD>
+            % stops is a struct array with fields offset and colour
+        end
+
         function render_style_definitions(obj, style_definitions, context, varargin) %#ok<INUSD>
         end
         

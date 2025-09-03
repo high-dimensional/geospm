@@ -25,7 +25,6 @@ classdef FileScope < hdng.diagrams.rendering.TargetScope
     
     properties (Access=private)
         saved_file_name
-        style_definitions
         file_handle
     end
 
@@ -41,15 +40,10 @@ classdef FileScope < hdng.diagrams.rendering.TargetScope
                 options.file_handle_parameters = {};
             end
 
-            if ~isfield(options, 'style_definitions')
-                options.style_definitions = {};
-            end
-
             obj.saved_file_name = '';
             obj.file_handle = hdng.diagrams.rendering.FileHandle(...
                 options.file_handle_parameters{:});
 
-            obj.style_definitions = options.style_definitions;
             obj.target_proxy.delegate = obj.file_handle;
         end
         
@@ -67,10 +61,6 @@ classdef FileScope < hdng.diagrams.rendering.TargetScope
         end
         
         function exit(obj, context)
-            
-            if ~isempty(obj.style_definitions)
-                context.renderer.render_style_definitions(obj.style_definitions, context);
-            end
             
             exit@hdng.diagrams.rendering.TargetScope(obj, context);
 

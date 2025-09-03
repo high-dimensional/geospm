@@ -13,7 +13,7 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-classdef TicksConfiguration < handle
+classdef TicksConfiguration < hdng.diagrams.configurations.Configuration
     %TicksConfiguration Summary.  
     %   Detailed description 
     
@@ -28,15 +28,15 @@ classdef TicksConfiguration < handle
     methods
         
         function obj = TicksConfiguration(varargin)
-             options = hdng.utilities.parse_struct_from_varargin(varargin{:});
-
-             if ~isfield(options, 'show')
-                 options.show = true;
-             end
-
-             if ~isfield(options, 'style_class')
-                 options.style_class = true;
-             end
+            obj = obj@hdng.diagrams.configurations.Configuration(varargin{:});
+            
+            options = hdng.utilities.parse_struct_from_varargin(varargin{:});
+            if ~isfield(options, 'show')
+                options.show = true;
+            end
+            if ~isfield(options, 'style_class')
+                options.style_class = true;
+            end
 
             obj.show = options.show;
             obj.style_class = options.style_class;

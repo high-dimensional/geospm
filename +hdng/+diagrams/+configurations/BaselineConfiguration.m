@@ -13,7 +13,8 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-classdef BaselineConfiguration < handle
+classdef BaselineConfiguration < hdng.diagrams.configurations.Configuration
+            
     %BaselineConfiguration Summary.  
     %   Detailed description 
     
@@ -28,16 +29,15 @@ classdef BaselineConfiguration < handle
     methods
         
         function obj = BaselineConfiguration(varargin)
-             options = hdng.utilities.parse_struct_from_varargin(varargin{:});
-
-             if ~isfield(options, 'show')
-                 options.show = true;
-             end
-
-             if ~isfield(options, 'style_class')
-                 options.style_class = true;
-             end
-
+            obj = obj@hdng.diagrams.configurations.Configuration(varargin{:});
+            
+            options = hdng.utilities.parse_struct_from_varargin(varargin{:});
+            if ~isfield(options, 'show')
+                options.show = true;
+            end
+            if ~isfield(options, 'style_class')
+                options.style_class = true;
+            end
             obj.show = options.show;
             obj.style_class = options.style_class;
         end

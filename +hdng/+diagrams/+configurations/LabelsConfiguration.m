@@ -13,7 +13,8 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-classdef LabelsConfiguration < handle
+classdef LabelsConfiguration < hdng.diagrams.configurations.Configuration
+            
     %TicksConfiguration Summary.  
     %   Detailed description 
     
@@ -33,28 +34,24 @@ classdef LabelsConfiguration < handle
     methods
         
         function obj = LabelsConfiguration(varargin)
-             options = hdng.utilities.parse_struct_from_varargin(varargin{:});
-
-             if ~isfield(options, 'show')
-                 options.show = true;
-             end
-
-             if ~isfield(options, 'style_class')
-                 options.style_class = true;
-             end
-
-             if ~isfield(options, 'style')
-                 options.style = [];
-             end
-
-             if ~isfield(options, 'show_min_label')
-                 options.show_min_label = false;
-             end
-
-             if ~isfield(options, 'show_max_label')
-                 options.show_max_label = false;
-             end
-
+            obj = obj@hdng.diagrams.configurations.Configuration(varargin{:});
+            
+            options = hdng.utilities.parse_struct_from_varargin(varargin{:});
+            if ~isfield(options, 'show')
+                options.show = true;
+            end
+            if ~isfield(options, 'style_class')
+                options.style_class = true;
+            end
+            if ~isfield(options, 'style')
+                options.style = [];
+            end
+            if ~isfield(options, 'show_min_label')
+                options.show_min_label = false;
+            end
+            if ~isfield(options, 'show_max_label')
+                options.show_max_label = false;
+            end
             obj.show = options.show;
             obj.style_class = options.style_class;
             obj.style = options.style;

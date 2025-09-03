@@ -28,6 +28,7 @@ classdef RenderContext < handle
 
     properties (SetAccess=private)
         base_directory
+        saved_target_proxies
     end
     
     properties (Dependent, Transient)
@@ -112,6 +113,7 @@ classdef RenderContext < handle
                     'directory'; @hdng.diagrams.rendering.DirectoryScope;
                     'file'; @hdng.diagrams.rendering.FileScope;
                     'page'; @hdng.diagrams.rendering.PageScope;
+                    'target'; @hdng.diagrams.rendering.TargetScope;
                 };
             end
 
@@ -141,13 +143,14 @@ classdef RenderContext < handle
             obj.base_directory = options.base_directory;
             obj.directory = options.directory;
             obj.file_name = options.file_name;
+
+            obj.saved_target_proxies = hdng.utilities.Dictionary();
         end
 
         function enter_scope(obj, type, name, varargin)
             
             if ~isfield(obj.scope_ctors_by_type, type)
-                e = MException('RenderContext:UnknownScopeType', 'Could not enter unknown scope type %s', type);
-                raise(e);
+                error('RenderContext:UnknownScopeType', 'Could not enter unknown scope type %s', type);
             end
             
             scope_ctor = obj.scope_ctors_by_type.(type);

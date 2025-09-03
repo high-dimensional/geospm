@@ -82,16 +82,22 @@ classdef Context < handle
             end
         end
 
-        function render(~, descriptor, renderer, varargin)
+        function render(~, descriptor, context, varargin)
             
             options = hdng.utilities.parse_struct_from_varargin(varargin{:});
             
             if ~isfield(options, 'root_directives')
                 options.root_directives = {};
             end
+            
+            %{
+            if ~isfield(options, 'context')
+                options.context = hdng.diagrams.rendering.RenderContext(...
+                    'renderer', renderer);
+            end
 
-            context = hdng.diagrams.rendering.RenderContext(...
-                'renderer', renderer);
+            context = options.context;
+            %}
 
             root_declarator = descriptor.root_feature.feature_declarator;
             saved_directives = root_declarator.directives;

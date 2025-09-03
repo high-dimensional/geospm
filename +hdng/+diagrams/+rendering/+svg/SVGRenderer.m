@@ -18,11 +18,6 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
     %   Detailed description 
     
     properties
-        origin
-
-        trace_stroke_width
-        trace_stroke_foreground_colour
-        trace_stroke_background_colour
 
         default_view_box
     end
@@ -38,24 +33,10 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
         function obj = SVGRenderer()
             obj = obj@hdng.diagrams.rendering.Renderer();
 
-            obj.origin = [0, 0];
-
-            obj.trace_stroke_width = 2;
-            obj.trace_stroke_foreground_colour = 'white';
-            obj.trace_stroke_background_colour = '#663399';
-
             obj.default_view_box = [0, 0, 3740, 3740];
             
         end
         
-        %{
-        function result = create_context_for(obj, stack, callback, render_options)
-
-            result = create_context_for@hdng.diagrams.rendering.Renderer(obj, stack, callback, render_options);
-            result.origin = obj.origin;
-        end
-        %}
-
         function result = define_svg_attributes(obj, view_box)
 
             if ~exist('view_box', 'var')
@@ -150,34 +131,48 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
             image_type = ['image/' image_ext(2:end)];
             result = ['data:' image_type ';base64' ',' matlab.net.base64encode(data)];
         end
-        
 
-
-        function render_image(obj, image, context, varargin)
-
-            render_options = hdng.utilities.parse_struct_from_varargin(varargin{:});
-
-            if ~isfield(render_options, 'host_name')
-                render_options.host_name = '';
+        function scale_factor = adjust_scale_factor(~, resource, scale_factor)
+            
+            if isa(scale_factor, 'function_handle')
+                scale_factor = scale_factor(resource);
+            elseif isempty(scale_factor)
+                scale_factor = 1;
             end
+        end
+
+        function render_options = parse_render_options(~, name_value_pairs)
+
+            render_options = hdng.utilities.parse_struct_from_varargin(name_value_pairs{:});
 
             if ~isfield(render_options, 'blend_mode')
-                render_options.blend_mode = [];
+                render_options.blend_mode = 'normal';
             end
             
             if ~isfield(render_options, 'opacity')
-                render_options.opacity = [];
+                render_options.opacity = '1';
             end
-
-            if ~isfield(render_options, 'resource_identifier_expr')
-                render_options.resource_identifier_expr = '';
-            end
-
-            url_prefix = render_options.host_name;
             
+            if ~isfield(render_options, 'magnification')
+                render_options.magnification = '1';
+            end
+        end
+        
+        function render_image(obj, image, x, y, scale_factor, context, varargin)
+
+            render_options = obj.parse_render_options(varargin);
+            
+            url_prefix = context.resource_manager.host_name;
+
+            path =  context.resource_manager.resolve_path_alias(image.path);
+            
+            if endsWith(path, 'model_data.png') && strcmp(render_options.blend_mode, 'multiply')
+                render_options.blend_mode = 'soft-light';
+                render_options.opacity = 0.63;
+            end
+
             [~, identifier] = context.resource_manager.build_resource_url_and_identifier(...
-                url_prefix, image.source_ref, image.path, ...
-                render_options.resource_identifier_expr); 
+                url_prefix, image.source_ref, path); 
             
             resource = context.resources(identifier);
             id = obj.generate_xmlid(resource.identifier);
@@ -185,17 +180,17 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
             image_width = resource.assembly.image.y;
             image_height = resource.assembly.image.x;
 
-            scale_factor = 1; %context.stack.size(1) / image_width;
-
+            scale_factor = obj.adjust_scale_factor(resource, scale_factor);
+            
             % After trial and error, we specify the original height and width and then use the transform
             % to scale it to the desired magnification size. This way the output appears to render consistently
             % across different viewers.
             
-            result = [sprintf('<use href="#%s" ', id), ... 
+            result = [sprintf('<use xlink:href="#%s" ', id), ... 
                       sprintf('style="mix-blend-mode: %s;" ', render_options.blend_mode), ...
-                      sprintf('transform="translate(%d %d) scale(%g)" ', context.origin(1), context.origin(2), scale_factor), ...
-                      sprintf('width="%d" ', image_width), ...
-                      sprintf('height="%d" ', image_height), ...
+                      sprintf('transform="translate(%d %d) scale(%g)" ', x, y, scale_factor), ...
+                      sprintf('width="%dpx" ', image_width), ...
+                      sprintf('height="%dpx" ', image_height), ...
                       sprintf('opacity="%g" ', render_options.opacity), ...
                       '/>'];
             
@@ -212,149 +207,29 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
             end
             
             keys = resources.keys();
-            values = cell(size(keys));
 
             for index=1:numel(keys)
                 key = keys{index};
 
                 resource = resources(key);
 
-                values{index} = '';
-
                 if ~resource.is_shared
                     continue
                 end
                 
-                switch resource.type
-                    case 'image'
-                        url = obj.data_url_from_image(resource, resource.assembly.x, resource.assembly.y, resource.assembly.width, resource.assembly.height);
-                        id = obj.generate_xmlid(resource.identifier);
-                        
-                        image_width = resource.assembly.width;
-                        image_height = resource.assembly.height;
-                        
-                        image_style = '';
-
-                        if isfield(resource.attachments, 'image_style')
-                            image_style = [' style="' resource.attachments.image_style '"'];
-                        end
-
-                        if isfield(resource.assembly, 'slice_index')
-                            slice_index_property = sprintf(' data-slice-index="%d" ', resource.assembly.slice_index);
-                        else
-                            slice_index_property = '';
-                        end
-
-                        values{index} = [...
-                            sprintf('<symbol id="%s" viewBox="0 0 %d %d"', id, image_width, image_height), ...
-                            sprintf(' width="%d" height="%d"', image_width, image_height), ...
-                            slice_index_property, ...
-                            ' preserveAspectRatio="xMidYMid meet">' ....
-                            sprintf(' <image x="0" y="0" width="%d" height="%d" xlink:href="%s"%s/>', image_width, image_height, url, image_style), ...
-                            '</symbol>' newline
-                        ];
-
-                    %case 'shape'
-                    %    values{index} = obj.render_slice_shapes(resource, render_options);
-
-                end
+                obj.render_shared_resource(resource, context);
             end
 
-            result = join(values, '');
-            context.target.prologue.text = sprintf('<defs>%s</defs>', result{1});
+            %result = join(values, '');
+            %context.target.prologue.text = sprintf('<defs>%s</defs>', result{1});
         end
-
-        %{
-        function result = render_slice_shapes(obj, resource, render_options)
-            
-            slice_shapes = resource.attachments.slice_shapes;
-            symbol_id = obj.generate_xmlid(slice_shapes.shape_paths{resource.assembly.slice_index});
-
-            transform = [ 1,  0, -slice_shapes.origin(1); 
-                          0, -1, slice_shapes.origin(2) + slice_shapes.span(2)];
-            
-            paths = cell(numel(resource.assembly.shapes), 1);
-            
-            for index=1:numel(resource.assembly.shapes)
-                shape = resource.assembly.shapes(index);
-
-                paths{index} = geospm.reports.render_shape(shape, transform);
-            end
-            
-            paths = join(paths, newline);
-            paths = paths{1};
-
-            result = [...
-                sprintf('<symbol id="%s" viewBox="0 0 %d %d"', symbol_id, slice_shapes.span(1), slice_shapes.span(2)), ...
-                sprintf(' width="%d" height="%d">', slice_shapes.span(1), slice_shapes.span(2)), ...
-                sprintf(' data-slice-index="%d" ', resource.assembly.slice_index), ...
-                paths, ...
-                '</symbol>' newline
-            ];
-        end
-        %}
         
-        %{
-        function result = render_slice_shapes_layer(obj, layer, context)
-
-            %identifier = regexprep(layer.shape_paths{1}, '^\/|\/$', '');
-
-            url_prefix = '';
-
-            if isfield(context, 'host_name')
-                url_prefix = context.host_name;
-            end
-            
-            slice_name = '';
-
-            if isfield(context, 'slice_name')
-                slice_name = context.slice_name;
-            end
-
-            slice_index = layer.slice_map.index_for_name(slice_name, 1);
-
-            path = layer.shape_paths{slice_index};
-
-            [~, identifier] = obj.build_resource_url_and_identifier(url_prefix, layer.source_ref, path, context); 
-            
-            resource = context.resources(identifier);
-            
-            slice_shapes = resource.attachments.slice_shapes;
-            symbol_id = obj.generate_xmlid(slice_shapes.shape_paths{resource.assembly.slice_index});
-            
-            pixel_size = slice_shapes.span(1) / slice_shapes.resolution(1) * obj.trace_stroke_width;
-            stroke_width = pixel_size / context.magnification;
-            dash_length = stroke_width * 2;
-            scale_factor = (slice_shapes.resolution(1) * context.magnification) / slice_shapes.span(1);
-            
-            result = ['<g ', ...
-                      sprintf('transform="translate(%d %d) scale(%g)" ', context.origin(1), context.origin(2), scale_factor), ...
-                      sprintf('opacity="%g"', layer.opacity), ...
-                      '>', newline, ...
-                      sprintf('<use href="#%s" ', symbol_id), ... 
-                      sprintf('fill="none" stroke="%s" fill-rule="evenodd" clip-rule="evenodd" ', obj.trace_stroke_foreground_colour), ...
-                      sprintf('stroke-line-join="miter" stroke-width="%g" ', stroke_width), ...
-                      sprintf('width="%d" height="%d" ', slice_shapes.span(1), slice_shapes.span(2)), ...
-                      '/>', ...
-                      newline, ...
-                      sprintf('<use href="#%s" ', symbol_id), ... 
-                      sprintf('fill="none" stroke="%s" fill-rule="evenodd" clip-rule="evenodd" ', obj.trace_stroke_foreground_colour), ...
-                      sprintf('stroke-line-join="miter" stroke-width="%g" ', stroke_width), ...
-                      sprintf('stroke-dasharray="%g %g" ', dash_length * 2, dash_length), ...
-                      sprintf('width="%d" height="%d" ', slice_shapes.span(1), slice_shapes.span(2)), ...
-                      '/>', ...
-                      newline, ...
-                      '</g>', newline ...
-                      ];
-        end
-        %}
-
         function begin_rect(obj, x1, x2, y1, y2, context, varargin)
             attributes = obj.parse_render_attributes(varargin{:});
 
             result = ['<rect ', ...
-                      sprintf('x="%g" width="%g" y="%g" height="%g" ', x1, x2 - x1, y1, y2 - y1), ...
-                      obj.format_markup_attributes(attributes), newline, ...
+                      sprintf('x="%gpx" width="%gpx" y="%gpx" height="%gpx" ', x1, x2 - x1, y1, y2 - y1), ...
+                      obj.format_markup_attributes(attributes), ...
                       '>', newline, ...
                       ];
             
@@ -378,7 +253,7 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
             attributes = obj.parse_render_attributes(varargin{:});
             
             result = ['<circle ', ...
-                      sprintf('cx="%g" cy="%g" r="%g" ', cx, cy, r), ...
+                      sprintf('cx="%gpx" cy="%gpx" r="%gpx" ', cx, cy, r), ...
                       obj.format_markup_attributes(attributes), ...
                       '>', newline, ...
                       ];
@@ -403,7 +278,7 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
             attributes = obj.parse_render_attributes(varargin{:});
             
             result = ['<line ', ...
-                      sprintf('x1="%g" x2="%g" y1="%g" y2="%g" ', x1, x2, y1, y2), ...
+                      sprintf('x1="%gpx" x2="%gpx" y1="%gpx" y2="%gpx" ', x1, x2, y1, y2), ...
                       obj.format_markup_attributes(attributes), ...
                       '>', newline, ...
                       ];
@@ -454,7 +329,7 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
             end
 
             result = ['<text ', ...
-                      sprintf('%s="%s" %s="%s" ', ...
+                      sprintf('%s="%spx" %s="%spx" ', ...
                       x_name, sprintf(x_specifier, x), ...
                       y_name, sprintf(y_specifier, y)), ...
                       obj.format_markup_attributes(attributes), ...
@@ -495,6 +370,41 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
                       ];
             
             context.target.content.text = result;
+        end
+
+        function define_linear_gradient(obj, id, stops, transform, context) %#ok<INUSD>
+            % stops is a struct array with fields offset and colour
+            
+            formatted_stops = cell(numel(stops), 1);
+
+            use_opacity = isfield(stops, 'opacity');
+
+            for index=1:numel(stops)
+                stop = stops(index);
+                opacity = '';
+                
+                if use_opacity
+                    opacity = sprintf(' stop-opacity="%g"', stop.opacity);
+                end
+
+                formatted_stops{index} = sprintf('<stop offset="%.2f%%" stop-color="%s"%s/>', stop.offset * 100, stop.colour, opacity);
+            end
+
+            formatted_stops = join(formatted_stops, '\n  ');
+            formatted_stops = formatted_stops{1};
+            
+            if ~isempty(transform)
+                transform = sprintf(' gradientTransform="%s"', transform);
+            end
+
+            result = ['<linearGradient ', ...
+                      sprintf('id="%s"%s', id, transform), ...
+                      '>', ...
+                      formatted_stops, ...
+                       '</linearGradient>', newline ...
+                      ];
+
+            context.target.prologue.text = result;
         end
 
         function render_style_definitions(obj, style_definitions, context, varargin) %#ok<INUSD>
@@ -540,10 +450,10 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
             fragments = struct();
             fragments.svg_start = ...
                 hdng.diagrams.rendering.svg.SVGPseudoTarget('part', 'svg_start', 'renderer', obj);
-            fragments.styles = hdng.diagrams.rendering.BufferedTarget();
-            fragments.prologue = hdng.diagrams.rendering.BufferedTarget();
-            fragments.content = hdng.diagrams.rendering.BufferedTarget();
-            fragments.epilogue = hdng.diagrams.rendering.BufferedTarget();
+            fragments.styles = hdng.diagrams.rendering.svg.SVGBufferedTarget('part', 'styles', 'renderer', obj);
+            fragments.prologue = hdng.diagrams.rendering.svg.SVGBufferedTarget('part', 'prologue', 'renderer', obj);
+            fragments.content = hdng.diagrams.rendering.svg.SVGBufferedTarget('part', 'content', 'renderer', obj);
+            fragments.epilogue = hdng.diagrams.rendering.svg.SVGBufferedTarget('part', 'epilogue', 'renderer', obj);
             fragments.svg_end = ...
                 hdng.diagrams.rendering.svg.SVGPseudoTarget('part', 'svg_end', 'renderer', obj);
             
@@ -552,8 +462,7 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
             );
         end
 
-        function result = format_svg_part(obj, part, context)
-            result = '';
+        function result = format_svg_part(obj, part, content, context)
 
             switch part
                 case 'svg_start'
@@ -569,6 +478,12 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
 
                 case 'svg_end'
                     result = sprintf('</svg>');
+                
+                case 'prologue'
+                    result = sprintf('<defs>%s</defs>', content);
+
+                otherwise
+                    result = content;
             end
         end
     end
@@ -607,6 +522,10 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
                 options.stroke_linejoin = [];
             end
 
+            if ~isfield(options, 'opacity')
+                options.opacity = [];
+            end
+
             result = hdng.utilities.Dictionary();
 
             if ~isempty(options.class)
@@ -637,8 +556,13 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
                 result('stroke-linejoin') = options.stroke_linejoin;
             end
 
+            if ~isempty(options.opacity)
+                result('opacity') = options.opacity;
+            end
+
 
         end
+
         function result = format_markup_attributes(~, attributes)
             
             result = '';
@@ -660,5 +584,55 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
         function result = format_view_box(~, x, y, width, height)
             result = sprintf('%d %d %d %d', x, y, width, height);
         end
+
+
+        function did_render = render_shared_resource(obj, resource, context)
+            
+            did_render = false;
+
+            switch resource.type
+                case 'image'
+                    obj.render_shared_image(resource, context);
+                    did_render = true;
+
+            end
+        end
+
+        function render_shared_image(obj, resource, context)
+                        
+            url = obj.data_url_from_image(resource, resource.assembly.x, resource.assembly.y, resource.assembly.width, resource.assembly.height);
+            id = obj.generate_xmlid(resource.identifier);
+            
+            image_width = resource.assembly.width;
+            image_height = resource.assembly.height;
+            
+            image_style = '';
+
+            if isfield(resource.attachments, 'image_style')
+                image_style = [' style="' resource.attachments.image_style '"'];
+            end
+
+            if isfield(resource.assembly, 'slice_index')
+                slice_index_property = sprintf(' data-slice-index="%d" ', resource.assembly.slice_index);
+            else
+                slice_index_property = '';
+            end
+
+            %{
+            context.target.prologue.text = [...
+                sprintf('<symbol id="%s" viewBox="0 0 %d %d"', id, image_width, image_height), ...
+                sprintf(' width="%d" height="%d"', image_width, image_height), ...
+                slice_index_property, ...
+                ' preserveAspectRatio="xMidYMid meet">' ....
+                sprintf(' <image x="0" y="0" width="%d" height="%d" xlink:href="%s"%s/>', image_width, image_height, url, image_style), ...
+                '</symbol>' newline
+            ];
+            %}
+            context.target.prologue.text = [...
+                sprintf(' <image id="%s" x="0" y="0" width="%dpx" height="%dpx" xlink:href="%s"%s/>', id, image_width, image_height, url, image_style), ...
+                newline
+            ];
+        end
+        
     end
 end

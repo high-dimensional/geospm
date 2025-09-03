@@ -31,6 +31,7 @@ classdef BufferedTarget < hdng.diagrams.rendering.Target
     methods
         
         function obj = BufferedTarget(varargin)
+            obj = obj@hdng.diagrams.rendering.Target(varargin{:});
 
             %options = hdng.utilities.parse_struct_from_varargin(varargin{:});
 
