@@ -24,8 +24,10 @@ function [studies, group_widths, group_heights] = ...
 
     group_widths = [];
     group_heights = [];
-
-    studies(1).record_grid = [];
+    
+    if ~isfield(studies(1), 'record_grid')
+        studies(1).record_grid = [];
+    end
     
     for study_index=1:numel(studies)
         
@@ -35,7 +37,12 @@ function [studies, group_widths, group_heights] = ...
 
         [~, study_directory_name, ~] = fileparts(study_directory);
 
-        record_grid = geospm.reports.RecordGrid.load(study_file);
+
+        if isempty(study.record_grid)
+            record_grid = geospm.reports.RecordGrid.load(study_file);
+        else
+            record_grid = study.record_grid;
+        end
         
         context = geospm.reports.ReportContext(study_directory, shared_variables);
         context.render_layer_categories = selected_layer_categories;

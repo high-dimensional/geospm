@@ -45,6 +45,10 @@ function studies = polygon_based_task(base_directory, output_name, render_option
         options.action_options = struct();
     end
 
+    if ~isfield(options, 'skip_action')
+        options.skip_action = false;
+    end
+
     if ~isfield(options, 'cell_mask_volume_fn')
         options.cell_mask_volume_fn = @get_cell_values;
     end
@@ -67,7 +71,7 @@ function studies = polygon_based_task(base_directory, output_name, render_option
         preprocessing_identifier, ...
         grid_options.row_field, grid_options.column_field, grid_options, ...
         'do_debug', options.do_debug, ...
-        'force_preprocessing',options.force_preprocessing, ...
+        'force_preprocessing', options.force_preprocessing, ...
         'output_dir', tmp_dir);
     
     shared_variables = geospm.reports.SharedVariables([], options.dataset_aliases);
@@ -79,6 +83,10 @@ function studies = polygon_based_task(base_directory, output_name, render_option
         shared_variables, ...
         options.cell_mask_volume_fn, render_options.slice_name);
     
+    if options.skip_action
+        return;
+    end
+
     datasets_per_cell = gather_cell_attachments(studies, dataset_attachment, group_widths, group_heights);
     
     action_fn = options.action_fn;

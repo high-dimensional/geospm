@@ -20,8 +20,10 @@ function [studies, group_widths, group_heights] = ...
     
     group_widths = [];
     group_heights = [];
-
-    studies(1).record_grid = [];
+    
+    if ~isfield(studies(1), 'record_grid')
+            studies(1).record_grid = [];
+    end
 
     % Each study group is a cell grid of values selected by specific 
     % combination of group, row and column selector values.
@@ -31,8 +33,12 @@ function [studies, group_widths, group_heights] = ...
         study = studies(study_index);
         study_directory = study.directory;
         study_file = fullfile(study_directory, [study.identifier preprocessing_identifier '_preprocessed.mat']);
-
-        record_grid = geospm.reports.RecordGrid.load(study_file);
+        
+        if isempty(study.record_grid)
+            record_grid = geospm.reports.RecordGrid.load(study_file);
+        else
+            record_grid = study.record_grid;
+        end
         
         context = geospm.reports.ReportContext(study_directory, shared_variables);
         

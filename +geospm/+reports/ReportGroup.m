@@ -43,16 +43,6 @@ classdef ReportGroup < handle
     
     methods
 
-        %{
-        function result = get.unique_row_values(obj)
-            result = unique(obj.row_value_per_cell(:));
-        end
-        
-        function result = get.unique_column_values(obj)
-            result = unique(obj.column_value_per_cell(:));
-        end
-        %}
-
         function result = get.N_rows(obj)
             result = size(obj.cells, 1);
         end
@@ -97,6 +87,67 @@ classdef ReportGroup < handle
                 
                 obj.cell_attachments.(name) = ...
                     hdng.utilities.insert_slice(obj.cell_attachments.(name), dimension, at, [], slice_count);
+            end
+        end
+
+        function order_columns(obj, column_order)
+            
+            %{
+            row_value_per_cell
+            column_value_per_cell
+    
+            cells
+            cell_attachments
+            attachments
+            %}
+
+            cell_attachment_names = fieldnames(obj.cell_attachments);
+            n_cell_attachments = numel(cell_attachment_names);
+
+            order_limit = numel(column_order);
+
+            for index=1:obj.N_rows
+                column_values = obj.column_value_per_cell(index, :);
+                column_labels = cellfun(@(x) x.label, column_values, 'UniformOutput', false);
+
+                row_order = zeros(numel(column_labels), 1);
+
+                for c_index=1:numel(column_labels)
+                    column_value = column_labels{c_index};
+                    sort_index = find(strcmp(column_value, column_order), 1);
+
+                    if ~isempty(sort_index)
+                        row_order(c_index) = sort_index;
+                    end
+                end
+
+                selector = row_order == 0;
+                zero_count = sum(selector);
+
+                row_order(selector) = order_limit + 1:order_limit + zero_count;
+                [~, sort_order] = sort(row_order);
+                
+                %{
+                column_labels_before = join(column_labels, ' | ');
+                column_labels_before = column_labels_before{1};
+
+                column_labels_after = join(column_labels(sort_order), ' | ');
+                column_labels_after = column_labels_after{1};
+
+                fprintf('%s\n', column_labels_before);
+                fprintf('%s\n', column_labels_after);
+                %}
+                
+                obj.column_value_per_cell(index, :) = column_values(sort_order);
+                obj.cells(index, :) = obj.cells(index, sort_order);
+
+                for a_index=1:n_cell_attachments
+                    attachment = cell_attachment_names{a_index};
+                    attachment_cells = obj.cell_attachments.(attachment);
+                    attachment_cells(index, :) = attachment_cells(index, sort_order);
+                    obj.cell_attachments.(attachment) = attachment_cells;
+                end
+
             end
         end
 

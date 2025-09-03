@@ -102,31 +102,17 @@ classdef ReportContext < handle
                 render_options)
 
             results = cell(size(group.cells));
-            cell_layers = cell(size(group.cells));
-
             cell_values = group.cell_attachments.(cell_attachment);
         
             % Unpack all layers from their cell values
             
-            for row_index=1:group.N_rows
-                
-                for col_index=1:group.N_columns
+            layer_options = struct();
+            layer_options.layer_value_paths = layer_paths;
+            layer_options.clear_source_refs = clear_source_refs;
+            layer_options.path_prefix = path_prefix;
 
-                    records = group.cells{row_index, col_index};
-                    
-                    if isempty(records)
-                        continue;
-                    end
-                    
-                    selected_layers = cell_values{row_index, col_index};
-
-                    cell_layers{row_index, col_index} = ...
-                        geospm.reports.ReportContext.unpack_layers(selected_layers, layer_paths, clear_source_refs, path_prefix);
-                    
-
-                end
-            end
-
+            cell_layers = obj.unpack_cell_layers(group, cell_values, layer_options);
+            
             % Select layers for each cell
 
             fn_state = [];
@@ -166,6 +152,64 @@ classdef ReportContext < handle
             
                     renderer.gather_all_layer_resources(stack.selected_layers, context, obj.shared_variables.resources);
             
+                    results{row_index, col_index} = context;
+                end
+            end
+        end
+        
+        function results = create_cell_presentation_stacks(obj, ...
+                group, cell_attachment, resource_manager, cell_layer_fn, ...
+                layer_options, render_options)
+
+            results = cell(size(group.cells));
+            cell_values = group.cell_attachments.(cell_attachment);
+            
+            % Unpack all layers from their cell values
+            
+            cell_layers = obj.unpack_cell_layers(group, cell_values, layer_options);
+
+            % Select layers for each cell
+
+            fn_state = [];
+            
+            for row_index=1:group.N_rows
+                
+                for col_index=1:group.N_columns
+
+                    records = group.cells{row_index, col_index};
+                    
+                    if isempty(records)
+                        continue;
+                    end
+                    
+                    [selected_layers, fn_state] = cell_layer_fn(...
+                        cell_layers, ...
+                        row_index, col_index, group, fn_state);
+        
+                    if isempty(selected_layers)
+                        continue;
+                    end
+
+                    % We are selecting the first available record,
+                    % because we assume all records in a cell hail from
+                    % the same dataset.
+
+                    record = records.unsorted_records{1};
+                    
+                    [spm_input_path, ~] = obj.spm_paths_from_record(record);
+                    obj.shared_variables.update_volume_generators(spm_input_path, record);
+                    
+                    obj.gather_all_layer_resources(resource_manager, selected_layers, obj.shared_variables.resources);
+                    
+                    stack = geospm.validation.PresentationStack(selected_layers, ...
+                        obj.render_layer_categories, render_options.magnification);
+                    
+                    %context = renderer.create_context_for(stack, [], render_options);
+                    %context.resources = obj.shared_variables.resources;
+            
+                    context = struct();
+                    context.stack = stack;
+                    
                     results{row_index, col_index} = context;
                 end
             end
@@ -255,9 +299,58 @@ classdef ReportContext < handle
 
     methods (Static)
 
-        function layers = unpack_layers(values, layer_paths, clear_source_refs, path_prefix)
-            values = geospm.reports.ReportContext.unpack_layer_values(values, layer_paths);
-            layers = geospm.reports.ReportContext.convert_values_to_layers(values, clear_source_refs, path_prefix);
+        function gather_layer_resources(resource_manager, layer, resources)
+            
+            if ~isa(layer, 'geospm.validation.PresentationLayer')
+                return;
+            end
+            
+            if isa(layer, 'geospm.validation.VolumeLayer')
+                resource_manager.gather_resources_in_volume(layer, resources);
+            elseif isa(layer, 'geospm.validation.SliceShapesLayer')
+                resource_manager.gather_resources_in_slice_shapes(layer, resources);
+            elseif isa(layer, 'geospm.validation.ImageLayer')
+                resource_manager.gather_resources_in_image(layer.image, resources);
+            else
+                error('Unknown layer type!');
+            end
+        end
+
+        function gather_all_layer_resources(resource_manager, layers, resources)
+            
+            for index=1:numel(layers)
+                layer = layers{index};
+
+                geospm.reports.ReportContext.gather_layer_resources(resource_manager, layer, resources);
+            end
+        end
+
+        function cell_layers = unpack_cell_layers(group, cell_values, layer_options)
+
+            cell_layers = cell(size(group.cells));
+
+            for row_index=1:group.N_rows
+                
+                for col_index=1:group.N_columns
+
+                    records = group.cells{row_index, col_index};
+                    
+                    if isempty(records)
+                        continue;
+                    end
+                    
+                    selected_layers = cell_values{row_index, col_index};
+
+                    cell_layers{row_index, col_index} = ...
+                        geospm.reports.ReportContext.unpack_layers(selected_layers, layer_options);
+                    
+                end
+            end
+        end
+
+        function layers = unpack_layers(values, layer_options)
+            values = geospm.reports.ReportContext.unpack_layer_values(values, layer_options.layer_value_paths);
+            layers = geospm.reports.ReportContext.convert_values_to_layers(values, layer_options.clear_source_refs, layer_options.path_prefix);
         end
 
         function result = unpack_layer_values(values, layer_paths)

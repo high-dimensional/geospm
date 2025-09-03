@@ -159,11 +159,11 @@ function rendering_task(base_directory, output_name, render_options, grid_option
 
     requests = []; %#ok<NASGU>
     
-    [status, msg] = rmdir(tmp_dir, 's');
+    %[status, msg] = rmdir(tmp_dir, 's');
     
-    if ~status
-        error(msg);
-    end
+    %if ~status
+    %    error(msg);
+    %end
     
     grid_svg = geospm.reports.render_combined_grid(grid_rows, renderer, shared_variables.resources, render_options);
     hdng.utilities.save_text(grid_svg, fullfile(tmp_dir, [output_name '.svg']));

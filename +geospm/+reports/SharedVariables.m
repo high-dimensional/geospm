@@ -25,7 +25,9 @@ classdef SharedVariables < handle
 
         volume_generators   % the volume generators
         
+        host_name
         resources
+        resource_manager
 
         easting_column
         northing_column
@@ -76,7 +78,9 @@ classdef SharedVariables < handle
 
             obj.volume_generators = volume_generators;
 
+            obj.host_name = '';
             obj.resources = resources;
+            obj.resource_manager = [];
 
             obj.easting_column = 'easting';
             obj.northing_column = 'northing';
