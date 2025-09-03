@@ -46,7 +46,7 @@ classdef SliceShapesLayer < geospm.validation.PresentationLayer
         end
 
         function result = get.slice_names(obj)
-            result = obj.slice_maps.slice_names;
+            result = obj.slice_map.slice_names;
         end
         
         function set.slice_names(obj, values)
