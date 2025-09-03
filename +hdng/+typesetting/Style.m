@@ -22,6 +22,8 @@ classdef Style < handle
     end
     
     properties (GetAccess=public, SetAccess=public)
+        additional_attributes
+        attachments
     end
     
     properties (Dependent, Transient)
@@ -46,6 +48,9 @@ classdef Style < handle
             obj.font_weight_ = 'normal';
             obj.font_style_ = 'normal';
             obj.font_size_  = 16;
+            
+            obj.additional_attributes = struct();
+            obj.attachments = struct();
         end
 
         function result = get.font_family(obj)
@@ -78,6 +83,42 @@ classdef Style < handle
         
         function set.font_size(obj, value)
             obj.font_size_ = value;
+        end
+        
+        function result = format_css_dictionary(obj, font_size_unit, result)
+            
+            if ~exist('result', 'var')
+                result = hdng.utilities.Dictionary();
+            end
+
+            result('font-family') = obj.font_family;
+            result('font-weight') = obj.font_weight;
+            result('font-style') = obj.font_style;
+            result('font-size') = sprintf('%g%s', obj.font_size, font_size_unit);
+
+            names = fieldnames(obj.additional_attributes);
+
+            for index=1:numel(names)
+                name = names{index};
+                value = obj.additional_attributes.(name);
+                name = replace(name, '_', '-');
+                
+                if startsWith(name, 'webkit')
+                    name = ['-' name]; %#ok<AGROW>
+                end
+
+                result(name) = value;
+            end
+        end
+
+        function result = copy(obj)
+            result = hdng.typesetting.Style();
+            result.font_family = obj.font_family;
+            result.font_weight = obj.font_weight;
+            result.font_style = obj.font_style;
+            result.font_size = obj.font_size;
+            result.additional_attributes = obj.additional_attributes;
+            result.attachments = obj.attachments;
         end
     end
 

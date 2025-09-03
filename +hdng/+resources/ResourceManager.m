@@ -21,6 +21,7 @@ classdef ResourceManager < handle
     properties
         host_name
         resource_identifier_expr
+        path_aliases
     end
 
     properties (Dependent, Transient)
@@ -34,6 +35,13 @@ classdef ResourceManager < handle
         function obj = ResourceManager()
             obj.host_name = '';
             obj.resource_identifier_expr = '';
+            obj.path_aliases = containers.Map('KeyType', 'char', 'ValueType', 'char');
+        end
+
+        function path = resolve_path_alias(obj, path)
+            if obj.path_aliases.isKey(path)
+                path = obj.path_aliases(path);
+            end
         end
 
         function requests = launch_resource_requests(~, service, resources)
@@ -63,20 +71,113 @@ classdef ResourceManager < handle
 
             arrayfun(@(r) send_request(r), 1:numel(request_resources));
         end
+        
+        function gather_resources_in_image(obj, image, resources)
 
-        function identifier = create_resource_identifier_from_url(~, url, context)
+            url_prefix = obj.host_name;
 
-            identifier = regexprep(url, '^\w+:/|^\/|\/$', '');
+            path =  obj.resolve_path_alias(image.path);
             
-            if isfield(context, 'resource_identifier_expr') && ~isempty(context.resource_identifier_expr)
-                matches = regexp(url, context.resource_identifier_expr, 'names');
-                
-                if numel(matches) == 1 && isfield(matches, 'identifier') && ~isempty(matches.identifier)
-                    identifier = matches.identifier;
-                end
+            [url, identifier] = obj.build_resource_url_and_identifier(...
+                url_prefix, image.source_ref, path); 
+
+            if ~resources.holds_key(identifier)
+                resource = hdng.resources.Resource(url, 'image');
+                resource.identifier = identifier;
+                resource.attachments.image_style = '';
+                resources(resource.identifier) = resource; %#ok<NASGU>
+
+                resource.delegate = hdng.one_struct( ...
+                    'assemble', @(resource) obj.assemble_image(resource) ...
+                );
             end
         end
 
+        function gather_resources_in_file(obj, file, resources)
+            
+            url_prefix = obj.host_name;
+
+            path =  obj.resolve_path_alias(file.path);
+
+            [url, identifier] = obj.build_resource_url_and_identifier(...
+                url_prefix, file.source_ref, path); 
+
+            if ~resources.holds_key(identifier)
+                resource = hdng.resources.Resource(url, 'file');
+
+                resource.identifier = identifier;
+                %resource.is_shared = false;
+
+                resource.delegate = hdng.one_struct( ...
+                    'create_request', @(resource, context) obj.create_file_resource_request(resource, context), ...
+                    'assemble', @(resource) obj.assemble_file(resource) ...
+                );
+        
+                resource.attachments.file_type = file.type;
+        
+                resources(resource.identifier) = resource; %#ok<NASGU>
+            end
+        end
+        
+        function result = load_resources(obj, callback_fn, resources, varargin)
+        
+            result = [];
+
+            options = hdng.utilities.parse_struct_from_varargin(varargin{:});
+            
+            if ~isfield(options, 'service')
+                options.service = hdng.resources.ResourceService();
+            end
+
+            if isnumeric(resources) && isempty(resources)
+                resources = hdng.utilities.Dictionary();
+            end
+
+            service = options.service;
+            
+            requests = obj.launch_resource_requests(...
+                service, resources); %#ok<NASGU>
+            
+
+            % Not running asynchronously, so all requests should have stopped
+            if service.total_requests == service.stopped_requests
+                result = callback_fn(obj, service);
+            end
+            
+            % Explicitly clear all requests
+
+            requests = []; %#ok<NASGU>
+        end
+
+        function [url, identifier] = build_resource_url_and_identifier(obj, url_prefix, source_ref, path, varargin)
+            
+            options = hdng.utilities.parse_struct_from_varargin(varargin{:});
+
+            if ~isfield(options, 'resource_identifier_expr')
+                options.resource_identifier_expr = obj.resource_identifier_expr;
+            end
+
+            url = fullfile(url_prefix, source_ref, path);
+            url = replace(url, '//', '/');
+
+            identifier = regexprep(path, '^\w+:/|^\/|\/$', '');
+            
+            if ~isempty(options.resource_identifier_expr)
+                matches = regexp(path, options.resource_identifier_expr, 'names');
+                
+                if numel(matches) == 1 && isfield(matches, 'identifier') && ~isempty(matches.identifier)
+                    identifier = matches.identifier;
+    
+                    if isfield(matches, 'prefix') && ~isempty(matches.prefix)
+                        identifier = [matches.prefix identifier];
+                    end
+                end
+            end
+        end
+    end
+
+    methods (Access=protected)
+        
 
         function result = assemble_image(~, resource)
 
@@ -89,33 +190,12 @@ classdef ResourceManager < handle
             combined_data = reshape(combined_data, [size(combined_data, 1), size(combined_data, 2), 1, size(combined_data, 3)]);
             
             result.image_data = combined_data;
+            result.image = hdng.images.ImageVolume(combined_data, '', resource.url);
             result.url = resource.url;
             result.x = 0;
             result.y = 0;
             result.height = result.image.x;
             result.width = result.image.y;
-        end
-        
-        function gather_image_resource(obj, image, context, resources)
-
-            url_prefix = '';
-
-            if isfield(context, 'host_name')
-                url_prefix = context.host_name;
-            end
-            
-            [url, identifier] = obj.build_resource_url_and_identifier(url_prefix, image.source_ref, image.path, context); 
-
-            if ~resources.holds_key(identifier)
-                resource = hdng.resources.Resource(url, 'image');
-                resource.identifier = identifier;
-                resource.attachments.image_style = '';
-                resources(resource.identifier) = resource; %#ok<NASGU>
-
-                resource.delegate = hdng.one_struct( ...
-                    'assemble', @(resource) obj.assemble_image(resource) ...
-                );
-            end
         end
         
 
@@ -167,87 +247,6 @@ classdef ResourceManager < handle
 
             resource.attachments = rmfield(resource.attachments, 'file_contents');
             resource.attachments = rmfield(resource.attachments, 'file_type');
-        end
-        
-        function gather_file_resource(obj, file, context, resources)
-
-
-            url_prefix = '';
-
-            if isfield(context, 'host_name')
-                url_prefix = context.host_name;
-            end
-
-            [url, identifier] = obj.build_resource_url_and_identifier(url_prefix, file.source_ref, file.path, context); 
-        
-            if ~resources.holds_key(identifier)
-                resource = hdng.resources.Resource(url, 'file');
-
-                resource.identifier = identifier;
-                %resource.is_shared = false;
-
-                resource.delegate = hdng.one_struct( ...
-                    'create_request', @(resource, context) obj.create_file_resource_request(resource, context), ...
-                    'assemble', @(resource) obj.assemble_file(resource) ...
-                );
-        
-                resource.attachments.file_type = file.type;
-        
-                resources(resource.identifier) = resource; %#ok<NASGU>
-            end
-        end
-        
-        function result = load_resources(obj, callback_fn, resources, varargin)
-        
-            result = [];
-
-            options = hdng.utilities.parse_struct_from_varargin(varargin{:});
-            
-            if ~isfield(options, 'service')
-                options.service = hdng.resources.ResourceService();
-            end
-
-            if isnumeric(resources) && isempty(resources)
-                resources = hdng.utilities.Dictionary();
-            end
-
-            service = options.service;
-            
-            requests = obj.launch_resource_requests(...
-                service, resources); %#ok<NASGU>
-            
-
-            % Not running asynchronously, so all requests should have stopped
-            if service.total_requests == service.stopped_requests
-                result = callback_fn(obj, service);
-            end
-            
-            % Explicitly clear all requests
-
-            requests = []; %#ok<NASGU>
-        end
-    end
-    
-    methods (Static, Access=public)
-        
-        function [url, identifier] = build_resource_url_and_identifier(url_prefix, source_ref, path, context)
-            
-            if ~exist('context', 'var')
-                context = struct();
-            end
-
-            url = fullfile(url_prefix, source_ref, path);
-            url = replace(url, '//', '/');
-
-            identifier = regexprep(path, '^\w+:/|^\/|\/$', '');
-            
-            if isfield(context, 'resource_identifier_expr') && ~isempty(context.resource_identifier_expr)
-                matches = regexp(url, context.resource_identifier_expr, 'names');
-                
-                if numel(matches) == 1 && isfield(matches, 'identifier') && ~isempty(matches.identifier)
-                    identifier = matches.identifier;
-                end
-            end
         end
     end
 end

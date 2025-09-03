@@ -216,6 +216,50 @@ classdef Collector < handle
             result = num2cell(result);
         end
         
+        function result = symmetric_min_function(batch, ~)
+            
+            N = numel(batch);
+            min_result = zeros(1, N); 
+            max_result = zeros(1, N); 
+            
+            for i=1:N
+                data = batch{i};
+                min_result(i) = min(data(:));
+                max_result(i) = max(data(:));
+            end
+
+            minimum = min( min_result );
+            maximum = max( max_result );
+
+            if sign(minimum) * sign(maximum) > 0
+                result = { minimum };
+            else
+                result = { -max([abs(minimum), abs(maximum)])};
+            end
+        end
+        
+        function result = symmetric_max_function(batch, ~)
+            
+            N = numel(batch);
+            min_result = zeros(1, N); 
+            max_result = zeros(1, N); 
+            
+            for i=1:N
+                data = batch{i};
+                min_result(i) = min(data(:));
+                max_result(i) = max(data(:));
+            end
+
+            minimum = min( min_result );
+            maximum = max( max_result );
+
+            if sign(minimum) * sign(maximum) > 0
+                result = { maximum };
+            else
+                result = { max([abs(minimum), abs(maximum)])};
+            end
+        end
+
         function result = evaluate(x, expr) %#ok<INUSL>
             result = eval(expr);
         end
@@ -233,6 +277,8 @@ classdef Collector < handle
                 functions('max') = @hdng.stats.Collector.max_function;
                 functions('at_least') = @hdng.stats.Collector.at_least_function;
                 functions('quantile') = @hdng.stats.Collector.quantile_function;
+                functions('symmetric_min') = @hdng.stats.Collector.symmetric_min_function;
+                functions('symmetric_max') = @hdng.stats.Collector.symmetric_max_function;
             end
             
             result = [];

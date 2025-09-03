@@ -163,9 +163,9 @@ classdef Resource < handle
 
         function request = create_request(obj, context)
             
-            [did_delegate, request] = obj.call_delegate('create_request', context);
+            [had_delegate, request] = obj.call_delegate('create_request', context);
             
-            if did_delegate
+            if had_delegate
                 return
             end
 
@@ -174,9 +174,9 @@ classdef Resource < handle
 
         function send_request(obj, request)
             
-            did_delegate = obj.call_delegate('send_request', request);
+            had_delegate = obj.call_delegate('send_request', request);
             
-            if did_delegate
+            if had_delegate
                 return
             end
 
@@ -185,9 +185,9 @@ classdef Resource < handle
         
         function assemble(obj)
             
-            [did_delegate, obj.assembly_] = obj.call_delegate('assemble');
+            [had_delegate, obj.assembly_] = obj.call_delegate('assemble');
             
-            if did_delegate
+            if had_delegate
                 return
             end
 
@@ -197,16 +197,16 @@ classdef Resource < handle
     end
     
     methods (Access=protected)
-        function [did_delegate, delegate_result] = call_delegate(obj, method, varargin)
+        function [had_delegate, delegate_result] = call_delegate(obj, method, varargin)
             
-            did_delegate = false;
+            had_delegate = false;
             delegate_result = [];
 
             if isempty(obj.delegate) || ~isfield(obj.delegate, method)
                 return;
             end
             
-            did_delegate = true;
+            had_delegate = true;
             delegate_result = obj.delegate.(method)(obj, varargin{:});
         end
     end
