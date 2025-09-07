@@ -51,8 +51,10 @@ classdef PrerenderedMap < hdng.maps.MappingService
             obj.cache_max_location = [700000, 1300000];
             %obj.cache_n_tiles = [7, 13];
             %obj.tile_size = [4000, 4000];
-            obj.cache_n_tiles = [14, 26];
-            obj.tile_size = [2500, 2500];
+            %obj.cache_n_tiles = [14, 26];
+            %obj.tile_size = [2500, 2500];
+            obj.cache_n_tiles = [28, 52];
+            obj.tile_size = [1687, 1687];
             obj.image_format = 'png';
         end
         

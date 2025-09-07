@@ -47,9 +47,17 @@ classdef RecordTable
                 contents = struct();
             end
 
-            if ~exist('length', 'var')
+            names = fieldnames(contents);
 
-                names = fieldnames(contents);
+            for index=1:numel(names)
+                name = names{index};
+
+                if ischar(contents.(name))
+                    contents.(name) = {contents.(name)};
+                end
+            end
+
+            if ~exist('length', 'var')
 
                 if ~isempty(names)                
                     lengths = cellfun(@(x) numel(contents.(x)), names, 'UniformOutput', true);
@@ -79,6 +87,38 @@ classdef RecordTable
 
             tmp_contents = hdng.utilities.concatenate_tabular_structs(obj1.contents, obj2.contents, obj1.length, obj2.length);
             result = hdng.utilities.RecordTable(tmp_contents, obj1.length + obj2.length);
+        end
+            
+        function result = times(obj1, obj2)
+
+            result = hdng.utilities.RecordTable;
+
+            if numel(obj1) == 0
+                return
+            end
+
+            if numel(obj2) == 0
+                return
+            end
+
+            for index_1=1:obj1.length
+
+                record_1 = obj1.row(index_1);
+
+                for index_2=1:obj2.length
+                    record_2 = obj2.row(index_2);
+
+                    combined = record_1;
+                    fields_2 = fieldnames(record_2); %#ok<CPROPLC>
+
+                    for f_index=1:numel(fields_2)
+                        field = fields_2{f_index};
+                        combined.(field) = record_2.(field);
+                    end
+
+                    result = result + hdng.utilities.RecordTable(combined, 1);
+                end
+            end
         end
 
         function result = assign_field(obj, name, values)
@@ -131,6 +171,42 @@ classdef RecordTable
             end
 
             result = hdng.utilities.RecordTable(tmp_contents);
+        end
+
+        function result = match_field_value(obj, field, value)
+            
+            result = zeros(obj.length, 1, 'logical');
+
+            if ~any(strcmp(field, obj.fieldnames))
+                return;
+            end
+
+            values = obj.fields.(field);
+
+            if ischar(value)
+                result = strcmp(value, values(:));
+                return;
+            end
+            
+            result = value == values(:);
+        end
+
+        function result = match_record(obj, record)
+            names = fieldnames(record); %#ok<CPROPLC>
+
+            if isempty(names)
+                result = zeros(obj.length, 1, 'logical');
+                return;
+            end
+
+            result = ones(obj.length, 1, 'logical');
+
+            for index=1:numel(names)
+                name = names{index};
+                value = record.(name);
+                
+                result = result & obj.match_field_value(name, value);
+            end
         end
         
         function [result, values] = group_rows_by_field(obj, name, match_values)
@@ -244,7 +320,13 @@ classdef RecordTable
             for index=1:numel(obj.fieldnames)
                 name = obj.fieldnames{index};
                 values = obj.contents.(name);
-                value = values(row_index);
+                
+                if iscell(values)
+                    value = values{row_index};
+                else
+                    value = values(row_index);
+                end
+
                 result.(name) = value;
             end
         end
