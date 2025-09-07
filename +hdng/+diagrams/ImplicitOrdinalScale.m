@@ -127,5 +127,19 @@ classdef ImplicitOrdinalScale < hdng.diagrams.OrdinalScale
             end
         end
 
+
+    
+        function result = access_defined_domain(obj)
+            result = obj.ordered_values;
+        end
+
+        function result = access_calibrated_domain(obj)
+            result = obj.defined_domain;
+        end
+    
+        function update_defined_domain(obj, value)
+            obj.domain_ = value;
+        end
+
     end
 end

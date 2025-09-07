@@ -21,6 +21,9 @@ classdef RenderContext < handle
         resource_manager
         resources
         renderer
+
+        view_box
+
         directory
         file_name
         target_scope
@@ -128,10 +131,16 @@ classdef RenderContext < handle
             if ~isfield(options, 'file_name')
                 options.file_name = 'diagram';
             end
+
+            if ~isfield(options, 'view_box')
+                options.view_box = [0, 0, 3740, 3740];
+            end
             
             obj.resource_manager = options.resource_manager;
             obj.resources = options.resources;
             obj.renderer = options.renderer;
+
+            obj.view_box = options.view_box;
 
             obj.scope_ctors = options.scope_ctors;
             obj.scope_ctors_by_type = ...

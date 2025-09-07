@@ -18,8 +18,6 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
     %   Detailed description 
     
     properties
-
-        default_view_box
     end
 
     properties (Dependent, Transient)
@@ -32,17 +30,13 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
         
         function obj = SVGRenderer()
             obj = obj@hdng.diagrams.rendering.Renderer();
-
-            obj.default_view_box = [0, 0, 3740, 3740];
             
         end
         
-        function result = define_svg_attributes(obj, view_box)
+        function result = define_svg_attributes(obj, context)
 
-            if ~exist('view_box', 'var')
-                view_box = obj.default_view_box;
-            end
-
+            view_box = context.view_box;
+            
             result = hdng.utilities.Dictionary();
             result('xmlns') = 'http://www.w3.org/2000/svg';
             result('xmlns:xlink') = 'http://www.w3.org/1999/xlink';
@@ -166,11 +160,13 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
 
             path =  context.resource_manager.resolve_path_alias(image.path);
             
+            %{
             if endsWith(path, 'model_data.png') && strcmp(render_options.blend_mode, 'multiply')
                 render_options.blend_mode = 'soft-light';
-                render_options.opacity = 0.63;
+                render_options.opacity = 0.7;
             end
-
+            %}
+            
             [~, identifier] = context.resource_manager.build_resource_url_and_identifier(...
                 url_prefix, image.source_ref, path); 
             
@@ -356,8 +352,18 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
             obj.end_text(context);
         end
 
-        function begin_group(obj, x, y, context, varargin) %#ok<INUSD>
-            result = [sprintf('<g transform="translate(%g %g)"', x, y), ...
+        function begin_group(obj, x, y, context, varargin)
+
+            attributes = obj.parse_render_attributes(varargin{:});
+            
+            transform = '';
+
+            if x ~= 0 || y ~= 0
+                transform = sprintf('transform="translate(%g %g)"', x, y);
+            end
+
+            result = [sprintf('<g %s', transform), ..., ...
+                      obj.format_markup_attributes(attributes), ...
                       '>', newline, ...
                       ];
             
@@ -390,7 +396,7 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
                 formatted_stops{index} = sprintf('<stop offset="%.2f%%" stop-color="%s"%s/>', stop.offset * 100, stop.colour, opacity);
             end
 
-            formatted_stops = join(formatted_stops, '\n  ');
+            formatted_stops = join(formatted_stops, [newline '  ']);
             formatted_stops = formatted_stops{1};
             
             if ~isempty(transform)
@@ -417,33 +423,23 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
            context.target.styles.text = result; 
         end
 
-        %{
-        function begin_style(obj, target, context, varargin) %#ok<INUSD>
 
-            if isempty(target)
-                target = 'styles';
-            end
-
-            result = [sprintf('<style'), ...
-                      '>', newline, ...
+        function begin_inline_definitions(~, context)
+            result = ['<defs>', newline ...
                       ];
             
-            context.target.(target).text = result;
+            context.target.content.text = result;
+
         end
 
-        function end_style(obj, target, context, varargin) %#ok<INUSD>
-
-            if isempty(target)
-                target = 'styles';
-            end
-            
+        function end_inline_definitions(~, context)
             result = [newline, ...
-                      '</style>', newline, ...
+                      '</defs>', newline, ...
                       ];
             
-            context.target.(target).text = result;
+            context.target.content.text = result;
         end
-        %}
+
 
         function result = create_target_proxy(obj)
 
@@ -467,7 +463,7 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
             switch part
                 case 'svg_start'
 
-                    svg_attributes = obj.define_svg_attributes();
+                    svg_attributes = obj.define_svg_attributes(context);
                     svg_attributes = obj.format_markup_attributes(svg_attributes);
 
                     result = [...
@@ -493,6 +489,10 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
         function result = parse_render_attributes(~, varargin)
         
             options = hdng.utilities.parse_struct_from_varargin(varargin{:});
+
+            if ~isfield(options, 'id')
+                options.id = [];
+            end
 
             if ~isfield(options, 'class')
                 options.class = [];
@@ -526,7 +526,15 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
                 options.opacity = [];
             end
 
+            if ~isfield(options, 'mix_blend_mode')
+                options.mix_blend_mode = [];
+            end
+
             result = hdng.utilities.Dictionary();
+
+            if ~isempty(options.id)
+                result('id') = options.id;
+            end
 
             if ~isempty(options.class)
                 result('class') = options.class;
@@ -558,6 +566,10 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
 
             if ~isempty(options.opacity)
                 result('opacity') = options.opacity;
+            end
+
+            if ~isempty(options.mix_blend_mode)
+                result('mix-blend-mode') = options.mix_blend_mode;
             end
 
 

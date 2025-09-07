@@ -19,6 +19,7 @@ classdef DataScope < handle
     
     properties
         data_level
+        is_placeholder
         attributes
         records
         children
@@ -35,6 +36,7 @@ classdef DataScope < handle
         
         function obj = DataScope(data_level, attributes, records)
             obj.data_level = data_level;
+            obj.is_placeholder = false;
             obj.attributes = attributes;
             obj.records = records;
             obj.children = {};

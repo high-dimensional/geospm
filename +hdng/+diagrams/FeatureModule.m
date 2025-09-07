@@ -78,7 +78,7 @@ classdef FeatureModule < handle
             
             data_module = data_descriptor.data_module;
             data_root = data_descriptor.root_scope;
-            data_level_parents = data_descriptor.data_level_parents;
+            %data_level_parents = data_descriptor.data_level_parents;
 
             feature_map = cell(data_descriptor.base.node_count, 1);
 
@@ -109,14 +109,20 @@ classdef FeatureModule < handle
                     current_scope = scopes{index};
 
                     data_level = current_scope.data_level;
+                    data_level_suffix = '';
+
+                    if current_scope.is_placeholder
+                        data_level_suffix = '_placeholder';
+                    end
                     
                     if ~isempty(data_level.identifier)
                         declarator = hdng.utilities.struct_get_value_at_path( ...
                              obj.root_feature_declarator.children_by_identifier, ...
-                             data_level.identifier, {});
+                             [data_level.identifier data_level_suffix], {});
                         
                         feature = declarator.generate_feature(current_scope, stack);
                     else
+                        % Only the root feature has an anonymous data_level
                         feature = hdng.diagrams.Feature(...
                             'data_scope', current_scope, ...
                             'feature_declarator', hdng.diagrams.FeatureDeclarator());

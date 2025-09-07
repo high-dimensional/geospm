@@ -17,33 +17,21 @@ classdef LinearScale < hdng.diagrams.Scale
     %LinearScale Summary.
     %   Detailed description
     
-    properties 
-        calibrated_domain
+    properties
     end
     
     properties (Dependent, Transient)
-        defined_domain
         defined_range
-        
-        domain
-
         scale_coefficient
     end
 
     properties (Access=private)
         domain_
         range_
+        calibrated_domain_
     end
     
     methods
-       
-        function result = get.defined_domain(obj)
-            result = obj.domain_;
-        end
-        
-        function set.defined_domain(obj, value)
-            obj.domain_ = value;
-        end
         
         function result = get.defined_range(obj)
             result = obj.range_;
@@ -56,16 +44,7 @@ classdef LinearScale < hdng.diagrams.Scale
         function result = get.scale_coefficient(obj)
             result = (obj.range_(2) - obj.range_(1)) / (obj.domain(2) - obj.domain(1));
         end
-
-        function result = get.domain(obj)
-
-            result = obj.defined_domain;
-
-            if ~isempty(obj.calibrated_domain)
-                result = obj.calibrated_domain;
-            end
-        end
-
+        
         function obj = LinearScale(varargin)
             obj = obj@hdng.diagrams.Scale(varargin{:});
 
@@ -79,9 +58,9 @@ classdef LinearScale < hdng.diagrams.Scale
                 options.range = [-100, 100];
             end
 
-            obj.defined_domain = options.domain;
-            obj.calibrated_domain = [];
-            obj.defined_range = options.range;
+            obj.domain_ = options.domain;
+            obj.calibrated_domain_ = [];
+            obj.range_ = options.range;
         end
 
         function calibrate(obj, values)
@@ -89,7 +68,7 @@ classdef LinearScale < hdng.diagrams.Scale
             domain_min = min(values);
             domain_max = max(values);
             limit = max([abs(domain_min), abs(domain_max)]) * 1.1;
-            obj.calibrated_domain = [-limit, limit];
+            obj.calibrated_domain_ = [-limit, limit];
         end
         
         function [result, indices, clipped] = apply(obj, values)
@@ -104,7 +83,17 @@ classdef LinearScale < hdng.diagrams.Scale
     end
 
     methods (Access=protected)
-        
+    
+        function result = access_defined_domain(obj)
+            result = obj.domain_;
+        end
 
+        function result = access_calibrated_domain(obj)
+            result = obj.calibrated_domain_;
+        end
+    
+        function update_defined_domain(obj, value)
+            obj.domain_ = value;
+        end
     end
 end

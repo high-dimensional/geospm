@@ -22,10 +22,29 @@ classdef Scale < hdng.diagrams.Definition
     end
     
     properties (Dependent, Transient)
+        defined_domain
+        calibrated_domain
+        domain
     end
     
     methods
-        
+
+        function result = get.defined_domain(obj)
+            result = obj.access_defined_domain();
+        end
+
+        function set.defined_domain(obj, value)
+            obj.update_defined_domain(value);
+        end
+
+        function result = get.calibrated_domain(obj)
+            result = obj.access_calibrated_domain();
+        end
+
+        function result = get.domain(obj)
+            result = obj.access_domain();
+        end
+
         function obj = Scale(varargin)
             obj = obj@hdng.diagrams.Definition('scale');
 
@@ -46,5 +65,29 @@ classdef Scale < hdng.diagrams.Definition
             indices = 1:numel(values);
             clipped = [];
         end
+    end
+
+    methods (Access=protected)
+    
+        function result = access_defined_domain(~)
+            result = [];
+        end
+
+        function result = access_calibrated_domain(~)
+            result = [];
+        end
+    
+        function update_defined_domain(~, ~)
+            error('update_defined_domain() must be implemented by a subclass.');
+        end
+
+        function result = access_domain(obj)
+            result = obj.calibrated_domain;
+
+            if isempty(result)
+                result = obj.defined_domain;
+            end
+        end
+
     end
 end

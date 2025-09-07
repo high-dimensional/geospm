@@ -90,5 +90,12 @@ classdef ExplicitOrdinalScale < hdng.diagrams.OrdinalScale
 
     methods (Access=protected)
         
+        function result = access_defined_domain(obj)
+            result = obj.ordered_index_map.keys();
+        end
+
+        function result = access_calibrated_domain(obj)
+            result = obj.defined_domain;
+        end
     end
 end

@@ -143,6 +143,30 @@ classdef SVGRenderer < hdng.diagrams.rendering.svg.SVGRenderer
                 obj.render_slice_shapes(layer, x, y, scale_factor, context, varargin{:}, layer_options{:});
             elseif isa(layer, 'geospm.validation.ImageLayer')
                 obj.render_image(layer.image, x, y, scale_factor, context, varargin{:}, layer_options{:});
+            elseif isa(layer, 'geospm.validation.GroupLayer')
+
+                obj.begin_inline_definitions(context);
+
+                group_layer_id = replace(char(java.util.UUID.randomUUID), '-', '');
+                
+                obj.begin_group(0, 0, context, 'id', group_layer_id);
+
+                for index=1:numel(layer.sublayers)
+                    sublayer = layer.sublayers{index};
+                    obj.render_layer(sublayer, x, y, scale_factor, context, varargin{:});
+                end
+                
+                obj.end_group(0, 0, context);
+
+                obj.end_inline_definitions(context);
+
+                context.target.content.text = [sprintf('<use xlink:href="#%s" ', group_layer_id), ... 
+                      sprintf('style="mix-blend-mode: %s;" ', 'multiply'), ...
+                      ... %sprintf('width="%dpx" ', image_width), ...
+                      ... %sprintf('height="%dpx" ', image_height), ...
+                      ... %sprintf('opacity="%g" ', render_options.opacity), ...
+                      '/>' ...
+                      ];
             else
                 error('Unknown layer type!')
             end

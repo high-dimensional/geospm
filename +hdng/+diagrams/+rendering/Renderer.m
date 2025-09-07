@@ -129,7 +129,13 @@ classdef Renderer < handle
 
         function render_style_definitions(obj, style_definitions, context, varargin) %#ok<INUSD>
         end
-        
+
+        function begin_inline_definitions(obj) %#ok<MANU>
+        end
+
+        function end_inline_definitions(obj) %#ok<MANU>
+        end
+
         function result = create_target_proxy(obj) %#ok<MANU>
             result = hdng.diagrams.rendering.TargetProxy();
         end
