@@ -24,6 +24,10 @@ function [studies, group_widths, group_heights] = ...
     if ~isfield(studies(1), 'record_grid')
             studies(1).record_grid = [];
     end
+    
+    if ~isfield(studies(1), 'context')
+            studies(1).context = [];
+    end
 
     % Each study group is a cell grid of values selected by specific 
     % combination of group, row and column selector values.
@@ -40,14 +44,16 @@ function [studies, group_widths, group_heights] = ...
             record_grid = study.record_grid;
         end
         
-        context = geospm.reports.ReportContext(study_directory, shared_variables);
-        
+        if isempty(study.context)
+            study.context = geospm.reports.ReportContext(study_directory, shared_variables);
+        end
+
         for index=1:numel(record_grid.groups)
     
             group = record_grid.groups{index};
             
             group.cell_attachments.(output_attachment) = ...
-              context.create_cell_datasets( ...
+              study.context.create_cell_datasets( ...
                 group, input_attachment, ...
                 cell_mask_volume_fn, slice_name, ...
                 shared_variables.easting_column, ...

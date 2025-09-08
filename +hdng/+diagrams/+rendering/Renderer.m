@@ -82,6 +82,36 @@ classdef Renderer < handle
 
         function render_text(obj, x, y, x_is_increment, y_is_increment, text, context, varargin) %#ok<INUSD>
         end
+
+        function render_text_block(obj, x, y, text, style, max_width, alignment, context)
+            
+            t = hdng.typesetting.Typesetter();
+            t.units = 'pixels';
+            
+            tokens = struct('text', {text}, 'style', {style});
+            lines = t.layout(tokens, max_width, alignment);
+
+            obj.render_text_lines(x, y, lines, context);
+        end
+
+        function render_text_lines(obj, x, y, lines, context)
+
+            for l_index=1:numel(lines)
+                line = lines(l_index);
+                lx = x;
+                ly = y + line.y;
+
+                for f_index=1:numel(line.fragments)
+                    fragment = line.fragments(f_index);
+
+                    style_dict = fragment.token.style.format_css_dictionary('px');
+                    inline_style = hdng.diagrams.utilities.format_css_attributes(style_dict);
+
+                    obj.render_text(lx, ly + fragment.baseline_offset, false, false, fragment.token.text, context, 'style', inline_style);
+                    lx = lx + fragment.width;
+                end
+            end
+        end
         
         function lines = layout_text(~, text, style, max_width, alignment)
             

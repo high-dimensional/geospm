@@ -25,9 +25,28 @@ classdef ReportContext < handle
         shared_variables    % shared variables
 
         render_layer_categories
+
+    end
+
+    properties (Transient, Dependent)
+        dataset_paths
+        dataset_specifiers
+    end
+
+    properties (Access=private)
+        dataset_paths_
+        dataset_specifiers_
     end
     
     methods
+
+        function result = get.dataset_paths(obj)
+            result = obj.dataset_paths_.keys();
+        end
+
+        function result = get.dataset_specifiers(obj)
+            result = obj.dataset_specifiers_;
+        end
         
         function obj = ReportContext(base_directory, shared_variables)
             
@@ -40,6 +59,8 @@ classdef ReportContext < handle
             obj.base_directory = base_directory;
             obj.shared_variables = shared_variables;
             obj.render_layer_categories = {};
+            obj.dataset_paths_ = containers.Map('KeyType', 'char', 'ValueType', 'double');
+            obj.dataset_specifiers_ = {};
         end
         
         function [spm_input_path, spm_output_path] = spm_paths_from_record(obj, record)
@@ -281,6 +302,11 @@ classdef ReportContext < handle
                     cell_size = (max_location(1:2) - min_location(1:2)) ./ size(mask_slice)';
                 
                     dataset_path = data_specifier.file_path;
+
+                    if ~obj.dataset_paths_.isKey(dataset_path)
+                        obj.dataset_specifiers_{end + 1} = data_specifier;
+                        obj.dataset_paths_(dataset_path) = numel(obj.dataset_specifiers_);
+                    end
 
                     dataset = geospm.reports.ReportDataset.load(dataset_path, ...
                         obj.shared_variables.dataset_cache, ...

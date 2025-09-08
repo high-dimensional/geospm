@@ -29,7 +29,7 @@ function result = render_labels(labels, step_sizes, coord_key, coords, spacing, 
         label = labels{index};
         
         if ~isempty(label)
-            label = geospm.reports.html_escape(label);
+            label = hdng.utilities.html_escape(label);
             
             result = [result sprintf('<text text-anchor="middle" x="%d" y="%d" %s>%s</text>', coords.x, coords.y, attributes, label) newline]; %#ok<AGROW>
         end

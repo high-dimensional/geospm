@@ -90,7 +90,7 @@ classdef Typesetter < handle
                 obj.context_.update(token.style);
                 [width, height] = obj.context_.measure(token.text);
 
-                fragments = [fragments; hdng.one_struct('token', token, 'width', width, 'height', height)]; %#ok<AGROW>
+                fragments = [fragments; hdng.one_struct('token', token, 'width', width, 'height', height, 'baseline_offset', 0)]; %#ok<AGROW>
             end
             
             lines = hdng.one_struct('width', 0, 'height', 0, 'x', 0, 'y', 0, 'fragments', struct.empty);
