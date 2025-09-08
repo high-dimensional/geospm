@@ -54,11 +54,13 @@ classdef FileHandle < hdng.diagrams.rendering.Target
         
         function write_bytes(obj, output)
             obj.assert();
+
             fwrite(obj.file_handle, output);
         end
 
         function write_text(obj, output)
             obj.assert();
+
             fwrite(obj.file_handle, output, 'char');
         end
         

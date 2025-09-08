@@ -258,10 +258,12 @@ classdef RegressionSummary < handle
                 specifier.smoothing_levels_p_value);
         
             volume_generator.register_spatial_index(grid_spatial_index);
-            
+
             SyntheticVolumeGenerator.add(volume_generator, ...
                                          volume_generator.session_key);
             
+            guard = onCleanup(@() SyntheticVolumeGenerator.remove(volume_generator.session_key));
+
             observation_index_by_cell = cell(resolution);
         
             try
@@ -286,11 +288,10 @@ classdef RegressionSummary < handle
                 
             catch exception
         
-                SyntheticVolumeGenerator.remove(volume_generator.session_key);
+                %SyntheticVolumeGenerator.remove(volume_generator.session_key);
                 rethrow(exception);
             end
             
-            SyntheticVolumeGenerator.remove(volume_generator.session_key);
             
             fitted_response = [];
         
@@ -323,7 +324,7 @@ classdef RegressionSummary < handle
             result.observation_index_by_cell = observation_index_by_cell;
             result.fitted_response = fitted_response;
             
-            cache(session_file) = result;
+            cache(session_file) = result; %#ok<NASGU>
         end
     end
 

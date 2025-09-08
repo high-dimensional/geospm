@@ -43,10 +43,10 @@ classdef RenderScope < handle
             obj.renderer = options.renderer;
         end
 
-        function enter(obj, context)
+        function enter(obj, context) %#ok<INUSD>
         end
         
-        function exit(obj, context)
+        function exit(obj, context) %#ok<INUSD>
         end
     end
 end

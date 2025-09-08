@@ -40,10 +40,25 @@ classdef BufferedTarget < hdng.diagrams.rendering.Target
         end
         
         function write_bytes(obj, output)
-            obj.bytes = [obj.bytes; output(:)];
+            
+            if isnumeric(obj.position)
+                obj.bytes = [obj.bytes(1:obj.position - 1), output, obj.bytes(obj.position:end)];
+                obj.position = obj.position + numel(output);
+                return;
+            end
+            
+            switch obj.position
+                case 'start'
+                    obj.bytes = [output(:); obj.bytes];
+                    obj.position = numel(output);
+                    
+                otherwise
+                    obj.bytes = [obj.bytes; output(:)];
+            end
         end
         
         function write_text(obj, output)
+
             output_bytes = unicode2native(output, obj.encoding);
             obj.write_bytes(output_bytes);
         end

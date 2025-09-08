@@ -18,6 +18,7 @@ classdef Target < handle
     %   Detailed description 
     
     properties
+        position
     end
 
     properties (Dependent, Transient)
@@ -41,6 +42,16 @@ classdef Target < handle
         function obj = Target(varargin)
 
             %options = hdng.utilities.parse_struct_from_varargin(varargin{:});
+
+            obj.position = 'start';
+        end
+
+        function seek_start(obj)
+            obj.position = 'start';
+        end
+
+        function seek_end(obj)
+            obj.position = 'end';
         end
         
         function write_bytes(obj, output) %#ok<INUSD>

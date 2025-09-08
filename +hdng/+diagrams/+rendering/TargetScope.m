@@ -86,14 +86,6 @@ classdef TargetScope < hdng.diagrams.rendering.RenderScope
             
             context.target_scope = obj.saved_target_scope;
         end
-
-        function write_bytes(obj, output)
-            obj.target_proxy_.write_bytes(output);
-        end
-
-        function write_text(obj, output)
-            obj.target_proxy_.write_text(output);
-        end
     end
 
     methods (Access=protected)

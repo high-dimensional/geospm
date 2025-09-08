@@ -41,17 +41,6 @@ classdef Renderer < handle
             obj.resource_manager = options.resource_manager;
         end
         
-        %{
-        function result = create_context_for(obj, stack, callback, render_options)
-            result = render_options;
-            result.callback = callback;
-            result.stack = stack;
-
-            result.host_name = obj.resource_manager.host_name;
-            result.resource_identifier_expr = obj.resource_manager.resource_identifier_expr;
-        end
-        %}
-
         function render_shared_resources(obj, resources, context, varargin) %#ok<INUSD>
         end
 

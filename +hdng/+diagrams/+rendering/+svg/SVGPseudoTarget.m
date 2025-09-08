@@ -1,4 +1,4 @@
-% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
+ % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 %                                                                         %
 %  This source file is part of GeoSPM:                                    %
 %  https://github.com/high-dimensional/geospm                             %
@@ -47,10 +47,10 @@ classdef SVGPseudoTarget < hdng.diagrams.rendering.Target
             obj.part = options.part;
         end
         
-        function write_bytes(obj, output)
+        function write_bytes(obj, output) %#ok<INUSD>
         end
         
-        function write_text(obj, output)
+        function write_text(obj, output) %#ok<INUSD>
         end
 
         function finalise(obj, target, context)

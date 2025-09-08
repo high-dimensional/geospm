@@ -68,13 +68,5 @@ classdef FileScope < hdng.diagrams.rendering.TargetScope
 
             obj.file_handle.close();
         end
-        
-        function write_bytes(obj, output)
-            obj.file_handle.write_bytes(output);
-        end
-
-        function write_text(obj, output)
-            obj.file_handle.write_text(output);
-        end
     end
 end

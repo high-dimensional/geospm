@@ -38,8 +38,6 @@ classdef RenderContext < handle
         current_scope
         file_path
         target
-        binary_target
-        text_target
     end
     
     properties (Access=private)
@@ -67,34 +65,7 @@ classdef RenderContext < handle
             
             result = obj.target_scope.target_proxy.fragments;
         end
-
-        %{
-        function set.target(obj, value)
-
-            if isempty(obj.target_scope)
-                return;
-            end
-            
-            obj.target_scope.target_proxy.fragments = value;
-        end
-        %}
         
-        function set.binary_target(obj, value)
-            if isempty(obj.target_scope)
-                return;
-            end
-
-            obj.target_scope.write_bytes(value);
-        end
-        
-        function set.text_target(obj, value)
-            if isempty(obj.target_scope)
-                return;
-            end
-            
-            obj.target_scope.write_text(value);
-        end
-
         function obj = RenderContext(varargin)
 
             options = hdng.utilities.parse_struct_from_varargin(varargin{:});

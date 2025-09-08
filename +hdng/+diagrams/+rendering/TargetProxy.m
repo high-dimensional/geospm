@@ -73,8 +73,9 @@ classdef TargetProxy < hdng.diagrams.rendering.Target
                 obj.fragment_order = fieldnames(obj.fragments);
             end
         end
-
+        
         function write_bytes(obj, output)
+            
             if isempty(obj.delegate)
                 return;
             end
@@ -86,10 +87,10 @@ classdef TargetProxy < hdng.diagrams.rendering.Target
             if isempty(obj.delegate)
                 return;
             end
-
+            
             obj.delegate.write_text(output);
         end
-        
+
         function finalise(obj, ~, context)
             
             for index=1:numel(obj.fragment_order)

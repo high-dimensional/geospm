@@ -52,12 +52,26 @@ classdef SVGBufferedTarget < hdng.diagrams.rendering.Target
             obj.encoding = "UTF-8";
         end
         
-        function write_bytes(obj, output)
+        function write_bytes(obj, output) %#ok<INUSD>
             error('SVGBufferedTarget:WriteBytesUnsupported', 'write_bytes() not supported on SVGBufferedTarget');
         end
         
         function write_text(obj, output)
-            obj.text_buffer = [obj.text_buffer, output];
+            
+            if isnumeric(obj.position)
+                obj.text_buffer = [obj.text_buffer(1:obj.position - 1), output, obj.text_buffer(obj.position:end)];
+                obj.position = obj.position + numel(output);
+                return;
+            end
+
+            switch obj.position
+                case 'start'
+                    obj.text_buffer = [output, obj.text_buffer];
+                    obj.position = numel(output);
+
+                otherwise
+                    obj.text_buffer = [obj.text_buffer, output];
+            end
         end
 
         
