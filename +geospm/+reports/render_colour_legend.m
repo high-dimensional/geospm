@@ -38,9 +38,9 @@ function height = render_colour_legend(obj, x, y, max_width, title, style, style
     max_label = info.stop_labels{end};
 
     if ~isempty(str2double(mid_label))
-        mid_label = str2double(mid_label);
+        mid_label_tmp = str2double(mid_label);
 
-        if isequal(mid_label, 0)
+        if isequal(mid_label_tmp, 0)
             mid_label = '0.0';
         end
     end
@@ -67,7 +67,10 @@ function height = render_colour_legend(obj, x, y, max_width, title, style, style
             100 * info.colours(index, 3));
     end
 
-    renderer.define_linear_gradient('color-map', stops, '', render_context);
+
+    gradient_id = ['id_' replace(char(java.util.UUID.randomUUID), '-', '')];
+
+    renderer.define_linear_gradient(gradient_id, stops, '', render_context);
     
     x_start = x;
     y_start = y;
@@ -87,7 +90,7 @@ function height = render_colour_legend(obj, x, y, max_width, title, style, style
     ramp_top = y_start + line_height;
     ramp_bottom = y_start + line_height + ramp_height;
 
-    renderer.render_rect(x_start, x_limit, ramp_top, ramp_bottom, render_context, 'fill', 'url(#color-map)');
+    renderer.render_rect(x_start, x_limit, ramp_top, ramp_bottom, render_context, 'fill', sprintf('url(#%s)', gradient_id));
     
     stroke_width = 2;
     line_attrs = {'stroke', 'black', 'stroke_width', sprintf('%g', stroke_width)};

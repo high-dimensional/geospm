@@ -13,7 +13,7 @@
 %                                                                         %
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-function rendering_task(base_directory, output_name, render_options, grid_options, varargin)
+function rendering_task(base_directory, render_options, grid_options, varargin)
     
     options = hdng.utilities.parse_struct_from_varargin(varargin{:});
 
@@ -82,6 +82,7 @@ function rendering_task(base_directory, output_name, render_options, grid_option
     end
     
     studies = geospm.reports.scan_regional_directories(base_directory, options.suffix);
+    %studies = studies(1);
     
     tmp_dir = hdng.utilities.make_timestamped_directory(base_directory);
     
@@ -140,60 +141,6 @@ function rendering_task(base_directory, output_name, render_options, grid_option
             studies, group_heights, group_widths, options.colour_mapping, ...
             render_attachment, file_paths_attachment, tmp_dir, ...
             shared_variables);
-
-        %{
-
-        [combined_cells, grid_column_values, study_spans] = combine_study_groups(...
-            studies, group_heights, group_widths, {render_attachment, file_paths_attachment});
-    
-        grid_cell_contexts = combined_cells.(render_attachment);
-        grid_volume_file_paths = combined_cells.(file_paths_attachment);
-
-        if options.adjust_colour_mapping
-            apply_column_wise_colour_maps( ...
-                grid_cell_contexts, ...
-                grid_volume_file_paths, ...
-                tmp_dir, shared_variables, render_options);
-        end
-        %}
-        
-        if ~isempty(options.colour_mapping)
-            
-
-            %{
-            batch_fn = str2func(['batch_' options.colour_mapping.batch]);
-
-            if options.colour_mapping.combine_studies
-                batches = batch_fn(grid_cell_contexts, grid_volume_file_paths, grid_column_values, tmp_dir, options.colour_mapping);
-                apply_colour_maps(batches, shared_variables, render_options);
-            else
-                
-                start_row = 1;
-                
-                for index=1:numel(studies)
-                    study = studies(index);
-                    study_span = study_spans(index);
-    
-                    study_cell_contexts = grid_cell_contexts(start_row:start_row + study_span - 1, :);
-                    study_volume_paths = grid_volume_file_paths(start_row:start_row + study_span - 1, :);
-                    study_column_values = grid_column_values(start_row:start_row + study_span - 1, :);
-
-                                
-                    study_dir = fullfile(tmp_dir, study.identifier);
-                    [status,msg] = mkdir(study_dir);
-            
-                    if ~status
-                        error(msg);
-                    end
-
-                    batches = batch_fn(study_cell_contexts, study_volume_paths, study_column_values, study_dir, options.colour_mapping);
-                    apply_colour_maps(batches, shared_variables, render_options);
-                    
-                    start_row = start_row + study_span;
-                end
-            end
-            %}
-        end
     end
 
     service = hdng.resources.ResourceService();

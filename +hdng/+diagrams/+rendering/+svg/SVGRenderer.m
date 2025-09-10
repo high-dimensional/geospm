@@ -56,7 +56,7 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
             result = regexprep(str, '^[^A-Za-z_]', ':');
             result = regexprep(result, '[^A-Za-z_0-9\-:.]', ':');
         end
-
+        
         function result = data_url_from_image(~, resource, x, y, width, height)
 
             if ~exist('x', 'var')
@@ -159,13 +159,6 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
             url_prefix = context.resource_manager.host_name;
 
             path =  context.resource_manager.resolve_path_alias(image.path);
-            
-            %{
-            if endsWith(path, 'model_data.png') && strcmp(render_options.blend_mode, 'multiply')
-                render_options.blend_mode = 'soft-light';
-                render_options.opacity = 0.7;
-            end
-            %}
             
             [~, identifier] = context.resource_manager.build_resource_url_and_identifier(...
                 url_prefix, image.source_ref, path); 
@@ -611,7 +604,7 @@ classdef SVGRenderer < hdng.diagrams.rendering.Renderer
 
             end
         end
-
+        
         function render_shared_image(obj, resource, context)
                         
             url = obj.data_url_from_image(resource, resource.assembly.x, resource.assembly.y, resource.assembly.width, resource.assembly.height);

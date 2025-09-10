@@ -51,7 +51,8 @@ classdef ReportResourceManager < hdng.resources.ResourceManager
                 resource = hdng.resources.Resource(url, 'image');
                 resource.identifier = identifier;
                 %resource.is_shared = false;
-                resource.attachments.image_style = 'image-rendering: crisp-edges;';
+                %resource.attachments.image_style = 'image-rendering: crisp-edges;';
+                resource.attachments.image_style = 'image-rendering: pixelated;';
                 resources(resource.identifier) = resource; %#ok<NASGU>
 
                 resource.delegate = hdng.one_struct( ...

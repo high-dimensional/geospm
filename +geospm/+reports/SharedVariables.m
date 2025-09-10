@@ -93,7 +93,11 @@ classdef SharedVariables < handle
                 specifier = struct();
                 
                 specifier.smoothing_levels = record('configuration.smoothing_levels').unpack();
-                specifier.smoothing_levels = cell2mat(specifier.smoothing_levels);
+
+                if iscell(specifier.smoothing_levels)
+                    specifier.smoothing_levels = cell2mat(specifier.smoothing_levels);
+                end
+                
                 specifier.smoothing_levels_p_value = record('configuration.smoothing_levels_p_value').unpack();
                 specifier.smoothing_method = record('configuration.smoothing_method').unpack();
                 

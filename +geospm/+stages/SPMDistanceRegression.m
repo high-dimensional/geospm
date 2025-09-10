@@ -161,6 +161,12 @@ classdef SPMDistanceRegression < geospm.stages.SpatialAnalysisStage
 
             output_directory = fullfile(arguments.directory, obj.output_directory_name);
             
+            [status, msg] = mkdir(output_directory);
+
+            if ~status
+                error('Could not create output directory: %s', msg);
+            end
+
             computation = geospm.spm.SPMJobList(...
                             output_directory, ...
                             arguments.volume_precision, ...

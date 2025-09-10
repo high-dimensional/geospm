@@ -18,7 +18,7 @@ function [legends, directories] = colour_map_study_grids(studies, group_heights,
             shared_variables)
     
     if ~isfield(specifier, 'colour_map')
-        specifier.colour_map = hdng.colour_mapping.GenericColourMap.twilight_27([], true);
+        specifier.colour_map = hdng.colour_mapping.GenericColourMap.twilight_28([], true);
     end
 
     directories = {};

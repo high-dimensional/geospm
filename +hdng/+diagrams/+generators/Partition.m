@@ -159,7 +159,7 @@ classdef Partition < hdng.diagrams.Generator
                         continue
                     end
     
-                    missing_placeholders.add_field(field, constant_values(1));
+                    missing_placeholders.assign_field(field, constant_values(1));
                 end
             end
             

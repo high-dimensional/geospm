@@ -22,6 +22,8 @@ classdef SVGRenderer < hdng.diagrams.rendering.svg.SVGRenderer
         trace_stroke_width
         trace_stroke_foreground_colour
         trace_stroke_background_colour
+
+        render_pixels_as_rects
     end
 
     properties (Dependent, Transient)
@@ -39,6 +41,7 @@ classdef SVGRenderer < hdng.diagrams.rendering.svg.SVGRenderer
             obj.trace_stroke_foreground_colour = 'white';
             obj.trace_stroke_background_colour = '#663399';
 
+            obj.render_pixels_as_rects = false;
         end
 
         function render_volume(obj, volume, x, y, scale_factor, context, varargin)
@@ -109,13 +112,13 @@ classdef SVGRenderer < hdng.diagrams.rendering.svg.SVGRenderer
                       '>', newline, ...
                       sprintf('<use xlink:href="#%s" ', symbol_id), ... 
                       sprintf('fill="none" stroke="%s" fill-rule="evenodd" clip-rule="evenodd" ', obj.trace_stroke_foreground_colour), ...
-                      sprintf('stroke-line-join="miter" stroke-width="%gpx" ', stroke_width), ...
+                      sprintf('stroke-linejoin="miter" stroke-width="%gpx" ', stroke_width), ...
                       sprintf('width="%dpx" height="%dpx" ', specifier.span(1), specifier.span(2)), ...
                       '/>', ...
                       newline, ...
                       sprintf('<use xlink:href="#%s" ', symbol_id), ... 
                       sprintf('fill="none" stroke="%s" fill-rule="evenodd" clip-rule="evenodd" ', obj.trace_stroke_foreground_colour), ...
-                      sprintf('stroke-line-join="miter" stroke-width="%gpx" ', stroke_width), ...
+                      sprintf('stroke-linejoin="miter" stroke-width="%gpx" ', stroke_width), ...
                       sprintf('stroke-dasharray="%g %g" ', dash_length * 2, dash_length), ...
                       sprintf('width="%dpx" height="%dpx" ', specifier.span(1), specifier.span(2)), ...
                       '/>', ...
@@ -145,11 +148,11 @@ classdef SVGRenderer < hdng.diagrams.rendering.svg.SVGRenderer
                 obj.render_image(layer.image, x, y, scale_factor, context, varargin{:}, layer_options{:});
             elseif isa(layer, 'geospm.validation.GroupLayer')
 
-                obj.begin_inline_definitions(context);
+                %obj.begin_inline_definitions(context);
 
-                group_layer_id = replace(char(java.util.UUID.randomUUID), '-', '');
+                group_layer_id = ['id_' replace(char(java.util.UUID.randomUUID), '-', '')];
                 
-                obj.begin_group(0, 0, context, 'id', group_layer_id);
+                obj.begin_group(0, 0, context, 'id', group_layer_id, 'style', sprintf('mix-blend-mode: %s; opacity: %g;', layer.blend_mode, layer.opacity));
 
                 for index=1:numel(layer.sublayers)
                     sublayer = layer.sublayers{index};
@@ -158,15 +161,15 @@ classdef SVGRenderer < hdng.diagrams.rendering.svg.SVGRenderer
                 
                 obj.end_group(0, 0, context);
 
-                obj.end_inline_definitions(context);
+                %obj.end_inline_definitions(context);
 
-                context.target.content.text = [sprintf('<use xlink:href="#%s" ', group_layer_id), ... 
-                      sprintf('style="mix-blend-mode: %s;" ', 'multiply'), ...
-                      ... %sprintf('width="%dpx" ', image_width), ...
-                      ... %sprintf('height="%dpx" ', image_height), ...
-                      ... %sprintf('opacity="%g" ', render_options.opacity), ...
-                      '/>' ...
-                      ];
+                %context.target.content.text = [sprintf('<use xlink:href="#%s" ', group_layer_id), ... 
+                %      sprintf('style="mix-blend-mode: %s; opacity: %g;" ', layer.blend_mode, layer.opacity), ...
+                %      ... %sprintf('width="%dpx" ', image_width), ...
+                %      ... %sprintf('height="%dpx" ', image_height), ...
+                %      ... %sprintf('opacity="%g" ', layer.opacity), ...
+                %      '/>' ...
+                %      ];
             else
                 error('Unknown layer type!')
             end
@@ -233,6 +236,76 @@ classdef SVGRenderer < hdng.diagrams.rendering.svg.SVGRenderer
                 paths, ...
                 '</g>' newline
             ];
+        end
+
+
+        function render_image_pixels(~, resource, x, y, width, height, context)
+
+            if ~exist('x', 'var') || isempty(x)
+                x = 0;
+            end
+
+            if ~exist('y', 'var') || isempty(y)
+                y = 0;
+            end
+            image_height = resource.assembly.image.x;
+            image_width = resource.assembly.image.y;
+            
+            if ~exist('width', 'var')
+                width = image_width;
+            end
+
+            if ~exist('height', 'var')
+                height = image_height;
+            end
+            
+            data = resource.assembly.image.data(y + 1:y + height, x + 1:x + width, :, :);
+            
+            switch class(data)
+                case 'uint8'
+                    factor = 2^8 - 1;
+                case 'uint16'
+                    factor = 2^16 - 1;
+                otherwise
+                    error('SVGRenderer.render_pixels_from_image(): Cannot determine bit depth.');
+            end
+            
+            for row=1:height
+                for col=1:width
+                    colour = data(row, col, 1, resource.assembly.image.non_alpha_indices);
+                    alpha = data(row, col, 1, resource.assembly.image.alpha_channel_index) / factor;
+
+                    if alpha == 1
+                        fill = sprintf('rgb(%d, %d, %d)', colour(1), colour(2), colour(3));
+                    else
+                        fill = sprintf('rgba(%d, %d, %d, %g)', colour(1), colour(2), colour(3), alpha);
+                    end
+                    %obj.render_rect(col, col + 1, row, row + 1, context, 'stroke', 'none', 'fill', colour);
+
+                    rect = [sprintf('<rect x="%gpx" width="%gpx" y="%gpx" height="%gpx" stroke="none" fill="%s"/>', col - 1, 1, row - 1, 1, fill), ...
+                              newline ...
+                             ];
+
+                    context.target.prologue.text = rect;
+                    
+                end
+            end
+        end
+
+        function render_shared_image(obj, resource, context)
+            
+            if ~obj.render_pixels_as_rects || ~isfield(resource.assembly, 'slice_index')
+               render_shared_image@hdng.diagrams.rendering.svg.SVGRenderer(obj, resource, context);
+               return;
+            end
+
+            
+            id = obj.generate_xmlid(resource.identifier);
+            
+
+            context.target.prologue.text = [sprintf('<g transform="translate(0 0)" id="%s">', id), newline];
+            obj.render_image_pixels(resource, resource.assembly.x, resource.assembly.y, resource.assembly.width, resource.assembly.height, context);
+            context.target.prologue.text = ['</g>', newline];
         end
 
     end
