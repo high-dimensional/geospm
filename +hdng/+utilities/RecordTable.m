@@ -370,7 +370,8 @@ classdef RecordTable
         end
         
         function result = pivot(obj, header_field, format_header_values, ...
-                match_header_values, row_label_column, merge_identical_columns)
+                match_header_values, row_label_column, row_label_order, ...
+                merge_identical_columns)
             
             if ~exist('format_header_values', 'var')
                 format_header_values = [];
@@ -381,7 +382,11 @@ classdef RecordTable
             end
 
             if ~exist('row_label_column', 'var')
-                row_label_column = 'row_label';
+                row_label_column = '<header>';
+            end
+
+            if ~exist('row_label_order', 'var')
+                row_label_order = {};
             end
 
             if ~exist('merge_identical_columns', 'var') || isempty(merge_identical_columns)
@@ -407,9 +412,23 @@ classdef RecordTable
 
             K = numel(obj.fieldnames);
 
-            row_labels = [obj.fieldnames(1:header_field_index - 1);
-                          obj.fieldnames(header_field_index + 1:end)];
+            row_label_field_index = header_field_index;
+
+            if ~strcmp(row_label_column, '<header>')
+                if ~isempty(row_label_column)
+                    row_label_field_index = find(strcmp(row_label_column, obj.fieldnames), 1);
+                end
+            else
+                row_label_column = 'row_label';
+            end
             
+            if ~isempty(row_label_field_index)
+                row_labels = [obj.fieldnames(1:row_label_field_index - 1);
+                              obj.fieldnames(row_label_field_index + 1:end)];
+            else
+                row_labels = {};
+            end
+
             if merge_identical_columns
                 
                 map = containers.Map('KeyType', 'char', 'ValueType', 'double');
@@ -495,7 +514,37 @@ classdef RecordTable
             
             result = struct();
 
-            if ~isempty(row_label_column)
+            if ~isempty(row_label_column) && ~isempty(row_labels) && ~isempty(row_label_order)
+                
+                row_indices = [];
+
+                for index=1:numel(row_label_order)
+                    row_label = row_label_order{index};
+                    row_indices = [row_indices; find(strcmp(row_label, row_labels))]; %#ok<AGROW>
+                end
+
+                row_index_map = containers.Map('KeyType', 'double', 'ValueType', 'logical');
+
+                for index=1:numel(row_indices)
+                    row_index_map(row_indices(index)) = true;
+                end
+
+                for index=1:K - 1
+
+                    if ~row_index_map.isKey(index)
+                        row_indices = [row_indices; index]; %#ok<AGROW>
+                    end
+                end
+
+                row_labels = row_labels(row_indices);
+    
+                for index=1:numel(header_values)
+                    tmp = columns{index};
+                    columns{index} = tmp(row_indices);
+                end
+            end
+            
+            if ~isempty(row_label_column) && ~isempty(row_labels)
                 result.(row_label_column) = row_labels;
             end
 
@@ -503,7 +552,7 @@ classdef RecordTable
                header_value = header_values{index};
                result.(header_value) = columns{index};
             end
-
+            
             result = hdng.utilities.RecordTable(result, K - 1);
         end
     end

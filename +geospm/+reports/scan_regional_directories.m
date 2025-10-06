@@ -17,6 +17,7 @@ function result = scan_regional_directories(base_directory, suffix)
         region = hdng.utilities.load_text(region_path);
         
         result(result_index).identifier = [region suffix];
+        result(result_index).region = region;
         result(result_index).directory = directory;
 
         result_index = result_index + 1;

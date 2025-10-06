@@ -26,6 +26,8 @@ classdef SliceShapesSpecifier < handle
         shape_paths
         slice_map
         source_ref
+
+        shape_selector
     end
 
     properties (Dependent, Transient)
@@ -43,6 +45,8 @@ classdef SliceShapesSpecifier < handle
             obj.source_ref = '';
             obj.slice_map = hdng.experiments.SliceMap(0);
             obj.shape_paths = [];
+
+            obj.shape_selector = [];
         end
 
         function result = get.slice_names(obj)

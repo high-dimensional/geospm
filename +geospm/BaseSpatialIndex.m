@@ -462,7 +462,7 @@ classdef BaseSpatialIndex < geospm.TabularData
             end
 
             if options.marker_min_size
-                marker_sizes = 1 - (1 - marker_sizes) * ((1 - options.marker_min_size) / (1 - min(marker_sizes)));
+                marker_sizes = 1 - (1 - marker_sizes) * ((1 - options.marker_min_size - 0.1) / (1 - min(marker_sizes))) - 0.1;
             end
 
             marker_symbol = 'o';
@@ -475,7 +475,7 @@ classdef BaseSpatialIndex < geospm.TabularData
                 options.grid_size, ...
                 'marker_sizes', marker_sizes, ...
                 'marker_symbol', marker_symbol, varargin{:}, ...
-                'line_width', options.line_width * options.marker_scale );
+                'line_width', options.line_width * options.marker_scale * 1.5 );
         end
 
         function resolution_factor = render_frame_in_figure_and_write_to_file(obj, point1, point2, variant, file_path, file_format, varargin)

@@ -22,6 +22,7 @@ classdef Pivot < hdng.diagrams.DataTransform
         format_header_values
         match_header_values
         row_label_column
+        row_label_order
         merge_identical_columns
     end
     
@@ -33,7 +34,8 @@ classdef Pivot < hdng.diagrams.DataTransform
 
     methods
         function obj = Pivot(header_field, format_header_values,...
-                match_header_values, row_label_column, merge_identical_columns)
+                match_header_values, row_label_column, row_label_order, ...
+                merge_identical_columns)
 
             if ~exist('format_header_values', 'var')
                 format_header_values = [];
@@ -46,6 +48,11 @@ classdef Pivot < hdng.diagrams.DataTransform
             if ~exist('row_label_column', 'var')
                 row_label_column = [];
             end
+         
+            if ~exist('row_label_order', 'var')
+                row_label_order = {};
+            end
+
 
             if ~exist('merge_identical_columns', 'var')
                 merge_identical_columns = false;
@@ -57,6 +64,7 @@ classdef Pivot < hdng.diagrams.DataTransform
             obj.format_header_values = format_header_values;
             obj.match_header_values = match_header_values;
             obj.row_label_column = row_label_column;
+            obj.row_label_order = row_label_order;
             obj.merge_identical_columns = merge_identical_columns;
         end
         
@@ -67,6 +75,7 @@ classdef Pivot < hdng.diagrams.DataTransform
                 obj.format_header_values, ...
                 obj.match_header_values, ...
                 obj.row_label_column, ...
+                obj.row_label_order, ...
                 obj.merge_identical_columns ...
             );
             

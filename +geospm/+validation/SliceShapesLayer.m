@@ -24,6 +24,8 @@ classdef SliceShapesLayer < geospm.validation.PresentationLayer
         shape_paths
         slice_map
         source_ref
+
+        shape_selector
     end
 
     properties (Dependent, Transient)
@@ -43,6 +45,8 @@ classdef SliceShapesLayer < geospm.validation.PresentationLayer
             obj.shape_paths = [];
             obj.slice_map = hdng.experiments.SliceMap(0);
             obj.source_ref = '';
+
+            obj.shape_selector = [];
         end
 
         function result = get.slice_names(obj)

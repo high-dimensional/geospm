@@ -210,13 +210,28 @@ classdef SVGRenderer < hdng.diagrams.rendering.svg.SVGRenderer
                           0, -1, slice_shapes.origin(2) + slice_shapes.span(2)];
             
             paths = cell(numel(resource.assembly.shapes), 1);
+
+            shape_selector = ones(numel(resource.assembly.shapes, 1, 'logical'));
+
+            if ~isempty(slice_shapes.shape_selector)
+                shape_selector = slice_shapes.shape_selector;
+            end
+
+            path_index = 1;
             
             for index=1:numel(resource.assembly.shapes)
+
+                if ~shape_selector(index)
+                    continue;
+                end
+
                 shape = resource.assembly.shapes(index);
 
-                paths{index} = geospm.reports.render_shape(shape, transform);
+                paths{path_index} = geospm.reports.render_shape(shape, transform);
+                path_index = path_index + 1;
             end
             
+            paths = paths(1:path_index - 1);
             paths = join(paths, newline);
             paths = paths{1};
 

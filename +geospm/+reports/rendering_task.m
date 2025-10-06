@@ -82,7 +82,7 @@ function rendering_task(base_directory, render_options, grid_options, varargin)
     end
     
     studies = geospm.reports.scan_regional_directories(base_directory, options.suffix);
-    %studies = studies(1);
+    %studies = studies(2);
     
     tmp_dir = hdng.utilities.make_timestamped_directory(base_directory);
     
